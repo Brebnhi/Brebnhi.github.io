@@ -41,6 +41,20 @@ jobs:
           HOLDSPORT_PASSWORD: ${{ secrets.HOLDSPORT_PASSWORD }}
         run: python scripts/build.py
  
+      # ---- Kørselsudligning (mappen koerselsudligning/) ----------------------
+      # continue-on-error: en fejl her må aldrig stoppe tjans-kalenderne.
+      - name: Hent cache til kørselsudligning
+        uses: actions/cache@v4
+        with:
+          path: koerselsudligning/cache
+          key: koerselsudligning-${{ github.run_id }}
+          restore-keys: koerselsudligning-
+ 
+      - name: Beregn kørselsudligning
+        continue-on-error: true
+        working-directory: koerselsudligning
+        run: python scripts/beregn.py --ud ../tjans/docs/koerselsudligning
+ 
       - uses: actions/upload-pages-artifact@v3
         with:
           path: tjans/docs
@@ -58,3 +72,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SIDE: ${{ steps.deploy.outputs.page_url }}
         run: python scripts/alert.py
+ 
+      - name: Giv besked om kørselsudligningen
+        continue-on-error: true
+        working-directory: koerselsudligning
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SIDE: ${{ steps.deploy.outputs.page_url }}koerselsudligning/
+        run: python scripts/besked.py ../tjans/docs/koerselsudligning/status.json
