@@ -1,0 +1,130 @@
+{
+  "_om": "Indstillinger til kørselsudligningen. Ret direkte på GitHub og gem — så regner robotten forfra.",
+  "forening_id": 156,
+  "klub": "Aalborg Volleyball",
+  "biler_pr_raekke": {
+    "_om": "Rækker der indgår i VD's rejseudligning (§ 2), og antal biler pr. udekamp.",
+    "Volleyligaen Kvinder": 3,
+    "Volleyligaen Herrer": 3,
+    "1. Division Kvinder": 3,
+    "1. Division Herrer": 3,
+    "2. Division Kvinder": 2,
+    "2. Division Herrer": 2
+  },
+  "km_takst": {
+    "_om": "Statens laveste km-takst (over 20.000 km/år). VD bruger taksten pr. 1. oktober i sæsonens første år. Tilføj næste års takst hver januar.",
+    "2020": 1.96,
+    "2021": 1.9,
+    "2022": 2.17,
+    "2023": 2.19,
+    "2024": 2.23,
+    "2025": 2.23,
+    "2026": 2.28
+  },
+  "bropris": {
+    "_om": "Storebælt pr. bil tur/retur (weekendrabat). VD brugte 311 kr i 2020/21. 2025 er et skøn.",
+    "2020": 311,
+    "2025": 340,
+    "2026": 346
+  },
+  "storebaelt_laengdegrad": 10.98,
+  "bornholm_pris_16_personer": null,
+  "pokal": {
+    "_om": "Pokalturneringen (reglementets § 20): hver runde udlignes for sig (Øst og Vest samlet), kvinder og herrer hver for sig. Udeholdet: 3 biler fra sin registrerede hjemmebane, statens laveste takst og broafgift. Final4 afregnes efter regning og er ikke med.",
+    "raekke_prefiks": "Pokalturneringen",
+    "biler": 3,
+    "undtag": [
+      "final4",
+      "final 4",
+      "final four"
+    ]
+  },
+  "bropris_pokal": {
+    "_om": "Tom = samme som bropris. Reglementet siger 'normal broafgift' — sæt fx 2 × enkeltbilletten her, hvis VD viser sig at bruge den."
+  },
+  "slutspil": {
+    "_om": "Øvrige kampe i Volleyligaen (§ 2, pkt. 4): gennemsnitspris pr. kamp for alle slutspils- og placeringskampe (pr. køn), fordelt efter spillede kampe. Afregnes efter sæsonen. Kvalifikation til/fra Ligaen er ikke med.",
+    "biler": 3,
+    "undtag": [
+      "kvalifikation"
+    ]
+  },
+  "km_rettelser": {
+    "_om": "Afstande som VD har brugt, når de afviger fra OpenStreetMap. Format: \"fra-adresse > til-adresse\": km (gælder begge veje).",
+    "Annebergvej 48, 9000 Aalborg > Vrenderupvej 40 C, 6818 Årre": 200
+  },
+  "faktisk": {
+    "_om": "Sæsonens samlede beløb fra VD: grundspil + pokal + slutspil (+ = kreditnota). Tilføj, når opgørelserne er kommet. 24/25 og 25/26 er kun grundspillet (kreditnota 107041 og 107996).",
+    "2024/25": 24987.86,
+    "2025/26": 26578.65
+  },
+  "kalibrering": [
+    {
+      "saeson": "2024/25",
+      "kilde": "Kreditnota 107041 af 30-11-2024",
+      "raekke_ids": [
+        2071,
+        2082,
+        2072,
+        2083
+      ],
+      "faktisk": {
+        "1. Division Herrer|Aalborg Volleyball": 9427.55,
+        "1. Division Kvinder|Aalborg Volleyball": 9787.47,
+        "2. Division Herrer|Aalborg Volleyball.2": 1011.68,
+        "2. Division Herrer|Aalborg Volleyball.3": 860.04,
+        "2. Division Kvinder|Aalborg Volleyball.2": 3901.12
+      }
+    },
+    {
+      "saeson": "2025/26",
+      "kilde": "Kreditnota 107996 af 26-02-2026",
+      "raekke_ids": [
+        2249,
+        2250,
+        2251,
+        2253
+      ],
+      "faktisk": {
+        "Volleyligaen Kvinder|Aalborg Volleyball": 11014.96,
+        "1. Division Herrer|Aalborg Volleyball": 10071.13,
+        "2. Division Kvinder|Aalborg Volleyball.2": 2225.84,
+        "2. Division Kvinder|Aalborg Volleyball.3": 2225.84,
+        "2. Division Herrer|Aalborg Volleyball.2": 520.44,
+        "2. Division Herrer|Aalborg Volleyball.3": 520.44
+      }
+    },
+    {
+      "saeson": "2025/26",
+      "type": "pokal",
+      "kilde": "Faktura 107788 og kreditnota 107821 (VD-Pokal 1. og 2. runde)",
+      "runder": [
+        [
+          3961
+        ],
+        [
+          3960
+        ],
+        [
+          3962
+        ]
+      ],
+      "faktisk": {
+        "3961|Aalborg Volleyball.2": 911.66,
+        "3961|Aalborg Volleyball.3": -734.08,
+        "3961|Aalborg Volleyball.4": -734.08,
+        "3961|Aalborg Volleyball.5": -734.08,
+        "3960|Aalborg Volleyball": 2313.07,
+        "3960|Aalborg Volleyball.2": -1.67,
+        "3962|Aalborg Volleyball": 2048.68,
+        "3962|Aalborg Volleyball.2": -627.32
+      }
+    }
+  ],
+  "hold_koder": {
+    "_om": "Valgfrit, fx \"1. Division Kvinder|Aalborg Volleyball.2\": \"D2\". Står der intet, gættes koden: D1/H1 er holdet i den bedste række."
+  },
+  "steder": {
+    "_om": "Valgfrit: ret et spillesteds placering, hvis adressen geokodes forkert. Nøgle = adresse som i kampprogrammet, værdi = [breddegrad, længdegrad]."
+  }
+}
