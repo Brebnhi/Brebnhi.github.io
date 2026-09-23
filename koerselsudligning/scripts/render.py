@@ -64,6 +64,7 @@ ul.adv{margin:0;padding-left:20px}
 @media(max-width:640px){table{min-width:0}.lav{display:none}th.n{white-space:normal}
 .hero .big{font-size:34px}}
 footer{margin-top:40px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:16px}
+.nav{margin:0 0 18px;font-size:14px}.nav a{color:var(--accent);text-decoration:none}.nav a:hover{text-decoration:underline}
 """
 
 
@@ -309,6 +310,7 @@ def render(st):
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Kørselsudligning {E(saeson)} · Aalborg Volley</title>
 <style>{CSS}</style></head><body><div class="wrap">
+<p class="nav"><a href="../">← Alle projekter</a></p>
 <h1>Kørselsudligning {E(saeson)}</h1>
 <p class="sub">Aalborg Volley · forventet rejseudligning fra Volleyball Danmark ·
 opdateret {E(st.get('opdateret'))}</p>

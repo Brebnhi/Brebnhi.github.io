@@ -8,10 +8,11 @@ kampprogram-feeds fra resultater.volleyball.dk.
 flytter tjansen i stedet for at oprette en ny.
 
 Kilder:  data/tjanser.csv, data/feeds.json
-Output:  docs/feeds/*.ics, docs/status.json, docs/index.html
+Output:  docs/feeds/*.ics, docs/status.json, docs/tjanser/index.html
+         (docs/index.html er klubbens startside og bygges ikke her)
 """
 
-import csv, hashlib, json, os, re, sys, urllib.request
+import csv, hashlib, json, os, re, shutil, sys, urllib.request
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -28,6 +29,18 @@ ROLES = {
 }
 DEFAULT_LEN = {6: timedelta(hours=3), 5: timedelta(hours=4), 4: timedelta(hours=2, minutes=30)}
 INCLUDE_STAEVNER = os.environ.get("INCLUDE_STAEVNER", "0") == "1"
+
+# Repoet hed "Tjanser-i-Holdsport", og Holdsport er sat op med kalenderadresser
+# under det navn. Nu er repoet brebnhi.github.io (et user site), så den gamle sti
+# ligger i vores eget site: kalenderne kopieres derhen hver nat, og de gamle sider
+# sender videre. Slet ikke mappen, så længe Holdsport henter derfra.
+GAMMEL = "Tjanser-i-Holdsport"
+VIDERE = ("<!doctype html><html lang=\"da\"><head><meta charset=\"utf-8\">"
+          "<meta name=\"robots\" content=\"noindex\">"
+          "<meta http-equiv=\"refresh\" content=\"0; url={til}\">"
+          "<title>Flyttet · Aalborg Volley</title>"
+          "<script>location.replace(\"{til}\" + location.hash)</script></head>"
+          "<body><p>Siden er flyttet. <a href=\"{til}\">Gå videre</a>.</p></body></html>")
 
 # (række i regnearket, holdnavn i turneringssystemet) -> klubbens interne holdnavn
 CLUB_TEAMS = {
@@ -332,6 +345,8 @@ def main():
                       "foerste": entries[0]["start"].astimezone(DK).strftime("%d-%m-%Y"),
                       "sidste": entries[-1]["start"].astimezone(DK).strftime("%d-%m-%Y")})
 
+    gammel_adresse(feeds_dir)
+
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import holdsport
     hs = holdsport.koer(forventede, ROOT)
@@ -354,7 +369,9 @@ def main():
                            encoding="utf-8"), ensure_ascii=False, indent=2)
 
     from render import render
-    open(os.path.join(ROOT, "docs", "index.html"), "w", encoding="utf-8").write(
+    side_dir = os.path.join(ROOT, "docs", "tjanser")   # startsiden ligger i docs/index.html
+    os.makedirs(side_dir, exist_ok=True)
+    open(os.path.join(side_dir, "index.html"), "w", encoding="utf-8").write(
         render(status, os.environ.get("BASE_URL", "")))
 
     print(f"{len(feeds)} feeds, {sum(f['kampe'] for f in feeds)} tjanser")
@@ -373,6 +390,26 @@ def main():
     for n, e in feed_fejl.items():
         print(f"  FEED-FEJL {n}: {e}", file=sys.stderr)
     return status
+
+
+def gammel_adresse(feeds_dir):
+    """Kopierer kalenderne til docs/Tjanser-i-Holdsport/feeds/ og lægger
+    videresendende sider på de gamle adresser. Se GAMMEL øverst."""
+    rod = os.path.join(ROOT, "docs", GAMMEL)
+    ud = os.path.join(rod, "feeds")
+    os.makedirs(ud, exist_ok=True)
+    for f in os.listdir(ud):
+        if f.endswith(".ics"):
+            os.remove(os.path.join(ud, f))
+    for f in os.listdir(feeds_dir):
+        if f.endswith(".ics"):
+            shutil.copyfile(os.path.join(feeds_dir, f), os.path.join(ud, f))
+    for sti, til in (("", "../"), ("tjanser", "../../tjanser/"),
+                     ("koerselsudligning", "../../koerselsudligning/"),
+                     ("kontingent", "../../kontingent/")):
+        d = os.path.join(rod, sti)
+        os.makedirs(d, exist_ok=True)
+        open(os.path.join(d, "index.html"), "w", encoding="utf-8").write(VIDERE.format(til=til))
 
 
 def snapshot(row):

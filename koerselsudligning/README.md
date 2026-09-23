@@ -4,7 +4,7 @@ Regner hver nat ud, hvad klubben kan forvente at få (eller betale) i
 rejseudligning fra Volleyball Danmark — for grundspillet i Liga, 1. og 2.
 division, for hver runde i pokalturneringen og for slutspillet i Volleyligaen.
 
-**Siden:** https://brebnhi.github.io/Tjanser-i-Holdsport/koerselsudligning/
+**Siden:** https://brebnhi.github.io/koerselsudligning/
 
 ## Sådan virker det
 

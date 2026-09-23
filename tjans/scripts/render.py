@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Renderer status.json til docs/index.html — klubbens live-overblik."""
+"""Renderer status.json til docs/tjanser/index.html — klubbens live-overblik over tjanser."""
 import html, json, os
 from collections import Counter, defaultdict
 
@@ -45,6 +45,7 @@ code{background:var(--bg);border:1px solid var(--line);border-radius:5px;
 padding:1px 6px;font-size:12px;word-break:break-all}
 .muted{color:var(--muted)}
 footer{margin-top:40px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:16px}
+.nav{margin:0 0 18px;font-size:14px}.nav a{color:var(--accent);text-decoration:none}.nav a:hover{text-decoration:underline}
 """
 
 
@@ -95,7 +96,7 @@ def render(status, base_url=""):
 
     feed_rows = []
     for f in status["feeds"]:
-        url = f"{base_url}feeds/{f['fil']}" if base_url else f"feeds/{f['fil']}"
+        url = f"{base_url}feeds/{f['fil']}" if base_url else f"../feeds/{f['fil']}"
         n = "n6" if f["antal"] == 6 else ""
         feed_rows.append(
             f"<tr><td><span class='tag'>{E(f['hold'])}</span></td>"
@@ -178,6 +179,7 @@ def render(status, base_url=""):
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Tjanser 2026/27 · Aalborg Volley</title>
 <style>{CSS}</style></head><body><div class="wrap">
+<p class="nav"><a href="../">← Alle projekter</a></p>
 <h1>Tjanser 2026/27</h1>
 <p class="sub">Aalborg Volley · opdateret {E(status['opdateret'])} ·
 {status['feed_kampe']} kampe hentet fra kampprogrammet</p>
@@ -209,6 +211,10 @@ def render(status, base_url=""):
 WebCal. Sæt maks. antal deltagere til tallet i kolonnen, og slå automatisk
 opdatering én gang i døgnet til.</p>
 {tabel(feed_rows, ["Hold", "Maks. deltagere", "Tjanser", "Periode", "Feed-adresse"], "")}
+<p class="muted" style="font-size:13px;margin-top:10px">Importerne i Holdsport blev lavet, da repoet hed
+Tjanser-i-Holdsport, og peger på <code>{E(base_url or "../")}Tjanser-i-Holdsport/feeds/…</code>.
+Den adresse opdateres hver nat sammen med de nye, så importerne skal ikke laves om.
+Nye importer kan bruge adresserne i tabellen.</p>
 
 <h2>Fordeling</h2>
 <div class="stats">{hold_stats}</div>
@@ -223,6 +229,7 @@ resultater.volleyball.dk. Siden og kalenderne opdateres hver nat.</footer>
 
 if __name__ == "__main__":
     st = json.load(open(os.path.join(ROOT, "docs", "status.json"), encoding="utf-8"))
-    out = os.path.join(ROOT, "docs", "index.html")
+    os.makedirs(os.path.join(ROOT, "docs", "tjanser"), exist_ok=True)
+    out = os.path.join(ROOT, "docs", "tjanser", "index.html")
     open(out, "w", encoding="utf-8").write(render(st, os.environ.get("BASE_URL", "")))
     print("skrev", out)
