@@ -78,5 +78,5 @@ jobs:
         working-directory: koerselsudligning
         env:
           GH_TOKEN: ${{ github.token }}
-          SIDE: ${{ steps.deploy.outputs.page_url }}koerselsudligning/
+          SIDE: ${{ steps.deploy.outputs.page_url }}koerselsudligning/tjanser/
         run: python scripts/besked.py ../tjans/docs/koerselsudligning/status.json
