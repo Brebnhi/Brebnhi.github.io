@@ -1,22 +1,22 @@
 name: Opdater tjans-kalendere
- 
+
 on:
   schedule:
     - cron: "20 3 * * *"        # hver nat kl. 04:20/05:20 dansk tid
   workflow_dispatch:            # kan altid startes manuelt
   push:
     branches: [main]
- 
+
 permissions:
-  contents: read
+  contents: write               # så robotten kan lægge løst uploadede filer på plads
   pages: write
   id-token: write
   issues: write
- 
+
 concurrency:
   group: tjanser
   cancel-in-progress: false
- 
+
 jobs:
   byg:
     runs-on: ubuntu-latest
@@ -25,14 +25,51 @@ jobs:
         working-directory: tjans      # projektet ligger i undermappen tjans/
     steps:
       - uses: actions/checkout@v4
- 
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
- 
+
+      # ---- Filer uploadet løst i roden (fx fra telefonen) lægges på plads ----
+      # Filen genkendes på sit indhold, ikke sit navn, så "render (3).py" også virker.
+      - name: Læg løse filer på plads
+        working-directory: .
+        run: |
+          python3 - <<'PY'
+          import os, shutil, subprocess
+          MAAL = [
+              ("def gammel_adresse", "tjans/scripts/build.py"),
+              ("Renderer status.json til docs/tjanser/index.html", "tjans/scripts/render.py"),
+              ("siden med den forventede kørselsudligning", "koerselsudligning/scripts/render.py"),
+              ("<h1>Klubbens værktøjer</h1>", "tjans/docs/index.html"),
+              ("Hvad står vi til at få i kontingent?", "tjans/docs/kontingent/index.html"),
+              ("# Kørselsudligning – Aalborg Volley", "koerselsudligning/README.md"),
+              ("# Tjanser – Aalborg Volley", "tjans/README.md"),
+          ]
+          flyttet = []
+          for navn in sorted(os.listdir(".")):
+              if not os.path.isfile(navn) or not navn.endswith((".py", ".html", ".md")):
+                  continue
+              tekst = open(navn, encoding="utf-8", errors="replace").read()
+              for kendetegn, maal in MAAL:
+                  if kendetegn in tekst:
+                      os.makedirs(os.path.dirname(maal), exist_ok=True)
+                      shutil.move(navn, maal)
+                      subprocess.run(["git", "add", "-A", "--", navn, maal], check=True)
+                      flyttet.append(f"{navn} -> {maal}")
+                      break
+          print("\n".join(flyttet) or "Ingen løse filer i roden.")
+          PY
+          if ! git diff --cached --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -q -m "Robot: uploadede filer lagt på plads"
+            git push -q || echo "Kunne ikke gemme oprydningen i repoet – bygger alligevel med filerne på plads."
+          fi
+
       - uses: actions/configure-pages@v5
         id: pages
- 
+
       - name: Byg kalendere, statusside og tjek Holdsport
         env:
           BASE_URL: ${{ steps.pages.outputs.base_url }}/
@@ -40,7 +77,7 @@ jobs:
           HOLDSPORT_USER: ${{ secrets.HOLDSPORT_USER }}
           HOLDSPORT_PASSWORD: ${{ secrets.HOLDSPORT_PASSWORD }}
         run: python scripts/build.py
- 
+
       # ---- Kørselsudligning (mappen koerselsudligning/) ----------------------
       # continue-on-error: en fejl her må aldrig stoppe tjans-kalenderne.
       - name: Hent cache til kørselsudligning
@@ -49,34 +86,34 @@ jobs:
           path: koerselsudligning/cache
           key: koerselsudligning-${{ github.run_id }}
           restore-keys: koerselsudligning-
- 
+
       - name: Beregn kørselsudligning
         continue-on-error: true
         working-directory: koerselsudligning
         run: python scripts/beregn.py --ud ../tjans/docs/koerselsudligning
- 
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: tjans/docs
- 
+
       - uses: actions/upload-artifact@v4
         with:
           name: status
           path: tjans/docs/status.json
- 
+
       - id: deploy
         uses: actions/deploy-pages@v4
- 
+
       - name: Giv besked hvis der er huller eller slettede tjanser
         env:
           GH_TOKEN: ${{ github.token }}
-          SIDE: ${{ steps.deploy.outputs.page_url }}
+          SIDE: ${{ steps.deploy.outputs.page_url }}tjanser/
         run: python scripts/alert.py
- 
+
       - name: Giv besked om kørselsudligningen
         continue-on-error: true
         working-directory: koerselsudligning
         env:
           GH_TOKEN: ${{ github.token }}
-          SIDE: ${{ steps.deploy.outputs.page_url }}koerselsudligning/tjanser/
+          SIDE: ${{ steps.deploy.outputs.page_url }}koerselsudligning/
         run: python scripts/besked.py ../tjans/docs/koerselsudligning/status.json
