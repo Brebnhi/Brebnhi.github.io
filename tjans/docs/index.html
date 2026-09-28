@@ -11,6 +11,8 @@
   Den henter selv status fra status.json (tjanser) og koerselsudligning/status.json,
   når den åbnes. Tjansesiden ligger i tjanser/, kørselsudligningen i koerselsudligning/
   og kontingentsiden i kontingent/.
+  Bestyrelsens opgaver (/bestyrelse/) ligger i sit eget repo, Brebnhi/bestyrelse. Kortet
+  henter antal åbne opgaver direkte fra repoets issues via GitHubs åbne API.
 -->
 <style>
 :root{--bg:#f6f7f9;--card:#fff;--ink:#16181d;--muted:#6b7280;--line:#e3e6eb;
@@ -67,8 +69,8 @@ footer{margin-top:36px;color:var(--muted);font-size:12.5px;max-width:70ch}
   <header>
     <p class="eyebrow">Aalborg Volley</p>
     <h1>Klubbens værktøjer</h1>
-    <p class="sub">Tjanser, kørselsudligning og kontingent samlet ét sted. Tjanser og
-      kørselsudligning opdateres af sig selv hver nat.</p>
+    <p class="sub">Tjanser, kørselsudligning, kontingent og bestyrelsens opgaver samlet ét sted.
+      Tjanser og kørselsudligning opdateres af sig selv hver nat.</p>
   </header>
 
   <div class="banner warn" id="advarsel" role="status" hidden>
@@ -101,6 +103,14 @@ footer{margin-top:36px;color:var(--muted);font-size:12.5px;max-width:70ch}
       <p class="meta" id="ko-meta">Ingen eksport indlæst i denne browser endnu.</p>
       <span class="go">Åbn kontingentsiden →</span>
     </a>
+
+    <a class="card" href="bestyrelse/">
+      <div class="top"><h2>Bestyrelsen</h2><span class="pil" id="be-pil">Henter …</span></div>
+      <p class="linje" id="be-linje">Opgaver fra bestyrelsesmøderne: hvem har hvad, og hvornår er
+        deadline.</p>
+      <p class="meta" id="be-meta"></p>
+      <span class="go">Åbn opgaverne →</span>
+    </a>
   </main>
 
   <section class="andre">
@@ -108,6 +118,8 @@ footer{margin-top:36px;color:var(--muted);font-size:12.5px;max-width:70ch}
     <ul>
       <li><a href="https://docs.google.com/document/d/19cpzGXU_s858MQe_A-r4YyGGtSu8ppPURRt6Rq8Q1bY/edit">Try-out: guide til nyt try-out-år</a>
         <span>Google Docs · selve appen ligger på Vercel</span></li>
+      <li><a href="https://github.com/Brebnhi/bestyrelse/issues">Bestyrelsens opgaver i GitHub</a>
+        <span>her opretter og retter du opgaverne</span></li>
       <li><a href="https://github.com/Brebnhi/Brebnhi.github.io">Koden på GitHub</a>
         <span>tjanser, kørselsudligning, kontingent og denne side</span></li>
       <li><a href="https://github.com/Brebnhi/Brebnhi.github.io/actions">Natkørslen</a>
@@ -116,7 +128,8 @@ footer{margin-top:36px;color:var(--muted);font-size:12.5px;max-width:70ch}
   </section>
 
   <footer>Siden ligger på GitHub Pages. Tallene hentes fra natkørslens statusfiler, hver gang
-    siden åbnes. Kontingentsiden gemmer kun i din egen browser.</footer>
+    siden åbnes – bestyrelsens opgaver direkte fra GitHub. Kontingentsiden gemmer kun i din
+    egen browser.</footer>
 </div>
 
 <script>
@@ -207,6 +220,72 @@ footer{margin-top:36px;color:var(--muted);font-size:12.5px;max-width:70ch}
   }).catch(function () {
     pil("ku-pil", "Ingen status", "warn");
     el("ku-meta").textContent = "Status kunne ikke hentes lige nu.";
+  });
+
+  // ------------------------------------------------------------- bestyrelsen
+  // Opgaverne er issues i repoet Brebnhi/bestyrelse (siden ligger i bestyrelse/).
+  // Samme regler som på opgavesiden: deadline sidst i titlen, fx "(3/10)", eller en linje
+  // "Deadline: 3/10" i beskrivelsen. Kun issues fra ejer og samarbejdspartnere tæller.
+  var MDR = { jan: 1, feb: 2, mar: 3, apr: 4, maj: 5, jun: 6, jul: 7, aug: 8, sep: 9, okt: 10, nov: 11, dec: 12 };
+  function midnat(x) { return new Date(x.getFullYear(), x.getMonth(), x.getDate()); }
+  function lavDato(dag, md, aar, ref) {
+    if (!(md >= 1 && md <= 12 && dag >= 1 && dag <= 31)) return null;
+    if (aar != null && aar < 100) aar += 2000;
+    if (aar == null) {                         // uden årstal: tættest på, da opgaven blev oprettet
+      var r = midnat(ref);
+      aar = r.getFullYear();
+      if (new Date(aar, md - 1, dag) < new Date(r.getTime() - 60 * 864e5)) aar += 1;
+    }
+    var dt = new Date(aar, md - 1, dag);
+    return dt.getMonth() === md - 1 && dt.getDate() === dag ? dt : null;
+  }
+  function tolkDato(tekst, ref) {
+    var s = String(tekst || "").trim().toLowerCase(), m;
+    if ((m = /^(\d{4})-(\d{1,2})-(\d{1,2})(?!\d)/.exec(s))) return lavDato(+m[3], +m[2], +m[1], ref);
+    if ((m = /^(\d{1,2})\s*[\/.]\s*(\d{1,2})(?:\s*[\/.\-]\s*(\d{4}|\d{2}))?(?!\d)/.exec(s))) {
+      return lavDato(+m[1], +m[2], m[3] ? +m[3] : null, ref);
+    }
+    if ((m = /^(\d{1,2})\.?\s*(jan|feb|mar|apr|maj|jun|jul|aug|sep|okt|nov|dec)[a-zæøå]*\.?(?:\s+(\d{4}))?/.exec(s))) {
+      return lavDato(+m[1], MDR[m[2]], m[3] ? +m[3] : null, ref);
+    }
+    return null;
+  }
+  function opgaveDeadline(i) {
+    var ref = new Date(i.created_at);
+    var m = /[(\[]\s*(?:deadline|frist)?\s*:?\s*([^()\[\]]+?)\s*[)\]]\s*$/i.exec(i.title || "");
+    var dl = m ? tolkDato(m[1], ref) : null;
+    if (!dl) {
+      var b = /^[\s>*_#-]*(?:deadline|frist)[\s*_]*[:：][\s*_]*(.+)$/im.exec(i.body || "");
+      dl = b ? tolkDato(b[1].replace(/[*_]/g, ""), ref) : null;
+    }
+    return dl;
+  }
+  fetch("https://api.github.com/repos/Brebnhi/bestyrelse/issues?state=open&per_page=100").then(function (r) {
+    if (!r.ok) throw new Error(r.status); return r.json();
+  }).then(function (liste) {
+    var idag = midnat(new Date()), over = 0, snart = 0;
+    var aabne = liste.filter(function (i) {
+      return !i.pull_request && /^(OWNER|MEMBER|COLLABORATOR)$/.test(i.author_association || "OWNER");
+    });
+    aabne.forEach(function (i) {
+      var dl = opgaveDeadline(i);
+      if (!dl) return;
+      var dage = Math.round((dl - idag) / 864e5);
+      if (dage < 0) over++; else if (dage <= 7) snart++;
+    });
+    if (!aabne.length) {
+      pil("be-pil", "Ingen åbne", "ok");
+      el("be-meta").textContent = "Ingen åbne opgaver lige nu.";
+      return;
+    }
+    if (over) pil("be-pil", over + " over tid", "bad");
+    else if (snart) pil("be-pil", snart + " inden for 7 dage", "warn");
+    else pil("be-pil", "I rute", "ok");
+    el("be-meta").textContent = flertal(aabne.length, "åben opgave", "åbne opgaver") +
+      (over && snart ? " · " + snart + " med deadline inden for 7 dage" : "");
+  }).catch(function () {
+    pil("be-pil", "Åbn siden", "");
+    el("be-meta").textContent = "Status kunne ikke hentes lige nu.";
   });
 
   // ------------------------------------------------------------- kontingent
