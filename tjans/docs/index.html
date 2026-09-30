@@ -225,7 +225,8 @@ footer{margin-top:36px;color:var(--muted);font-size:12.5px;max-width:70ch}
   // ------------------------------------------------------------- bestyrelsen
   // Opgaverne er issues i repoet Brebnhi/bestyrelse (siden ligger i bestyrelse/).
   // Samme regler som på opgavesiden: deadline sidst i titlen, fx "(3/10)", eller en linje
-  // "Deadline: 3/10" i beskrivelsen. Kun issues fra ejer og samarbejdspartnere tæller.
+  // "Deadline: 3/10" i beskrivelsen. Kun issues fra ejer, samarbejdspartnere og repoets
+  // robot tæller – ikke tabel-issues ("📥 …"), som robotten laver opgaver ud fra.
   var MDR = { jan: 1, feb: 2, mar: 3, apr: 4, maj: 5, jun: 6, jul: 7, aug: 8, sep: 9, okt: 10, nov: 11, dec: 12 };
   function midnat(x) { return new Date(x.getFullYear(), x.getMonth(), x.getDate()); }
   function lavDato(dag, md, aar, ref) {
@@ -265,7 +266,11 @@ footer{margin-top:36px;color:var(--muted);font-size:12.5px;max-width:70ch}
   }).then(function (liste) {
     var idag = midnat(new Date()), over = 0, snart = 0;
     var aabne = liste.filter(function (i) {
-      return !i.pull_request && /^(OWNER|MEMBER|COLLABORATOR)$/.test(i.author_association || "OWNER");
+      var robot = i.user && i.user.login === "github-actions[bot]";   // opgaver lavet af robotten
+      var tabel = /^\s*📥/.test(i.title || "") ||                     // tabel-issues er ikke opgaver
+        (i.labels || []).some(function (l) { return String(l.name || "").toLowerCase() === "import"; });
+      return !i.pull_request && !tabel &&
+        (robot || /^(OWNER|MEMBER|COLLABORATOR)$/.test(i.author_association || "OWNER"));
     });
     aabne.forEach(function (i) {
       var dl = opgaveDeadline(i);
