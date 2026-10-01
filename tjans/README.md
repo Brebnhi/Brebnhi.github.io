@@ -94,8 +94,26 @@ Danmarks tider, så tjekket følger med, når kampe flyttes. Tjansesiden viser d
 - **⛔** tjansen ligger oven i holdets egen kamp (en kamp regnes til 2 timer, tjansen fra
   mødetid) — kommer også med i issuet, så du får en mail
 
+Er en advarsel i orden, så tryk **Ignorér** — se *Ignorér-knappen* nedenfor.
+
 Tjanselisten er kun startfordelingen: tider og flytninger kommer altid fra Volleyball
 Danmark. Arket rettes kun, når en tjans skal flyttes til et andet hold.
+
+## Ignorér-knappen
+
+Ud for hver ⚠ og ⛔ på tjansesiden står **Ignorér**. Ét tryk, og rækken streges over —
+robotten melder ikke den tjans igen, og den tæller ikke med i issuet. *Fortryd* står samme
+sted. I issuet åbner *Ignorér* tjansesiden og trykker for dig.
+
+Ignorér gælder tjansen, som den ligger nu: flytter Volleyball Danmark tjansens kamp eller
+holdets egen kamp, vurderer robotten den igen.
+
+Hvad der er ignoreret, husker **tjansernes mellemmand** — et lille Google Apps Script på
+din Google-konto, som siden og robotten spørger. Der gemmes intet på GitHub, så et tryk
+kræver ingen commit. Svarer mellemmanden ikke, bruger robotten listen fra sidste kørsel.
+
+Opsætningen (én gang) og koden står i [`MELLEMMAND.md`](MELLEMMAND.md). Til sidst skrives
+mellemmandens adresse i `scripts/indstillinger.py`. Står den tom, er der ingen knap.
 
 ## Kampprogrammer og holdkoder
 

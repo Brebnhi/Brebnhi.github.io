@@ -508,7 +508,14 @@ def main():
     hs = holdsport.koer(forventede, ROOT)
 
     huller, forsvundne = find_huller(rows, kampe)
-    egne = egen_kamp(rows, kampe)
+    mm = mellemmand()
+    ignoreres, ign_fejl = ignorerede(mm)
+    egne = egen_kamp(rows, kampe, ignoreres)
+    if mm and (not ign_fejl or "sidste kørsel" in ign_fejl):   # reserve til næste kørsel
+        json.dump({"ignoreret": sorted(ignoreres)},
+                  open(os.path.join(ROOT, "docs", "ignoreret.json"), "w", encoding="utf-8"))
+    elif ign_fejl:
+        print(f"ADVARSEL: {ign_fejl}", file=sys.stderr)
     status = {
         "saeson": saeson,                  # fx "2026/27" – ud fra datoerne i tjanselisten
         "saeson_start": saeson_start,
@@ -525,7 +532,9 @@ def main():
         "forsvundne": forsvundne,
         "flyttede": [r for r in rapport if r.get("flyttet")],
         "egen_kamp": egne,                       # tjanser på dage hvor holdet selv spiller
-        "konflikter": [e for e in egne if e["status"] == "konflikt"],
+        "mellemmand": mm,                        # Ignorér-knappen (tom = ingen knap)
+        "ignoreret_fejl": ign_fejl,
+        "konflikter": [e for e in egne if e["status"] == "konflikt" and not e["ignoreret"]],
     }
     json.dump(status, open(os.path.join(ROOT, "docs", "status.json"), "w",
                            encoding="utf-8"), ensure_ascii=False, indent=2)
@@ -579,12 +588,51 @@ def gammel_adresse(feeds_dir):
 KAMPTID = timedelta(hours=2)            # så længe regnes en kamp at vare
 
 
+# Ignorér-knappen: tjansernes mellemmand (et Google Apps Script) husker, hvilke advarsler
+# du har ignoreret. Adressen står i scripts/indstillinger.py.
+def mellemmand():
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import indstillinger
+        url = (getattr(indstillinger, "MELLEMMAND", "") or "").strip()
+    except ImportError:
+        return ""
+    return url if re.match(r"^https://script\.google\.com/macros/s/[\w-]+/exec$", url) else ""
+
+
+def ignorerede(url):
+    """(nøgler, fejl). Nøglerne på de tjans-advarsler, du har ignoreret, fx "148228-D1-3fa2"
+    (kampnummer-hold-aftryk; stævner har datoen i stedet for kampnummer). Svarer
+    mellemmanden ikke, bruges listen fra sidste kørsel, så advarslerne ikke dukker op igen."""
+    if not url:
+        return set(), None
+    try:
+        return set(json.loads(fetch(url)).get("ignoreret") or []), None
+    except Exception as exc:                       # noqa: BLE001
+        fejl = f"mellemmanden svarede ikke ({exc})"
+        try:
+            sidst = json.loads(fetch(os.environ.get("BASE_URL", "") + "ignoreret.json"))
+            return set(sidst.get("ignoreret") or []), fejl + " – bruger listen fra sidste kørsel"
+        except Exception:                          # noqa: BLE001
+            return set(), fejl
+
+
 def hal(sted):
     """'Aalborg Stadionhal 2' -> 'aalborg stadionhal' (hal 1 og 2 er samme sted)."""
     return re.sub(r"\s*\d+\s*$", "", norm(sted))
 
 
-def egen_kamp(rows, kampe):
+def ignorer_noegle(r, s_t, s_o):
+    """Nøglen til Ignorér, fx "148228-D1-3fa2": kampnummer (stævner: datoen), hold og et
+    aftryk af tjansens og holdets egen kamps tider. Flytter Volleyball Danmark en af
+    kampene, får tjansen en ny nøgle — så vurderes den igen."""
+    nr = re.sub(r"\D", "", r["kampnr"])[:8] or f"{s_t.astimezone(DK):%Y%m%d}"
+    hold = re.sub(r"[^A-Za-z0-9]", "", r["tjans"])[:8] or "x"
+    tider = f"{s_t.astimezone(UTC):%Y%m%d%H%M}|{s_o.astimezone(UTC):%Y%m%d%H%M}"
+    return f"{nr}-{hold}-{hashlib.md5(tider.encode()).hexdigest()[:4]}"
+
+
+def egen_kamp(rows, kampe, ignoreres=frozenset()):
     """Kommende tjanser på dage, hvor holdet selv spiller. Tiderne er Volleyball Danmarks,
     så tjekket følger med, når kampe flyttes. Reglen er mindst én kamp imellem holdets
     egen kamp og tjansen — eller omvendt. Status pr. tjans:
@@ -632,13 +680,16 @@ def egen_kamp(rows, kampe):
                 else:
                     status = "ok"
                     tekst = f"{imellem} kamp{'e' if imellem > 1 else ''} imellem"
-            ud.append({"dato": s_t.astimezone(DK).strftime("%d-%m-%Y"), "hold": r["tjans"],
-                       "tjans_kl": s_t.astimezone(DK).strftime("%H:%M"),
-                       "tjans_kamp": (f"{r['hjemmehold']} - {r['udehold']}" if r["kampnr"]
-                                      else f"{r['raekke']} (stævne)"),
-                       "egen_kl": egen_kl, "egen_kamp": f"{o['hjemme']} - {o['ude']}",
-                       "hjemme": o["hjemmekamp"], "imellem": imellem,
-                       "status": status, "tekst": tekst, "_t": s_t})
+            e = {"dato": s_t.astimezone(DK).strftime("%d-%m-%Y"), "hold": r["tjans"],
+                 "tjans_kl": s_t.astimezone(DK).strftime("%H:%M"),
+                 "tjans_kamp": (f"{r['hjemmehold']} - {r['udehold']}" if r["kampnr"]
+                                else f"{r['raekke']} (stævne)"),
+                 "egen_kl": egen_kl, "egen_kamp": f"{o['hjemme']} - {o['ude']}",
+                 "hjemme": o["hjemmekamp"], "imellem": imellem,
+                 "status": status, "tekst": tekst, "_t": s_t}
+            e["noegle"] = ignorer_noegle(r, s_t, s_o)
+            e["ignoreret"] = e["noegle"] in ignoreres
+            ud.append(e)
     ud.sort(key=lambda e: (e["_t"], e["hold"]))
     for e in ud:
         del e["_t"]

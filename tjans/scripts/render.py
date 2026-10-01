@@ -47,6 +47,14 @@ padding:1px 6px;font-size:12px;word-break:break-all}
 footer{margin-top:40px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:16px}
 .st-ok{color:var(--ok);font-weight:600}.st-taet{color:var(--warn);font-weight:600}
 .st-konflikt{color:var(--bad);font-weight:600}
+.st-ign{color:var(--muted);text-decoration:line-through;font-weight:400}
+tr.ignoreret .aktiv,tr:not(.ignoreret) .ign{display:none}
+tr.venter{opacity:.55}
+.knap{margin-top:5px;padding:3px 12px;border:1px solid var(--line);border-radius:6px;
+background:var(--card);font:600 12.5px/1.4 inherit;color:var(--accent);cursor:pointer}
+.knap:hover{border-color:var(--accent)}
+.link{border:0;background:none;padding:0;font:inherit;color:var(--accent);cursor:pointer;
+text-decoration:underline}
 .nav{margin:0 0 18px;font-size:14px}.nav a{color:var(--accent);text-decoration:none}.nav a:hover{text-decoration:underline}
 """
 
@@ -60,27 +68,34 @@ def render(status, base_url=""):
     tj = [t for t in status["tjanser"] if t["status"] == "ok"]
     pr_hold = Counter(t["tjans"] for t in status["tjanser"])
     konflikter = status.get("konflikter") or []
-    problemer = len(huller) + len(forsv) + len(slettet) + len(konflikter)
+    andre = len(huller) + len(forsv) + len(slettet)
+    problemer = andre + len(konflikter)
 
+    ok_tekst = ('<strong>Alle hjemmekampe er dækket</strong>'
+                f'Alle {status["feed_kampe"]} kampe i kampprogrammet er tjekket mod '
+                'tjanselisten — hver hjemmekamp har et hold på tjans'
+                + (f', og alle {hs["fundet"]} tjanser ligger i Holdsport.'
+                   if hs.get("aktiveret") and not hs.get("fejl") else '.'))
+    bits = []
+    if huller:
+        bits.append(f"{len(huller)} hjemmekamp{'e' if len(huller)>1 else ''} uden hold på tjans")
+    if forsv:
+        bits.append(f"{len(forsv)} tjans{'er' if len(forsv)>1 else ''} hvor kampen ikke længere findes")
+    if slettet:
+        bits.append(f"{len(slettet)} tjans{'er' if len(slettet)>1 else ''} slettet i Holdsport")
+    andre_bits = " og ".join(bits)
+    if konflikter:
+        bits.append(f"{len(konflikter)} tjans{'er' if len(konflikter)>1 else ''} oven i holdets egen kamp")
+    # data-*: så Ignorér-knappen kan rette banneret med det samme (se ign_js nedenfor)
+    banner_data = (f' id="banner" data-andre="{andre}" data-bits="{E(andre_bits)}"'
+                   if status.get("mellemmand") else "")
     if problemer == 0:
-        banner = ('<div class="banner ok"><strong>Alle hjemmekampe er dækket</strong>'
-                  f'Alle {status["feed_kampe"]} kampe i kampprogrammet er tjekket mod '
-                  'tjanselisten — hver hjemmekamp har et hold på tjans'
-                  + (f', og alle {hs["fundet"]} tjanser ligger i Holdsport.'
-                     if hs.get("aktiveret") and not hs.get("fejl") else '.')
-                  + '</div>')
+        banner = f'<div class="banner ok"{banner_data}>{ok_tekst}</div>'
     else:
-        bits = []
-        if huller:
-            bits.append(f"{len(huller)} hjemmekamp{'e' if len(huller)>1 else ''} uden hold på tjans")
-        if forsv:
-            bits.append(f"{len(forsv)} tjans{'er' if len(forsv)>1 else ''} hvor kampen ikke længere findes")
-        if slettet:
-            bits.append(f"{len(slettet)} tjans{'er' if len(slettet)>1 else ''} slettet i Holdsport")
-        if konflikter:
-            bits.append(f"{len(konflikter)} tjans{'er' if len(konflikter)>1 else ''} oven i holdets egen kamp")
-        banner = (f'<div class="banner bad"><strong>{problemer} ting kræver handling</strong>'
-                  + " og ".join(bits) + ".</div>")
+        banner = (f'<div class="banner bad"{banner_data}><strong>{problemer} ting kræver '
+                  'handling</strong>' + " og ".join(bits) + ".</div>")
+    if banner_data:
+        banner += f'<template id="banner-ok">{ok_tekst}</template>'
 
     def tabel(rows, cols, empty):
         if not rows:
@@ -179,9 +194,28 @@ def render(status, base_url=""):
     # Tjans og egen kamp samme dag — reglen er mindst én kamp imellem
     MAERKE = {"ok": "✓", "taet": "⚠", "konflikt": "⛔"}
     egne = status.get("egen_kamp") or []
-    egen_rows = [f"<tr><td style='white-space:nowrap'>{E(e['dato'][:6] + e['dato'][8:])}</td>"
+    mm = status.get("mellemmand") or ""
+
+    def vurdering(e):
+        tekst = f"{MAERKE.get(e['status'], '')} {E(e['tekst'])}"
+        if e["status"] == "ok":
+            return f"<td class='st-ok'>{tekst}</td>"
+        knap = "<br><button type='button' class='knap' data-handling='ignorer'>Ignorér</button>" if mm else ""
+        fortryd = (" · <button type='button' class='link' data-handling='fortryd'>fortryd</button>"
+                   if mm else "")
+        return (f"<td class='st-{E(e['status'])}'><span class='aktiv'>{tekst}{knap}</span>"
+                f"<span class='ign'><span class='st-ign'>{tekst}</span><br>"
+                f"<span class='muted'>Ignoreret{fortryd}</span></span></td>")
+
+    def egen_tr(e):
+        if e["status"] == "ok":
+            return "<tr>"
+        return (f"<tr data-noegle='{E(e['noegle'])}'"
+                f"{' data-konflikt' if e['status'] == 'konflikt' else ''}"
+                f"{' class=ignoreret' if e.get('ignoreret') else ''}>")
+    egen_rows = [f"{egen_tr(e)}<td style='white-space:nowrap'>{E(e['dato'][:6] + e['dato'][8:])}</td>"
                  f"<td><span class='tag'>{E(e['hold'])}</span></td>"
-                 f"<td class='st-{E(e['status'])}'>{MAERKE.get(e['status'], '')} {E(e['tekst'])}</td>"
+                 f"{vurdering(e)}"
                  f"<td>{E(e['tjans_kl'])} <span class='muted'>{E(e['tjans_kamp'])}</span></td>"
                  f"<td>{E(e['egen_kl'])} <span class='muted'>{E(e['egen_kamp'])}"
                  f"{'' if e['hjemme'] else ' (ude)'}</span></td></tr>"
@@ -189,7 +223,10 @@ def render(status, base_url=""):
     egen_afsnit = ("<h2>Tjans og egen kamp samme dag</h2>"
                    "<p class='sub'>Reglen er mindst én kamp imellem holdets egen kamp og tjansen "
                    "— eller omvendt. Tiderne er Volleyball Danmarks, så tjekket følger med, når "
-                   "kampe flyttes. ⛔ betyder, at tjansen ligger oven i holdets egen kamp.</p>"
+                   "kampe flyttes. ⛔ betyder, at tjansen ligger oven i holdets egen kamp."
+                   + (" Tryk <b>Ignorér</b>, hvis det er i orden — så melder robotten den ikke "
+                      "igen, medmindre en af kampene bliver flyttet." if mm else "")
+                   + "</p><p class='muted' id='ign-besked' hidden></p>"
                    + tabel(egen_rows, ["Dato", "Hold", "Vurdering", "Tjans", "Egen kamp"],
                            "Ingen kommende tjanser ligger på en dag, hvor holdet selv spiller."))
 
@@ -227,6 +264,99 @@ def render(status, base_url=""):
     if fejl:
         fejl_html += ('<div class="banner bad"><strong>Kampprogrammet kunne ikke hentes</strong>'
                      + E(", ".join(f"{k}: {v}" for k, v in fejl.items())) + "</div>")
+
+    ign_js = ""
+    if mm:
+        ign_js = """<script>
+(function () {
+  "use strict";
+  var M = %s;                        // tjansernes mellemmand (scripts/indstillinger.py)
+  var besked = document.getElementById("ign-besked");
+  var sendt = 0, vist = 0;           // svar på et ældre kald end det viste bruges ikke
+  function sig(tekst) {
+    besked.textContent = tekst;
+    besked.hidden = !tekst;
+  }
+  function banner() {                // banneret øverst følger med med det samme
+    var b = document.getElementById("banner");
+    if (!b) return;
+    var k = document.querySelectorAll("tr[data-konflikt]:not(.ignoreret)").length;
+    var i = +b.getAttribute("data-andre") + k;
+    if (!i) {
+      b.className = "banner ok";
+      b.innerHTML = document.getElementById("banner-ok").innerHTML;
+      return;
+    }
+    var dele = [b.getAttribute("data-bits"),
+                k ? k + (k > 1 ? " tjanser" : " tjans") + " oven i holdets egen kamp" : ""];
+    var s = document.createElement("strong");
+    s.textContent = i + " ting kræver handling";
+    b.className = "banner bad";
+    b.textContent = "";
+    b.appendChild(s);
+    b.appendChild(document.createTextNode(dele.filter(Boolean).join(" og ") + "."));
+  }
+  function vis(liste) {
+    var s = {};
+    (liste || []).forEach(function (n) { s[n] = 1; });
+    document.querySelectorAll("tr[data-noegle]:not(.venter)").forEach(function (tr) {
+      tr.classList.toggle("ignoreret", !!s[tr.getAttribute("data-noegle")]);
+    });
+    banner();
+  }
+  function kald(spoergsmaal) {
+    var nr = ++sendt;
+    return fetch(M + spoergsmaal).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    }).then(function (d) {
+      if (!d.ok) throw new Error(d.fejl || "fejl");
+      d.nyest = nr > vist;
+      if (d.nyest) vist = nr;
+      return d;
+    });
+  }
+  function tryk(knap) {
+    var tr = knap.closest("tr[data-noegle]");
+    var ignorer = knap.getAttribute("data-handling") === "ignorer";
+    sig("");
+    tr.classList.toggle("ignoreret", ignorer);
+    tr.classList.add("venter");
+    banner();
+    kald("?" + (ignorer ? "ignorer" : "fortryd") + "=" +
+         encodeURIComponent(tr.getAttribute("data-noegle"))).then(function (d) {
+      tr.classList.remove("venter");
+      if (d.nyest) vis(d.ignoreret);
+    }).catch(function () {
+      tr.classList.remove("venter");
+      tr.classList.toggle("ignoreret", !ignorer);
+      banner();
+      sig("Mellemmanden svarede ikke — prøv igen om lidt.");
+    });
+  }
+  document.addEventListener("click", function (ev) {
+    var knap = ev.target.closest ? ev.target.closest("button[data-handling]") : null;
+    if (knap) tryk(knap);
+  });
+  // Den aktuelle liste — også det, der er ignoreret siden robottens sidste kørsel
+  kald("").then(function (d) { if (d.nyest) vis(d.ignoreret); }).catch(function () {});
+  // Fra mailen: .../tjanser/#ignorer=148228-D1-3fa2
+  var m = /^#ignorer=([\w-]+)$/.exec(location.hash);
+  if (m) {
+    history.replaceState(null, "", location.pathname + location.search);
+    var tr = document.querySelector('tr[data-noegle="' + m[1] + '"]');
+    var knap = tr && tr.querySelector('button[data-handling="ignorer"]');
+    if (!tr) {
+      sig("Advarslen fra mailen er her ikke længere — en af kampene er nok blevet flyttet. " +
+          "Se den nye vurdering nedenfor.");
+      besked.scrollIntoView({block: "center"});
+    } else {
+      tr.scrollIntoView({block: "center"});
+      if (knap && !tr.classList.contains("ignoreret")) tryk(knap);
+    }
+  }
+})();
+</script>""" % json.dumps(mm)
 
     return f"""<!doctype html>
 <html lang="da"><head><meta charset="utf-8">
@@ -283,7 +413,7 @@ Nye importer kan bruge adresserne i tabellen.</p>
 
 <footer>Bygget automatisk ud fra tjanselisten og de officielle kampprogrammer fra
 resultater.volleyball.dk. Siden og kalenderne opdateres hver nat.</footer>
-</div></body></html>"""
+</div>{ign_js}</body></html>"""
 
 
 if __name__ == "__main__":

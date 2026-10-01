@@ -61,12 +61,20 @@ def main():
                    for f in forsvundne]
         linjer.append("")
     if konflikter:
+        mm = st.get("mellemmand")
         linjer += [f"## {len(konflikter)} tjans(er) oven i holdets egen kamp", "",
-                   "Holdet kan ikke nå både egen kamp og tjansen. Byt tjansen i tjanselisten.", "",
-                   "| Dato | Hold | Tjans | Egen kamp |", "|---|---|---|---|"]
-        linjer += [f"| {k['dato']} | {k['hold']} | kl. {k['tjans_kl']} {k['tjans_kamp']} | "
-                   f"kl. {k['egen_kl']} {k['egen_kamp']}{'' if k['hjemme'] else ' (ude)'} |"
-                   for k in konflikter]
+                   "Holdet kan ikke nå både egen kamp og tjansen. Byt tjansen i tjanselisten"
+                   + (" — eller tryk **Ignorér**, hvis det er i orden." if mm else "."), ""]
+        if mm:
+            linjer += ["| Dato | Hold | Tjans | Egen kamp | |", "|---|---|---|---|---|"]
+        else:
+            linjer += ["| Dato | Hold | Tjans | Egen kamp |", "|---|---|---|---|"]
+        for k in konflikter:
+            raekke = (f"| {k['dato']} | {k['hold']} | kl. {k['tjans_kl']} {k['tjans_kamp']} | "
+                      f"kl. {k['egen_kl']} {k['egen_kamp']}{'' if k['hjemme'] else ' (ude)'} |")
+            if mm:
+                raekke += f" [Ignorér]({side}#ignorer={k['noegle']}) |"
+            linjer.append(raekke)
         linjer.append("")
     if slettet:
         linjer += [f"## {len(slettet)} tjans(er) er slettet i Holdsport", "",
