@@ -13,9 +13,15 @@ fører videre til det enkelte projekt:
 | Kørselsudligning | `/koerselsudligning/` | Forventet rejseudligning fra Volleyball Danmark | `koerselsudligning/` – se README dér |
 | Kontingent | `/kontingent/` | Forventet kontingent ud fra en Holdsport-eksport | `tjans/docs/kontingent/index.html` (fast fil) |
 | Gammel adresse | `/Tjanser-i-Holdsport/` | Holdsports importer peger herhen – se nedenfor | bygges af `tjans/scripts/build.py` |
+| Påmindelser | `/paamindelser.json` | Det, der skal gøres til en ny sæson – vises øverst på startsiden | bygges af `tjans/scripts/vedligehold.py` |
 
 Robotten i `.github/workflows/main.yml` kører hver nat kl. 04.20 (vintertid) / 05.20
 (sommertid), ved hver ændring i repoet og når du trykker Run workflow under Actions.
+
+**Upload fra telefonen:** læg filerne løst i roden af repoet (Add file → Upload files).
+Robotten kender hver fil på indholdet og lægger den på plads – også `build (1).py` og
+lignende. En helt ny fil kan have en linje `sti: mappe/fil` øverst. Kun
+`.github/workflows/main.yml` kan robotten ikke flytte – den retter du direkte på GitHub.
 
 ## Repoets navn og den gamle adresse
 
@@ -44,16 +50,27 @@ videre til de nye.
 
 ## Når natkørslen står stille
 
-GitHub slår natkørslen fra, når et offentligt repo har været uden ændringer i 60 dage.
-Startsiden viser en advarsel, når status er mere end 30 timer gammel. Gå til **Actions →
-Opdater tjans-kalendere** og tryk **Enable workflow** (og evt. **Run workflow**).
+GitHub slår natkørslen fra, når et offentligt repo har været uden aktivitet i 60 dage.
+Robotten holder sig selv i live: den slår workflowet til hver nat (det nulstiller uret), og
+har ingen committet i 50 dage, skriver den et livstegn i `tjans/data/puls.txt`.
+
+Står den alligevel stille, viser startsiden en advarsel, når status er mere end 30 timer
+gammel. Gå til **Actions → Opdater tjans-kalendere** og tryk **Enable workflow** (og evt.
+**Run workflow**).
 
 ## Ny sæson
 
-- **Tjanser:** se afsnittet om tjanselisten i `tjans/README.md`, og ret sæsonen i overskriften
-  i `tjans/scripts/render.py`.
-- **Kørselsudligning:** finder selv den nye sæson. Nye takster hver januar i
-  `koerselsudligning/config.json`.
-- **Kontingent:** ret konstanterne øverst i scriptet i `tjans/docs/kontingent/index.html`:
-  `HOLD` (takst, antal, kompensation og budget pr. hold fra fanen *Kontingent status*),
-  `BUDGET_IALT`, `UNGDOMSAARGANG` (én op hvert år), `ERMIX`/`MOENSTRE` og titlen.
+Det meste følger med af sig selv. Når der er noget, kun du kan gøre, opretter robotten et
+GitHub-issue med labelen **ny sæson** og en tjekliste. GitHub sender en mail, og startsiden
+viser det øverst under *Til den nye sæson*. De issues, robotten selv kan tjekke, lukker sig,
+når det er gjort. Lukker du selv et issue, lader robotten det være.
+
+| Projekt | Følger med af sig selv | Det gør du | Påmindelse |
+|---|---|---|---|
+| Tjanser | Sæsonen i overskriften, kalenderne, flyttede kampe | Ny tjanseliste, nye adresser i `tjans/data/feeds.json` og `CLUB_TEAMS`, hvis et hold skifter række – se `tjans/README.md` | Når VD har lagt den nye sæsons kampprogram ud. Lukker sig selv |
+| Kørselsudligning | Sæson, hold, pokal og slutspil | Årets km-takst og bropris i `koerselsudligning/config.json` | 10. januar. Lukker sig selv |
+| Kontingent | Overskrifter, U17-årgang og budgetboks | `BUDGET_SAESON`, `HOLD` og `BUDGET_IALT` øverst i scriptet i `tjans/docs/kontingent/index.html` (fra fanen *Kontingent status*), og `MOENSTRE`/`ERMIX` ved nye holdnavne | 1. august. Lukker sig selv |
+| Try-out (Vercel) | – | Væk Supabase og følg [guiden](https://docs.google.com/document/d/19cpzGXU_s858MQe_A-r4YyGGtSu8ppPURRt6Rq8Q1bY/edit) | 1. juni. Luk den selv, når billederne er slettet |
+| Budgetarket | – | Nyt budget, nyt ark og primosaldi pr. 1. juni | 1. juni. Luk den selv |
+
+Prøv påmindelserne uden at røre GitHub: `python tjans/scripts/vedligehold.py --test --nu 2027-08-15`.
