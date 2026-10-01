@@ -67,7 +67,7 @@ når det er gjort. Lukker du selv et issue, lader robotten det være.
 
 | Projekt | Følger med af sig selv | Det gør du | Påmindelse |
 |---|---|---|---|
-| Tjanser | Sæsonen i overskriften, kalenderne, flyttede kampe | Ny tjanseliste, nye adresser i `tjans/data/feeds.json` og `CLUB_TEAMS`, hvis et hold skifter række – se `tjans/README.md` | Når VD har lagt den nye sæsons kampprogram ud. Lukker sig selv |
+| Tjanser | Sæsonen i overskriften, kampprogrammer og holdkoder, kalenderne, flyttede kampe | Ny tjanseliste i Google-arket – se *Tjanselisten* i `tjans/README.md` | Når VD har lagt den nye sæsons kampprogram ud. Lukker sig selv |
 | Kørselsudligning | Sæson, hold, pokal og slutspil | Årets km-takst og bropris i `koerselsudligning/config.json` | 10. januar. Lukker sig selv |
 | Kontingent | Overskrifter, U17-årgang og budgetboks | `BUDGET_SAESON`, `HOLD` og `BUDGET_IALT` øverst i scriptet i `tjans/docs/kontingent/index.html` (fra fanen *Kontingent status*), og `MOENSTRE`/`ERMIX` ved nye holdnavne | 1. august. Lukker sig selv |
 | Try-out (Vercel) | – | Væk Supabase og følg [guiden](https://docs.google.com/document/d/19cpzGXU_s858MQe_A-r4YyGGtSu8ppPURRt6Rq8Q1bY/edit) | 1. juni. Luk den selv, når billederne er slettet |

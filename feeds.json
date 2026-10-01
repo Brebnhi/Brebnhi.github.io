@@ -1,0 +1,9 @@
+{
+  "_om": "Reserve. Robotten finder selv klubbens kampprogrammer hos Volleyball Danmark hver nat (scripts/kampprogrammer.py). Adresserne her læses kun med som supplement og behøver ikke rettes — heller ikke i en ny sæson.",
+  "D1": "webcal://resultater.volleyball.dk/cal/Puljekampprogram.ashx?key=3e9c716a-fb3a-4cfb-86c9-f02032ed5d64",
+  "D2": "webcal://resultater.volleyball.dk/cal/Holdkampprogram.ashx?key=c384d250-2fce-4c15-b626-b7984a216e08",
+  "D3": "webcal://resultater.volleyball.dk/cal/Holdkampprogram.ashx?key=502cc078-d618-498e-bfd0-ecad202ca29f",
+  "H1": "webcal://resultater.volleyball.dk/cal/Holdkampprogram.ashx?key=b833413f-c394-45c3-8e19-b064ca93fd19",
+  "H2": "webcal://resultater.volleyball.dk/cal/Holdkampprogram.ashx?key=774c0c16-c4b5-4474-b438-ce207137c07b",
+  "H3": "webcal://resultater.volleyball.dk/cal/Holdkampprogram.ashx?key=1428b84d-5ff6-478a-b888-50b59b0a009c"
+}
