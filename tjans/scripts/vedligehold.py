@@ -83,13 +83,19 @@ def tjanseliste(nu):
         return None
     aktiv = tj_start is None or vd_start > tj_start
     gl = f"stadig fra {lang(tj_start)}" if tj_start else "tom"
+    if tj.get("tjanskilde") == "Google Sheet":
+        hvor = ("Lav den i det samme Google-ark som sidst (gem evt. en kopi af den gamle "
+                "først). Robotten læser arket hver nat.")
+    else:
+        hvor = ("Lav den i Google Sheets som sidst. Udgiver du arket som CSV og lægger "
+                "linket i `SHEET_CSV_URL`, læser robotten det selv hver nat — se "
+                "«Tjanselisten» i `tjans/README.md`.")
     tekst = f"""Volleyball Danmark har lagt kampprogrammet for **{lang(vd_start)}** ud, men tjanselisten er {gl}. Kalenderne i Holdsport får først de nye tjanser, når listen er lavet.
 
-- [ ] **Tjanselisten for {lang(vd_start)}.** Ret Google-arket (robotten læser det via `SHEET_CSV_URL`) eller `tjans/data/tjanser.csv`. Samme kolonner som før – kampnumrene står i kampprogrammet.
-- [ ] **Nye kampprogrammer i `tjans/data/feeds.json`.** Adresserne skifter hver sæson. De står ved kalender-linket på holdets kampprogram på resultater.volleyball.dk – eller bed Claude finde dem.
-- [ ] **Er et hold rykket op eller ned,** så ret `CLUB_TEAMS` øverst i `tjans/scripts/build.py`.
+- [ ] **Tjanselisten for {lang(vd_start)}.** {hvor}
 - [ ] **Holdsport:** importerne skal ikke laves om, for kalenderne beholder deres navne. Står der et feed på tjansesiden, som ikke er importeret endnu (fx første gang et hold har 6-personers-tjanser), så importér det.
 
+Kampprogrammerne og holdkoderne finder robotten selv hos Volleyball Danmark.
 Issuet lukker sig selv, når tjanselisten er fra {lang(vd_start)}.
 Tjansesiden: {SIDE}tjanser/"""
     return {"noegle": "tjanseliste", "auto": True, "aktiv": aktiv,

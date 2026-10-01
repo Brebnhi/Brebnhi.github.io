@@ -7,7 +7,9 @@ kampprogram-feeds fra resultater.volleyball.dk.
 én gang pr. import. Tjansen får stabilt UID pr. kampnummer, så en flyttet kamp
 flytter tjansen i stedet for at oprette en ny.
 
-Kilder:  data/tjanser.csv, data/feeds.json
+Kilder:  tjanselisten (Google-arket i SHEET_CSV_URL, ellers data/tjanser.csv) og
+         klubbens kampprogrammer, som scripts/kampprogrammer.py selv finder hos
+         Volleyball Danmark hver nat (data/feeds.json er reserve)
 Output:  docs/feeds/*.ics, docs/status.json, docs/tjanser/index.html
          (docs/index.html er klubbens startside og bygges ikke her)
 """
@@ -43,6 +45,8 @@ VIDERE = ("<!doctype html><html lang=\"da\"><head><meta charset=\"utf-8\">"
           "<script>location.replace(\"{til}\" + location.hash)</script></head>"
           "<body><p>Siden er flyttet. <a href=\"{til}\">Gå videre</a>.</p></body></html>")
 
+# Holdkoderne (D1, H2 …) finder scripts/kampprogrammer.py selv hver sæson. Tabellen her
+# er kun reserve, hvis Volleyball Danmark ikke kan nås — så gælder den som i 2026/27.
 # (række i regnearket, holdnavn i turneringssystemet) -> klubbens interne holdnavn
 CLUB_TEAMS = {
     ("Volleyligaen Kvinder", "Aalborg Volleyball"):   "D1",
@@ -52,6 +56,34 @@ CLUB_TEAMS = {
     ("2. Division Herrer",   "Aalborg Volleyball.2"): "H2",
     ("2. Division Herrer",   "Aalborg Volleyball.3"): "H3",
 }
+
+KODER = {}       # (køn, holdnøgle) -> kode, fyldes af load_feeds() når opslaget lykkes
+
+
+def holdnoegle(navn):
+    """'Aalborg Volleyball.2' og 'Aalborg Volleyball 2' -> 'aalborgvolleyball2'."""
+    return re.sub(r"[^0-9a-zæøå]", "", (navn or "").lower())
+
+
+def koen(raekke):
+    r = (raekke or "").lower()
+    return "H" if "herre" in r else "D" if ("kvinde" in r or "dame" in r) else ""
+
+
+def holdkode(raekke, holdnavn):
+    """Klubbens kode for holdet (D1, H2 …) — tom, hvis det ikke er et af tjanseholdene."""
+    if KODER:
+        return KODER.get((koen(raekke), holdnoegle(holdnavn)), "")
+    for (r, h), kode in CLUB_TEAMS.items():
+        if (raekke or "").startswith(r) and holdnavn == h:
+            return kode
+    return ""
+
+
+def saeson_for(dt):
+    """Startåret for den sæson et tidspunkt hører til (sæsonen regnes fra 1. juli)."""
+    d = dt.astimezone(DK)
+    return d.year if d.month >= 7 else d.year - 1
 
 # ------------------------------------------------------------------ hjælpere
 
@@ -145,6 +177,8 @@ def fetch(url):
 # ------------------------------------------------------------------ feed-model
 
 KAMPNR_RE = re.compile(r"Kampnr\.?\s*(\d{4,8})", re.I)
+# Spillede kampe har resultatet sidst i titlen: "Ikast KFUM.2 - ASV Aarhus.2 3 - 1"
+RESULTAT_RE = re.compile(r"\s+\d{1,2}\s*-\s*\d{1,2}(\s*\(.*\))?\s*$")
 
 
 def describe(ev):
@@ -156,39 +190,70 @@ def describe(ev):
     lines = [l.strip() for l in desc.split("\n") if l.strip()]
     raekke_linje = lines[0] if lines else ""
     hjemme, ude = "", ""
+    summ = RESULTAT_RE.sub("", summ)
     if " - " in summ:
         hjemme, ude = [p.strip() for p in summ.split(" - ", 1)]
-    klub = ""
-    for (raekke, holdnavn), kort in CLUB_TEAMS.items():
-        if hjemme == holdnavn and raekke_linje.startswith(raekke):
-            klub = kort
-            break
     return {"kampnr": kampnr, "raekke": raekke_linje, "hjemme": hjemme,
-            "ude": ude, "klubhold": klub,
+            "ude": ude, "klubhold": holdkode(raekke_linje, hjemme),
+            "klubkamp": "aalborg volleyball" in norm(f"{hjemme} {ude}"),
             "hjemmekamp": "aalborg volleyball" in norm(hjemme),
             "start": ev.get("DTSTART"), "slut": ev.get("DTEND"),
             "sted": ev.get("LOCATION", "") or ""}
 
 
 def load_feeds():
-    path = os.path.join(ROOT, "data", "feeds.json")
-    feeds = json.load(open(path, encoding="utf-8"))
+    """Klubbens kampe. Kampprogrammerne findes automatisk hos Volleyball Danmark
+    (scripts/kampprogrammer.py); data/feeds.json læses med som reserve. Samme kamp kan
+    stå i flere kalendere — kampnummeret holder dem fra hinanden."""
+    global KODER
+    kp = {"kilde": "data/feeds.json", "fejl": None, "hold": [], "puljer": []}
+    feeds = {}
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import kampprogrammer
+        fundet = kampprogrammer.find()
+        feeds.update(fundet["feeds"])
+        KODER = fundet["koder"]
+        kp.update(kilde="Volleyball Danmark", hold=fundet["hold"], puljer=fundet["puljer"])
+    except Exception as exc:                       # noqa: BLE001 — så bruges reserven
+        kp["fejl"] = str(exc)
+        print(f"ADVARSEL: kampprogrammerne kunne ikke findes automatisk ({exc}) "
+              "– bruger data/feeds.json og CLUB_TEAMS", file=sys.stderr)
+    def noegle(url):                             # webcal:// og https:// er samme kalender
+        m = re.search(r"key=([\w-]+)", url or "")
+        return m.group(1) if m else url
+    fundne = {noegle(u) for u in feeds.values()}
+    reserve = json.load(open(os.path.join(ROOT, "data", "feeds.json"), encoding="utf-8"))
+    reserve = {f"feeds.json: {n}": u for n, u in reserve.items()
+               if not n.startswith("_") and noegle(u) not in fundne}
+
     kampe, fejl, raa = {}, {}, 0
-    for navn, url in feeds.items():
-        if navn.startswith("_"):                   # "_om" o.l. er forklaringer, ikke feeds
-            continue
+    for navn, url in list(feeds.items()) + list(reserve.items()):
         try:
             evs = parse_ics(fetch(url))
         except Exception as exc:
-            fejl[navn] = str(exc)
+            # En gammel adresse i feeds.json, der er holdt op med at virke, er ikke en
+            # fejl, når robotten selv har fundet kampprogrammerne.
+            if navn in feeds or not KODER:
+                fejl[navn] = str(exc)
             continue
         raa += len(evs)
         for ev in evs:
             info = describe(ev)
-            if not info["kampnr"] or not info["start"]:
+            if not info["kampnr"] or not info["start"] or not info["klubkamp"]:
                 continue
-            kampe.setdefault(info["kampnr"], info)   # samme kamp kan stå i to feeds
-    return kampe, fejl, raa
+            kampe.setdefault(info["kampnr"], info)   # samme kamp kan stå i flere feeds
+
+    # Sikkerhedsnet: genkendes ingen af klubbens hjemmekampe på holdkoderne, er holdnavnene
+    # skrevet anderledes end ventet — så hellere den faste tabel end tomme koder.
+    if KODER and kampe and not any(k["klubhold"] for k in kampe.values() if k["hjemmekamp"]):
+        print("ADVARSEL: holdkoderne passede ikke på kampprogrammet – bruger CLUB_TEAMS",
+              file=sys.stderr)
+        kp["fejl"] = "holdkoderne passede ikke på kampprogrammet – bruger CLUB_TEAMS"
+        KODER = {}
+        for k in kampe.values():
+            k["klubhold"] = holdkode(k["raekke"], k["hjemme"])
+    return kampe, fejl, raa, kp
 
 # ------------------------------------------------------------------ tjanseliste
 
@@ -207,20 +272,89 @@ def tjans_kilde():
     return open(path, encoding="utf-8-sig").read().splitlines(), "data/tjanser.csv"
 
 
+# Overskrifterne i tjanselisten. Både robottens egne navne og dem fra Volleyball Danmarks
+# kampprogram-eksport (Kampnr., Kl., Række …) virker, og linjer over overskriftsrækken
+# ("Kampprogram", "Periode: …") og ekstra kolonner (fx fordelingen af fester) springes over.
+KOLONNER = {"kampnr": "kampnr", "runde": "runde", "dag": "dag", "dato": "dato",
+            "kl": "tid", "tid": "tid", "klokken": "tid", "raekke": "raekke", "pulje": "pulje",
+            "hjemmehold": "hjemmehold", "udehold": "udehold", "spillested": "spillested",
+            "antal": "antal", "tjans": "tjans"}
+DATOFORMATER = ("%d-%m-%y", "%d-%m-%Y", "%d.%m.%Y", "%d.%m.%y", "%d/%m/%Y", "%d/%m/%y",
+                "%Y-%m-%d")
+
+
+def laes_liste(linjer):
+    raekker = list(csv.reader(linjer))
+    for i, r in enumerate(raekker):
+        navne = [norm(c).replace(".", "").strip() for c in r]
+        if "kampnr" in navne and "tjans" in navne:
+            break
+    else:
+        raise RuntimeError("tjanselisten har ingen overskriftsrække med Kampnr og Tjans")
+    kol = {}
+    for j, n in enumerate(navne):
+        if n in KOLONNER and KOLONNER[n] not in kol:
+            kol[KOLONNER[n]] = j
+    for r in raekker[i + 1:]:
+        yield {k: (r[j].strip() if j < len(r) else "") for k, j in kol.items()}
+
+
+def tidspunkt(dato, tid):
+    """'03-10-26' / '03-10-2026' / '3.10.2026' og '9:00' / '09.00' -> datetime i dansk tid."""
+    d = (dato or "").strip().split(" ")[0]
+    for f in DATOFORMATER:
+        try:
+            dag = datetime.strptime(d, f)
+            break
+        except ValueError:
+            continue
+    else:
+        raise ValueError(f"datoen '{dato}' kan ikke læses")
+    t = re.findall(r"\d+", tid or "") + ["0", "0"]
+    return dag.replace(hour=int(t[0]), minute=int(t[1]), tzinfo=DK)
+
+
 def load_tjanser():
-    rows = []
+    """Tjanselisten. Kan Google-arket ikke bruges (forkert fane udgivet, ingen
+    overskriftsrække, ingen tjanser), bruges data/tjanser.csv — hellere sidste kendte
+    liste end tomme kalendere i Holdsport."""
     linjer, kilde = tjans_kilde()
+    try:
+        rows = laes_tjanser(linjer)
+        if not rows and kilde == "Google Sheet":
+            raise RuntimeError("ingen rækker med noget i kolonnen Tjans")
+    except RuntimeError as exc:
+        if kilde != "Google Sheet":
+            raise
+        print(f"ADVARSEL: Google-arket kunne ikke bruges ({exc}) – bruger data/tjanser.csv",
+              file=sys.stderr)
+        linjer = open(os.path.join(ROOT, "data", "tjanser.csv"),
+                      encoding="utf-8-sig").read().splitlines()
+        kilde = f"data/tjanser.csv – Google-arket kunne ikke læses: {exc}"
+        rows = laes_tjanser(linjer)
     load_tjanser.kilde = kilde
-    if True:
-        for r in csv.DictReader(linjer):
-            r = {k: (v or "").strip() for k, v in r.items()}
-            if not r.get("tjans"):
-                continue
-            r["antal"] = int(r["antal"]) if r["antal"] else 4
-            r["ark_start"] = datetime.strptime(
-                f"{r['dato']} {r['tid']}", "%d-%m-%y %H:%M").replace(tzinfo=DK)
-            r["klubhold"] = CLUB_TEAMS.get((r["raekke"], r["hjemmehold"]), "")
-            rows.append(r)
+    return rows
+
+
+def laes_tjanser(linjer):
+    rows = []
+    for r in laes_liste(linjer):
+        for k in KOLONNER.values():
+            r.setdefault(k, "")
+        if not r.get("tjans"):
+            continue
+        try:
+            r["ark_start"] = tidspunkt(r["dato"], r["tid"])
+        except ValueError as exc:
+            print(f"ADVARSEL: springer en række over i tjanselisten ({exc})", file=sys.stderr)
+            continue
+        # samme skrivemåde som altid, så sortering og kalender-id'er ikke flytter sig
+        r["dato"] = r["ark_start"].strftime("%d-%m-%y")
+        r["tid"] = f"{r['ark_start'].hour}:{r['ark_start'].minute:02d}"
+        r["kampnr"] = re.sub(r"\.0$", "", r["kampnr"])
+        r["antal"] = int(float(r["antal"])) if r["antal"] else 4
+        r["klubhold"] = holdkode(r["raekke"], r["hjemmehold"])
+        rows.append(r)
     return rows
 
 def saeson_af(rows):
@@ -278,8 +412,13 @@ def build_ics(titel, entries, stamp):
 # ------------------------------------------------------------------ hovedprogram
 
 def main():
+    kampe, feed_fejl, raa, kp = load_feeds()        # først: giver også holdkoderne
     rows = load_tjanser()
-    kampe, feed_fejl, raa = load_feeds()
+    saeson_start, saeson = saeson_af(rows)
+    if saeson_start:
+        # Kun kampe fra tjanselistens sæson: så forstyrrer den nye sæsons kampprogram
+        # ikke, før tjanselisten er lavet — og en gammel feeds.json heller ikke bagefter.
+        kampe = {nr: k for nr, k in kampe.items() if saeson_for(k["start"]) == saeson_start}
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     buckets, rapport, forventede = {}, [], []
 
@@ -367,7 +506,6 @@ def main():
     hs = holdsport.koer(forventede, ROOT)
 
     huller, forsvundne = find_huller(rows, kampe)
-    saeson_start, saeson = saeson_af(rows)
     status = {
         "saeson": saeson,                  # fx "2026/27" – ud fra datoerne i tjanselisten
         "saeson_start": saeson_start,
@@ -375,6 +513,7 @@ def main():
         "tjanskilde": getattr(load_tjanser, "kilde", "data/tjanser.csv"),
         "opdateret": datetime.now(UTC).astimezone(DK).strftime("%d-%m-%Y %H:%M"),
         "feed_fejl": feed_fejl,
+        "kampprogrammer": kp,
         "feed_kampe": len(kampe),
         "feed_raa": raa,
         "feeds": feeds,
@@ -437,11 +576,16 @@ def snapshot(row):
 
 
 def find_huller(rows, kampe):
-    """Hjemmekampe i feed'et uden hold på tjans, og tjanser hvis kamp er væk."""
+    """Kommende hjemmekampe uden hold på tjans, og kommende tjanser hvis kamp er væk.
+    Det, der allerede er spillet, kræver ingen handling og tælles ikke med. Når
+    holdkoderne er fundet automatisk, tæller kun tjanseholdenes hjemmekampe (ikke fx
+    Danmarksserien-holdets pokalkampe)."""
+    i_dag = datetime.now(DK).replace(hour=0, minute=0, second=0, microsecond=0)
     daekket = {r["kampnr"] for r in rows if r["kampnr"]}
     huller = []
     for nr, k in kampe.items():
-        if not k["hjemmekamp"] or nr in daekket:
+        if (not k["hjemmekamp"] or nr in daekket or (KODER and not k["klubhold"])
+                or k["start"] < i_dag):
             continue
         huller.append({"kampnr": nr, "raekke": k["raekke"], "klubhold": k["klubhold"],
                        "kamp": f"{k['hjemme']} - {k['ude']}", "sted": k["sted"],
@@ -449,7 +593,8 @@ def find_huller(rows, kampe):
     huller.sort(key=lambda h: h["start"][6:10] + h["start"][3:5] + h["start"][:2] + h["start"][11:])
     forsvundne = [{"kampnr": r["kampnr"], "dato": r["dato"], "tjans": r["tjans"],
                    "kamp": f"{r['hjemmehold']} - {r['udehold']}"}
-                  for r in rows if r["kampnr"] and r["kampnr"] not in kampe]
+                  for r in rows if r["kampnr"] and r["kampnr"] not in kampe
+                  and r["ark_start"] >= i_dag]
     return huller, forsvundne
 
 

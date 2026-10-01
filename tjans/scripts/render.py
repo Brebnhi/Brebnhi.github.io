@@ -171,10 +171,39 @@ def render(status, base_url=""):
     # Sæsonen står ikke i koden: build.py finder den ud fra datoerne i tjanselisten.
     titel = f"Tjanser {status['saeson']}" if status.get("saeson") else "Tjanser"
 
+    # Kampprogrammer og holdkoder, som robotten selv har fundet hos Volleyball Danmark
+    kp = status.get("kampprogrammer") or {}
+    def kp_raekke(p):
+        koder = " ".join(f"<span class='tag'>{E(k)}</span>" for k in p.get("koder") or [])
+        kalender = (f"<code>{E(p['url'])}</code>" if p.get("url")
+                    else "<span class='muted'>intet kampprogram endnu</span>")
+        return f"<tr><td>{E(p['navn'])}</td><td>{koder or '–'}</td><td>{kalender}</td></tr>"
+    kp_rows = [kp_raekke(p) for p in kp.get("puljer") or []]
+    koder_tekst = " · ".join(f"<span style='white-space:nowrap'><span class='tag'>"
+                             f"{E(h['kode'])}</span> {E(h['hold'])} "
+                             f"<span class='muted'>({E(h['raekke'])})</span></span>"
+                             for h in kp.get("hold") or [])
+    if kp.get("puljer"):
+        kp_afsnit = ("<h2>Kampprogrammer fra Volleyball Danmark</h2>"
+                     "<p class='sub'>Robotten finder selv klubbens kampprogrammer og holdkoder "
+                     "hver nat — også i en ny sæson og til pokalrunder og slutspil.</p>"
+                     + (f"<p>{koder_tekst}</p>" if koder_tekst else "")
+                     + tabel(kp_rows, ["Række og pulje", "Klubbens hold", "Kalender"], ""))
+    else:
+        kp_afsnit = ("<h2>Kampprogrammer fra Volleyball Danmark</h2>"
+                     "<div class='banner bad'><strong>Kunne ikke finde kampprogrammerne "
+                     "automatisk</strong>Bruger adresserne i <code>data/feeds.json</code>. "
+                     + E(kp.get("fejl") or "") + "</div>") if kp else ""
+
     fejl = status.get("feed_fejl") or {}
     fejl_html = ""
+    tjanskilde = status.get("tjanskilde") or ""
+    if "Google-arket kunne ikke læses" in tjanskilde:
+        fejl_html += ('<div class="banner bad"><strong>Google-arket med tjanselisten kunne '
+                      'ikke læses</strong>' + E(tjanskilde.split(": ", 1)[-1]) + '. Siden og '
+                      'kalenderne bruger data/tjanser.csv, indtil arket kan læses igen.</div>')
     if fejl:
-        fejl_html = ('<div class="banner bad"><strong>Kampprogrammet kunne ikke hentes</strong>'
+        fejl_html += ('<div class="banner bad"><strong>Kampprogrammet kunne ikke hentes</strong>'
                      + E(", ".join(f"{k}: {v}" for k, v in fejl.items())) + "</div>")
 
     return f"""<!doctype html>
@@ -185,7 +214,8 @@ def render(status, base_url=""):
 <p class="nav"><a href="../">← Alle projekter</a></p>
 <h1>{E(titel)}</h1>
 <p class="sub">Aalborg Volley · opdateret {E(status['opdateret'])} ·
-{status['feed_kampe']} kampe hentet fra kampprogrammet</p>
+{status['feed_kampe']} kampe hentet fra kampprogrammet ·
+tjanseliste: {"Google-arket" if tjanskilde == "Google Sheet" else "data/tjanser.csv"}</p>
 {fejl_html}{banner}
 <div class="stats">
 <div class="stat"><b>{len(tj)}</b><span>tjanser i kalenderne</span></div>
@@ -218,6 +248,8 @@ opdatering én gang i døgnet til.</p>
 Tjanser-i-Holdsport, og peger på <code>{E(base_url or "../")}Tjanser-i-Holdsport/feeds/…</code>.
 Den adresse opdateres hver nat sammen med de nye, så importerne skal ikke laves om.
 Nye importer kan bruge adresserne i tabellen.</p>
+
+{kp_afsnit}
 
 <h2>Fordeling</h2>
 <div class="stats">{hold_stats}</div>

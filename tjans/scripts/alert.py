@@ -19,6 +19,8 @@ def main():
     hs = st.get("holdsport") or {}
     slettet = hs.get("mangler", [])
     side = os.environ.get("SIDE", "")
+    kilde = st.get("tjanskilde") or ""
+    arkfejl = kilde.split(": ", 1)[-1] if "Google-arket kunne ikke læses" in kilde else ""
 
     gh("label", "create", LABEL, "--color", "B60205",
        "--description", "Huller i tjansedækningen")
@@ -27,7 +29,7 @@ def main():
                 "--json", "number,body", "--limit", "1")
     aabne = json.loads(fundet.stdout or "[]")
 
-    if not huller and not forsvundne and not slettet:
+    if not huller and not forsvundne and not slettet and not arkfejl:
         if aabne:
             nr = str(aabne[0]["number"])
             gh("issue", "comment", nr, "--body",
@@ -40,6 +42,11 @@ def main():
         return
 
     linjer = [f"Tjekket {st['opdateret']} mod {st['feed_kampe']} kampe i kampprogrammet.", ""]
+    if arkfejl:
+        linjer += ["## Google-arket med tjanselisten kunne ikke læses", "",
+                   f"{arkfejl}. Robotten bruger `data/tjanser.csv`, så rettelser i arket når "
+                   "ikke Holdsport. Tjek, at den rigtige fane er udgivet, og at overskriftsrækken "
+                   "har Kampnr. og Tjans.", ""]
     if huller:
         linjer += [f"## {len(huller)} hjemmekamp(e) uden hold på tjans", "",
                    "| Kampnr. | Dato | Kamp | Række | Sted |", "|---|---|---|---|---|"]

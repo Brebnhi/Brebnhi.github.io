@@ -1,5 +1,5 @@
 {
-  "_om": "Kampprogrammerne fra resultater.volleyball.dk – ét pr. hold, nøglen er holdkoden. Adresserne skifter hver sæson: se 'Ny sæson' i tjans/README.md.",
+  "_om": "Reserve. Robotten finder selv klubbens kampprogrammer hos Volleyball Danmark hver nat (scripts/kampprogrammer.py). Adresserne her læses kun med som supplement og behøver ikke rettes — heller ikke i en ny sæson.",
   "D1": "webcal://resultater.volleyball.dk/cal/Puljekampprogram.ashx?key=3e9c716a-fb3a-4cfb-86c9-f02032ed5d64",
   "D2": "webcal://resultater.volleyball.dk/cal/Holdkampprogram.ashx?key=c384d250-2fce-4c15-b626-b7984a216e08",
   "D3": "webcal://resultater.volleyball.dk/cal/Holdkampprogram.ashx?key=502cc078-d618-498e-bfd0-ecad202ca29f",
