@@ -168,6 +168,9 @@ def render(status, base_url=""):
             + tabel(hold_rows, ["Hold", "Hold i Holdsport", "Id", "Fundet", "Fundet ved"], "")
             + (f"<p class='tnote'>Alle hold på din Holdsport-bruger: {alle}</p>" if alle else ""))
 
+    # Sæsonen står ikke i koden: build.py finder den ud fra datoerne i tjanselisten.
+    titel = f"Tjanser {status['saeson']}" if status.get("saeson") else "Tjanser"
+
     fejl = status.get("feed_fejl") or {}
     fejl_html = ""
     if fejl:
@@ -177,10 +180,10 @@ def render(status, base_url=""):
     return f"""<!doctype html>
 <html lang="da"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Tjanser 2026/27 · Aalborg Volley</title>
+<title>{E(titel)} · Aalborg Volley</title>
 <style>{CSS}</style></head><body><div class="wrap">
 <p class="nav"><a href="../">← Alle projekter</a></p>
-<h1>Tjanser 2026/27</h1>
+<h1>{E(titel)}</h1>
 <p class="sub">Aalborg Volley · opdateret {E(status['opdateret'])} ·
 {status['feed_kampe']} kampe hentet fra kampprogrammet</p>
 {fejl_html}{banner}

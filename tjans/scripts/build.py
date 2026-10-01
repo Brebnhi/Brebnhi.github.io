@@ -13,6 +13,7 @@ Output:  docs/feeds/*.ics, docs/status.json, docs/tjanser/index.html
 """
 
 import csv, hashlib, json, os, re, shutil, sys, urllib.request
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -174,6 +175,8 @@ def load_feeds():
     feeds = json.load(open(path, encoding="utf-8"))
     kampe, fejl, raa = {}, {}, 0
     for navn, url in feeds.items():
+        if navn.startswith("_"):                   # "_om" o.l. er forklaringer, ikke feeds
+            continue
         try:
             evs = parse_ics(fetch(url))
         except Exception as exc:
@@ -195,12 +198,13 @@ def tjans_kilde():
     url = os.environ.get("SHEET_CSV_URL", "").strip()
     if url:
         try:
-            return fetch(url).splitlines(), f"Google Sheet"
+            return fetch(url).lstrip("\ufeff").splitlines(), "Google Sheet"
         except Exception as exc:
             print(f"ADVARSEL: kunne ikke hente Google Sheet ({exc}) "
                   f"– bruger data/tjanser.csv", file=sys.stderr)
     path = os.path.join(ROOT, "data", "tjanser.csv")
-    return open(path, encoding="utf-8").read().splitlines(), "data/tjanser.csv"
+    # utf-8-sig: en CSV gemt fra Excel starter med et BOM-tegn, som ellers ødelægger "kampnr"
+    return open(path, encoding="utf-8-sig").read().splitlines(), "data/tjanser.csv"
 
 
 def load_tjanser():
@@ -218,6 +222,17 @@ def load_tjanser():
             r["klubhold"] = CLUB_TEAMS.get((r["raekke"], r["hjemmehold"]), "")
             rows.append(r)
     return rows
+
+def saeson_af(rows):
+    """Sæsonen tjanselisten hører til: (2026, "2026/27"). En sæson regnes fra 1. juli,
+    som i kørselsudligningen, og flertallet af datoerne afgør den, så en enkelt
+    tastefejl ikke flytter sæsonen. Tom liste: (None, "")."""
+    starter = Counter(r["ark_start"].year if r["ark_start"].month >= 7
+                      else r["ark_start"].year - 1 for r in rows)
+    if not starter:
+        return None, ""
+    start = starter.most_common(1)[0][0]
+    return start, f"{start}/{str(start + 1)[2:]}"
 
 # ------------------------------------------------------------------ ics-output
 
@@ -352,7 +367,10 @@ def main():
     hs = holdsport.koer(forventede, ROOT)
 
     huller, forsvundne = find_huller(rows, kampe)
+    saeson_start, saeson = saeson_af(rows)
     status = {
+        "saeson": saeson,                  # fx "2026/27" – ud fra datoerne i tjanselisten
+        "saeson_start": saeson_start,
         "holdsport": hs,
         "tjanskilde": getattr(load_tjanser, "kilde", "data/tjanser.csv"),
         "opdateret": datetime.now(UTC).astimezone(DK).strftime("%d-%m-%Y %H:%M"),
@@ -374,6 +392,7 @@ def main():
     open(os.path.join(side_dir, "index.html"), "w", encoding="utf-8").write(
         render(status, os.environ.get("BASE_URL", "")))
 
+    print(f"Tjanseliste for sæson {saeson or 'ukendt'} ({status['tjanskilde']})")
     print(f"{len(feeds)} feeds, {sum(f['kampe'] for f in feeds)} tjanser")
     print(f"{len(kampe)} kampe fra feeds ({raa} rå events)")
     print(f"huller: {len(huller)} | forsvundne: {len(forsvundne)} | flyttede: {len(status['flyttede'])}")

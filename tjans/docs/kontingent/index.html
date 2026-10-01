@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
-<title>Kontingent 26/27 · Aalborg Volley</title>
+<title>Kontingent · Aalborg Volley</title>
 <style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -275,11 +275,12 @@
 <body>
 <div class="wrap">
   <p class="tilbage"><a href="../">← Alle projekter</a></p>
-  <p class="eyebrow">Aalborg Volley · sæson 2026/27</p>
+  <p class="eyebrow" id="saesonlinje">Aalborg Volley</p>
   <h1>Hvad står vi til at få i kontingent?</h1>
   <p class="lede">Læg en liste fra Holdsport ind, så regner siden. Før opkrævningen er oprettet
     bruges holdlisterne og satserne; bagefter bruges opkrævningens egne beløb og
     <em>Fritaget</em>-markeringer. Filen læses i din browser og sendes ikke nogen steder.</p>
+  <div class="call" id="saesonvarsel" role="status" hidden></div>
 
   <section id="tom">
     <div class="drop" id="drop">
@@ -324,12 +325,12 @@
 
     <div class="panels">
       <div class="panel">
-        <h3>Budget 26/27</h3>
+        <h3 id="b-titel">Budget</h3>
         <div class="rows">
-          <div class="row"><span>Kontingenter</span><span class="v num">427.120 kr.</span></div>
-          <div class="row"><span>Forudsatte spillere</span><span class="v num">248</span></div>
-          <div class="row"><span>Gebyr og afgang</span><span class="v num">5 %</span></div>
-          <div class="row total"><span>Største post</span><span class="v">Dame 1 — 46.930 kr.</span></div>
+          <div class="row"><span>Kontingenter</span><span class="v num" id="b-ialt">—</span></div>
+          <div class="row"><span>Forudsatte spillere</span><span class="v num" id="b-spillere">—</span></div>
+          <div class="row"><span>Gebyr og afgang</span><span class="v num" id="b-gebyr">—</span></div>
+          <div class="row total"><span>Største post</span><span class="v" id="b-stoerst">—</span></div>
         </div>
       </div>
       <div class="panel">
@@ -405,15 +406,27 @@
 </div>
 
 <script>
-/* Kontingentoverblik — Aalborg Volley 2026/27
+/* Kontingentoverblik — Aalborg Volley
    Alt regnes i browseren. Ingen data forlader siden. */
 (function () {
   "use strict";
 
+  // ------------------------------------------------------------ sæson
+  // Den sæson satserne og budgettet herunder hører til. Når det nye budget er klar,
+  // rettes BUDGET_SAESON, HOLD og BUDGET_IALT — overskrifterne, ungdomsårgangen og
+  // budgetboksen følger med af sig selv. Fra 1. august viser siden en påmindelse,
+  // hvis satserne stadig er fra sidste sæson (og robotten opretter et GitHub-issue).
+  var BUDGET_SAESON = "26/27";
+  var SAESON_START = 2000 + parseInt(BUDGET_SAESON, 10);                  // 2026
+  var SAESON_LANG = SAESON_START + "/" + BUDGET_SAESON.split("/")[1];      // "2026/27"
+  // Sæsonen løber fra august, ligesom raterne længere nede.
+  function saesonStartFor(d){ return d.getMonth() >= 7 ? d.getFullYear() : d.getFullYear() - 1; }
+  function kortSaeson(start){ return String(start).slice(2) + "/" + String(start + 1).slice(2); }
+
   // ------------------------------------------------------------ satser
   // Kilde: fanen «Kontingent status» i budgetarket Overblik.
   // budget = (2 rater × antal × takst − komp × takst) × 0,95
-  var GEBYR = 0.05, RATER = 2, BUDGET_IALT = 427120;
+  var GEBYR = 0.05, RATER = 2, BUDGET_IALT = 439090;
   // Holdsports transaktionsgebyr på kort og MobilePay: 1 % af beløbet. Det betales af
   // klubben og kan ikke lægges over på medlemmet, så det er forskellen mellem det,
   // der opkræves, og det, der lander på kontoen. Administrationshonoraret
@@ -424,14 +437,14 @@
     ["Dame 1",                  "D1",      1900, 14,   2,   46930],
     ["Dame 2",                  "D2",      1700, 14,   3,   40375],
     ["Dame 3",                  "D3",      1200, 15,   4,   29640],
-    ["Dame 4",                  "D4",       950, 20,   0,   21660],
+    ["Dame 4",                  "D4",       950, 20,   0,   36100],
     ["Dame 5 - Old girls",      "D5",       500,  8,   0,    7600],
     ["Herre 1",                 "H1",      1700, 15,   5,   40375],
     ["Herre 2",                 "H2",      1200, 14,   4,   27360],
     ["Herre 3",                 "H3",      1200, 17,   7,   30780],
-    ["Herre 4",                 "H4",       950, 16,   1,   24367.5],
+    ["Herre 4",                 "H4",       950, 16,   1,   27977.5],
     ["Herre 5 - Old boys",      "H5",       750, 12,   1,   16387.5],
-    ["Mix",                     "MIX",      800, 25,   0,   24320],
+    ["Mix",                     "MIX",      800, 25,   1,   37240],
     ["DU 15",                   "DU15",     750, 22,   0,   31350],
     ["DU 17",                   "DU17",     750, 26,   0,   37050],
     ["HU15/17",                 "HU1517",   750, 11,   1,   14962.5],
@@ -447,8 +460,9 @@
   var MOENSTRE = [
     // Efterskole først, så «Efterskole - DU17» ikke fanges som et ungdomshold.
     [/^efterskole/,            "EFTER"],
-    [/^fort?s(ae)?tter\s*mix/, "FMIX"],
-    [/^fors(ae)?tter\s*mix/,   "FMIX"],
+    // Fortsætter Mix er lagt sammen med Mix i budgettet 26/27 og regnes som Mix.
+    [/^fort?s(ae)?tter\s*mix/, "MIX"],
+    [/^fors(ae)?tter\s*mix/,   "MIX"],
     [/^begynder\s*mix/,        "MIX"],
     [/^mix\b/,                 "MIX"],
     [/^dame\s*u\s*15/,         "DU15"],
@@ -467,9 +481,9 @@
   ];
 
   var UNGDOM = {DU15:1, DU17:1, HU1517:1, KIDS:1};
-  // Ungdomsårgangen for sæsonen: født i dette år eller senere hører til ungdomsafdelingen.
-  // Ret den, når sæsonen skifter — 26/27 er U17 årgang 2010 og yngre.
-  var UNGDOMSAARGANG = 2010;
+  // Ungdomsårgangen for sæsonen: født i dette år eller senere hører til ungdomsafdelingen
+  // (U17). Følger BUDGET_SAESON: 26/27 er årgang 2010 og yngre, 27/28 årgang 2011 og yngre.
+  var UNGDOMSAARGANG = SAESON_START - 16;
   // Yngste årgang der kan være et rigtigt medlem. Står der noget nyere, er fødselsdatoen
   // forkert i Holdsport — typisk fordi feltet aldrig er udfyldt.
   function yngsteRimeligeAargang(){ return new Date().getFullYear() - 3; }
@@ -1834,8 +1848,44 @@
       haandterFil(e.dataTransfer.files[0]);
   });
 
+  // ------------------------------------------------------------ sæsonvisning
+  // Overskrifter og budgetboks ud fra BUDGET_SAESON og HOLD, så intet skal rettes i HTML'en.
+  function visSaeson(lokal){
+    document.title = "Kontingent " + BUDGET_SAESON + " · Aalborg Volley";
+    el("saesonlinje").textContent = "Aalborg Volley · sæson " + SAESON_LANG;
+    el("b-titel").textContent = "Budget " + BUDGET_SAESON;
+    var spillere = 0, stoerst = null;
+    HOLD.forEach(function(h){
+      spillere += h[3];
+      if (!stoerst || h[5] > stoerst[5]) stoerst = h;
+    });
+    el("b-ialt").textContent = kr(BUDGET_IALT);
+    el("b-spillere").textContent = tal(spillere);
+    el("b-gebyr").textContent = Math.round(GEBYR * 100) + " %";
+    el("b-stoerst").textContent = stoerst ? stoerst[0] + " — " + kr(stoerst[5]) : "—";
+
+    var nu = saesonStartFor(new Date()), dele = [];
+    if (nu > SAESON_START){
+      dele.push("<p><b>Satserne er fra sæson " + BUDGET_SAESON + ", men " + kortSaeson(nu)
+        + " er begyndt.</b> Når det nye budget er klar, rettes <code>BUDGET_SAESON</code>, "
+        + "<code>HOLD</code> og <code>BUDGET_IALT</code> øverst i scriptet "
+        + "(tal fra fanen «Kontingent status»). Indtil da regner siden med de gamle satser.</p>");
+    }
+    // En eksport fra før 1. juni (regnskabsårets start) hører til sidste sæson.
+    var t = lokal && lokal.opdateret ? new Date(lokal.opdateret) : null;
+    if (t && !isNaN(t) && t < new Date(SAESON_START, 5, 1)){
+      dele.push("<p>Den gemte eksport er indlæst " + t.toLocaleDateString("da-DK")
+        + " — før sæson " + BUDGET_SAESON + " begyndte. Læg en ny eksport ind for at regne "
+        + "på den nye sæson.</p>");
+    }
+    var v = el("saesonvarsel");
+    v.innerHTML = dele.length ? '<span class="t">Ny sæson</span>' + dele.join("") : "";
+    v.hidden = !dele.length;
+  }
+
   // ------------------------------------------------------------ opstart
   var lokal = hentLokalt("data");
+  visSaeson(lokal);
   if (lokal && (lokal.raa || lokal.personer)){ GEMT = lokal; genberegn(); }
 
 })();
