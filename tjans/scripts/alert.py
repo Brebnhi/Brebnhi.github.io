@@ -21,6 +21,7 @@ def main():
     side = os.environ.get("SIDE", "")
     kilde = st.get("tjanskilde") or ""
     arkfejl = kilde.split(": ", 1)[-1] if "Google-arket kunne ikke læses" in kilde else ""
+    konflikter = st.get("konflikter") or []
 
     gh("label", "create", LABEL, "--color", "B60205",
        "--description", "Huller i tjansedækningen")
@@ -29,7 +30,7 @@ def main():
                 "--json", "number,body", "--limit", "1")
     aabne = json.loads(fundet.stdout or "[]")
 
-    if not huller and not forsvundne and not slettet and not arkfejl:
+    if not huller and not forsvundne and not slettet and not arkfejl and not konflikter:
         if aabne:
             nr = str(aabne[0]["number"])
             gh("issue", "comment", nr, "--body",
@@ -58,6 +59,14 @@ def main():
                    "| Kampnr. | Dato i ark | Kamp | Tjans |", "|---|---|---|---|"]
         linjer += [f"| {f['kampnr']} | {f['dato']} | {f['kamp']} | {f['tjans']} |"
                    for f in forsvundne]
+        linjer.append("")
+    if konflikter:
+        linjer += [f"## {len(konflikter)} tjans(er) oven i holdets egen kamp", "",
+                   "Holdet kan ikke nå både egen kamp og tjansen. Byt tjansen i tjanselisten.", "",
+                   "| Dato | Hold | Tjans | Egen kamp |", "|---|---|---|---|"]
+        linjer += [f"| {k['dato']} | {k['hold']} | kl. {k['tjans_kl']} {k['tjans_kamp']} | "
+                   f"kl. {k['egen_kl']} {k['egen_kamp']}{'' if k['hjemme'] else ' (ude)'} |"
+                   for k in konflikter]
         linjer.append("")
     if slettet:
         linjer += [f"## {len(slettet)} tjans(er) er slettet i Holdsport", "",

@@ -82,6 +82,21 @@ Pokal-, slutspils- og kvalifikationskampe tæller med for tjanseholdene (D1–D3
 så en ny hjemmekamp i pokalen eller slutspillet dukker op, indtil den står i tjanselisten.
 Spillede kampe tæller ikke med — dem er der ikke noget at gøre ved.
 
+## Tjans og egen kamp samme dag
+
+Reglen er mindst én kamp imellem holdets egen kamp og tjansen — eller omvendt. Robotten
+tjekker hver nat alle kommende tjanser mod holdets egne kampe (hjemme og ude) med Volleyball
+Danmarks tider, så tjekket følger med, når kampe flyttes. Tjansesiden viser dem under
+*Tjans og egen kamp samme dag*:
+
+- **✓** mindst én kamp imellem (i samme hal; hal 1 og 2 er samme sted)
+- **⚠** ingen kamp imellem, eller holdet spiller ude samme dag — står kun på siden
+- **⛔** tjansen ligger oven i holdets egen kamp (en kamp regnes til 2 timer, tjansen fra
+  mødetid) — kommer også med i issuet, så du får en mail
+
+Tjanselisten er kun startfordelingen: tider og flytninger kommer altid fra Volleyball
+Danmark. Arket rettes kun, når en tjans skal flyttes til et andet hold.
+
 ## Kampprogrammer og holdkoder
 
 `scripts/kampprogrammer.py` slår hver nat klubbens hold op på klubbens side hos Volleyball

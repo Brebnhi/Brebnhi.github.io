@@ -178,6 +178,8 @@ footer{margin-top:36px;color:var(--muted);font-size:12.5px;max-width:70ch}
     if (huller) dele.push(flertal(huller, "hjemmekamp uden tjans", "hjemmekampe uden tjans"));
     if (vaek) dele.push(flertal(vaek, "tjans uden kamp", "tjanser uden kamp"));
     if (slettet) dele.push(flertal(slettet, "tjans slettet i Holdsport", "tjanser slettet i Holdsport"));
+    var konfl = (st.konflikter || []).length;
+    if (konfl) dele.push(flertal(konfl, "tjans oven i holdets egen kamp", "tjanser oven i holdets egen kamp"));
     if (feedfejl) dele.push(flertal(feedfejl, "kampprogram kunne ikke hentes", "kampprogrammer kunne ikke hentes"));
     if (hs.aktiveret && hs.fejl) dele.push("Holdsport-tjekket fejlede");
 

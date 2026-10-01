@@ -45,6 +45,8 @@ code{background:var(--bg);border:1px solid var(--line);border-radius:5px;
 padding:1px 6px;font-size:12px;word-break:break-all}
 .muted{color:var(--muted)}
 footer{margin-top:40px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:16px}
+.st-ok{color:var(--ok);font-weight:600}.st-taet{color:var(--warn);font-weight:600}
+.st-konflikt{color:var(--bad);font-weight:600}
 .nav{margin:0 0 18px;font-size:14px}.nav a{color:var(--accent);text-decoration:none}.nav a:hover{text-decoration:underline}
 """
 
@@ -57,7 +59,8 @@ def render(status, base_url=""):
     slettet = hs.get("mangler", [])
     tj = [t for t in status["tjanser"] if t["status"] == "ok"]
     pr_hold = Counter(t["tjans"] for t in status["tjanser"])
-    problemer = len(huller) + len(forsv) + len(slettet)
+    konflikter = status.get("konflikter") or []
+    problemer = len(huller) + len(forsv) + len(slettet) + len(konflikter)
 
     if problemer == 0:
         banner = ('<div class="banner ok"><strong>Alle hjemmekampe er dækket</strong>'
@@ -74,6 +77,8 @@ def render(status, base_url=""):
             bits.append(f"{len(forsv)} tjans{'er' if len(forsv)>1 else ''} hvor kampen ikke længere findes")
         if slettet:
             bits.append(f"{len(slettet)} tjans{'er' if len(slettet)>1 else ''} slettet i Holdsport")
+        if konflikter:
+            bits.append(f"{len(konflikter)} tjans{'er' if len(konflikter)>1 else ''} oven i holdets egen kamp")
         banner = (f'<div class="banner bad"><strong>{problemer} ting kræver handling</strong>'
                   + " og ".join(bits) + ".</div>")
 
@@ -171,6 +176,23 @@ def render(status, base_url=""):
     # Sæsonen står ikke i koden: build.py finder den ud fra datoerne i tjanselisten.
     titel = f"Tjanser {status['saeson']}" if status.get("saeson") else "Tjanser"
 
+    # Tjans og egen kamp samme dag — reglen er mindst én kamp imellem
+    MAERKE = {"ok": "✓", "taet": "⚠", "konflikt": "⛔"}
+    egne = status.get("egen_kamp") or []
+    egen_rows = [f"<tr><td style='white-space:nowrap'>{E(e['dato'][:6] + e['dato'][8:])}</td>"
+                 f"<td><span class='tag'>{E(e['hold'])}</span></td>"
+                 f"<td class='st-{E(e['status'])}'>{MAERKE.get(e['status'], '')} {E(e['tekst'])}</td>"
+                 f"<td>{E(e['tjans_kl'])} <span class='muted'>{E(e['tjans_kamp'])}</span></td>"
+                 f"<td>{E(e['egen_kl'])} <span class='muted'>{E(e['egen_kamp'])}"
+                 f"{'' if e['hjemme'] else ' (ude)'}</span></td></tr>"
+                 for e in egne]
+    egen_afsnit = ("<h2>Tjans og egen kamp samme dag</h2>"
+                   "<p class='sub'>Reglen er mindst én kamp imellem holdets egen kamp og tjansen "
+                   "— eller omvendt. Tiderne er Volleyball Danmarks, så tjekket følger med, når "
+                   "kampe flyttes. ⛔ betyder, at tjansen ligger oven i holdets egen kamp.</p>"
+                   + tabel(egen_rows, ["Dato", "Hold", "Vurdering", "Tjans", "Egen kamp"],
+                           "Ingen kommende tjanser ligger på en dag, hvor holdet selv spiller."))
+
     # Kampprogrammer og holdkoder, som robotten selv har fundet hos Volleyball Danmark
     kp = status.get("kampprogrammer") or {}
     def kp_raekke(p):
@@ -232,6 +254,8 @@ tjanseliste: {"Google-arket" if tjanskilde == "Google Sheet" else "data/tjanser.
 <h2>Tjanser hvor kampen ikke længere findes i kampprogrammet</h2>
 {tabel(fo_rows, ["Kampnr.", "Dato i ark", "Kamp", "Tjans"],
        "Ingen — alle tjanser peger på en kamp der stadig findes.")}
+
+{egen_afsnit}
 
 <h2>Kampe der er flyttet siden tjanselisten blev lavet</h2>
 {tabel(fl_rows, ["Kampnr.", "Stod til", "Er nu", "Tjans", "Kamp"],

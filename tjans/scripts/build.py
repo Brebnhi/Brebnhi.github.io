@@ -195,6 +195,7 @@ def describe(ev):
         hjemme, ude = [p.strip() for p in summ.split(" - ", 1)]
     return {"kampnr": kampnr, "raekke": raekke_linje, "hjemme": hjemme,
             "ude": ude, "klubhold": holdkode(raekke_linje, hjemme),
+            "udekode": holdkode(raekke_linje, ude),
             "klubkamp": "aalborg volleyball" in norm(f"{hjemme} {ude}"),
             "hjemmekamp": "aalborg volleyball" in norm(hjemme),
             "start": ev.get("DTSTART"), "slut": ev.get("DTEND"),
@@ -253,6 +254,7 @@ def load_feeds():
         KODER = {}
         for k in kampe.values():
             k["klubhold"] = holdkode(k["raekke"], k["hjemme"])
+            k["udekode"] = holdkode(k["raekke"], k["ude"])
     return kampe, fejl, raa, kp
 
 # ------------------------------------------------------------------ tjanseliste
@@ -506,6 +508,7 @@ def main():
     hs = holdsport.koer(forventede, ROOT)
 
     huller, forsvundne = find_huller(rows, kampe)
+    egne = egen_kamp(rows, kampe)
     status = {
         "saeson": saeson,                  # fx "2026/27" – ud fra datoerne i tjanselisten
         "saeson_start": saeson_start,
@@ -521,6 +524,8 @@ def main():
         "huller": huller,
         "forsvundne": forsvundne,
         "flyttede": [r for r in rapport if r.get("flyttet")],
+        "egen_kamp": egne,                       # tjanser på dage hvor holdet selv spiller
+        "konflikter": [e for e in egne if e["status"] == "konflikt"],
     }
     json.dump(status, open(os.path.join(ROOT, "docs", "status.json"), "w",
                            encoding="utf-8"), ensure_ascii=False, indent=2)
@@ -534,7 +539,8 @@ def main():
     print(f"Tjanseliste for sæson {saeson or 'ukendt'} ({status['tjanskilde']})")
     print(f"{len(feeds)} feeds, {sum(f['kampe'] for f in feeds)} tjanser")
     print(f"{len(kampe)} kampe fra feeds ({raa} rå events)")
-    print(f"huller: {len(huller)} | forsvundne: {len(forsvundne)} | flyttede: {len(status['flyttede'])}")
+    print(f"huller: {len(huller)} | forsvundne: {len(forsvundne)} | flyttede: {len(status['flyttede'])}"
+          f" | tjans oven i egen kamp: {len(status['konflikter'])}")
     if hs["aktiveret"]:
         if hs["fejl"]:
             print(f"Holdsport-tjek: {hs['fejl']}", file=sys.stderr)
@@ -568,6 +574,75 @@ def gammel_adresse(feeds_dir):
         d = os.path.join(rod, sti)
         os.makedirs(d, exist_ok=True)
         open(os.path.join(d, "index.html"), "w", encoding="utf-8").write(VIDERE.format(til=til))
+
+
+KAMPTID = timedelta(hours=2)            # så længe regnes en kamp at vare
+
+
+def hal(sted):
+    """'Aalborg Stadionhal 2' -> 'aalborg stadionhal' (hal 1 og 2 er samme sted)."""
+    return re.sub(r"\s*\d+\s*$", "", norm(sted))
+
+
+def egen_kamp(rows, kampe):
+    """Kommende tjanser på dage, hvor holdet selv spiller. Tiderne er Volleyball Danmarks,
+    så tjekket følger med, når kampe flyttes. Reglen er mindst én kamp imellem holdets
+    egen kamp og tjansen — eller omvendt. Status pr. tjans:
+      ok        – mindst én kamp imellem
+      taet      – ingen kamp imellem, eller holdet spiller ude samme dag
+      konflikt  – tjansen ligger oven i holdets egen kamp, så de kan ikke nå begge dele"""
+    i_dag = datetime.now(DK).replace(hour=0, minute=0, second=0, microsecond=0)
+    hjemme = [k for k in kampe.values() if k["hjemmekamp"]]
+    ud = []
+    for r in rows:
+        kamp = kampe.get(r["kampnr"]) if r["kampnr"] else None
+        s_t = kamp["start"] if kamp else r["ark_start"]
+        if s_t < i_dag or not r["tjans"]:
+            continue
+        if r["kampnr"]:                      # fra mødetid til kampen er slut
+            fra = s_t - timedelta(minutes=LEAD_MINUTES.get(r["antal"], 30))
+            til = s_t + KAMPTID
+        else:                                # stævne: hele formiddagen/eftermiddagen
+            fra, til = s_t, s_t + DEFAULT_LEN.get(r["antal"], DEFAULT_LEN[5])
+        sted_t = hal(kamp["sted"] if kamp else r["spillested"])
+        dag = s_t.astimezone(DK).date()
+        for o in kampe.values():
+            egen = (o["hjemmekamp"] and o["klubhold"] == r["tjans"]) or o["udekode"] == r["tjans"]
+            if not egen or o["start"].astimezone(DK).date() != dag or o["kampnr"] == r["kampnr"]:
+                continue
+            s_o = o["start"]
+            konflikt = fra < s_o + KAMPTID and s_o < til        # tiderne overlapper
+            egen_kl = s_o.astimezone(DK).strftime("%H:%M")
+            imellem = None
+            if not o["hjemmekamp"]:
+                status = "konflikt" if konflikt else "taet"
+                tekst = (f"spiller ude kl. {egen_kl} i {o['sted'] or o['hjemme']}"
+                         + (" – samtidig med tjansen" if konflikt else " samme dag – kan det nås?"))
+            elif konflikt:
+                status, tekst = "konflikt", f"tjansen ligger oven i egen kamp kl. {egen_kl}"
+            elif not r["kampnr"]:
+                status, tekst = "ok", f"spiller selv kl. {egen_kl} samme dag"
+            else:
+                lav, hoej = sorted((s_o, s_t))
+                imellem = sum(1 for k in hjemme if lav < k["start"] < hoej
+                              and hal(k["sted"]) == sted_t)
+                if imellem == 0:
+                    foer = "efter" if s_o < s_t else "før"
+                    status, tekst = "taet", f"ingen kamp imellem – tjans lige {foer} egen kamp"
+                else:
+                    status = "ok"
+                    tekst = f"{imellem} kamp{'e' if imellem > 1 else ''} imellem"
+            ud.append({"dato": s_t.astimezone(DK).strftime("%d-%m-%Y"), "hold": r["tjans"],
+                       "tjans_kl": s_t.astimezone(DK).strftime("%H:%M"),
+                       "tjans_kamp": (f"{r['hjemmehold']} - {r['udehold']}" if r["kampnr"]
+                                      else f"{r['raekke']} (stævne)"),
+                       "egen_kl": egen_kl, "egen_kamp": f"{o['hjemme']} - {o['ude']}",
+                       "hjemme": o["hjemmekamp"], "imellem": imellem,
+                       "status": status, "tekst": tekst, "_t": s_t})
+    ud.sort(key=lambda e: (e["_t"], e["hold"]))
+    for e in ud:
+        del e["_t"]
+    return ud
 
 
 def snapshot(row):
