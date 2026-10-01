@@ -12,6 +12,7 @@ permissions:
   pages: write
   id-token: write
   issues: write
+  actions: write                # så robotten kan holde natkørslen i live (vedligehold.py)
 
 concurrency:
   group: tjanser
@@ -32,33 +33,88 @@ jobs:
 
       # ---- Filer uploadet løst i roden (fx fra telefonen) lægges på plads ----
       # Filen genkendes på sit indhold, ikke sit navn, så "render (3).py" også virker.
+      # Nye filer kan have en linje "sti: mappe/fil" øverst – så kommer de derhen.
+      # Workflow-filer kan robotten ikke flytte; dem retter du direkte i .github/.
       - name: Læg løse filer på plads
         working-directory: .
         run: |
           python3 - <<'PY'
-          import os, shutil, subprocess
-          MAAL = [
+          import json, os, re, shutil, subprocess
+
+          # README'er genkendes på første linje
+          FOERSTE_LINJE = {
+              "# Aalborg Volley – klubbens værktøjer": "README.md",
+              "# Tjanser – Aalborg Volley": "tjans/README.md",
+              "# Kørselsudligning – Aalborg Volley": "koerselsudligning/README.md",
+          }
+          # Kode og sider genkendes på en sætning, der kun står i den fil. Første match vinder.
+          INDEHOLDER = [
               ("def gammel_adresse", "tjans/scripts/build.py"),
               ("Renderer status.json til docs/tjanser/index.html", "tjans/scripts/render.py"),
+              ("Kontrollerer via Holdsports API, at tjans-aktiviteterne", "tjans/scripts/holdsport.py"),
+              ("Åbner, opdaterer eller lukker ét GitHub-issue afhængigt af", "tjans/scripts/alert.py"),
+              ("Holder klubbens værktøjer kørende fra sæson til sæson", "tjans/scripts/vedligehold.py"),
+              ("Forventet kørselsudligning for klubbens hold", "koerselsudligning/scripts/beregn.py"),
+              ("Ét GitHub-issue pr. sæson med den forventede kørselsudligning", "koerselsudligning/scripts/besked.py"),
               ("siden med den forventede kørselsudligning", "koerselsudligning/scripts/render.py"),
               ("<h1>Klubbens værktøjer</h1>", "tjans/docs/index.html"),
               ("Hvad står vi til at få i kontingent?", "tjans/docs/kontingent/index.html"),
-              ("# Kørselsudligning – Aalborg Volley", "koerselsudligning/README.md"),
-              ("# Tjanser – Aalborg Volley", "tjans/README.md"),
           ]
-          flyttet = []
+          TILLADT = ("tjans/", "koerselsudligning/")
+
+          def json_af(tekst):
+              try:
+                  d = json.loads(tekst)
+              except ValueError:
+                  return None
+              return d if isinstance(d, dict) else None
+
+          def maal_for(navn, tekst):
+              linjer = tekst.lstrip("\ufeff").splitlines()
+              for linje in linjer[:5]:              # "# sti: tjans/scripts/ny.py" o.l.
+                  m = re.match(r"\s*(?:#|//|<!--|/\*)?\s*sti:\s*([\w./-]+)", linje)
+                  if m and ".." not in m.group(1) and (
+                          m.group(1).startswith(TILLADT) or m.group(1) == "README.md"):
+                      return m.group(1)
+              foerste = next((l.strip() for l in linjer if l.strip()), "")
+              if foerste in FOERSTE_LINJE:
+                  return FOERSTE_LINJE[foerste]
+              if navn.endswith(".csv"):
+                  ok = foerste.replace(" ", "").lower().startswith("kampnr,runde,dag,dato,tid,raekke")
+                  return "tjans/data/tjanser.csv" if ok else None
+              if navn.endswith(".json"):
+                  d = json_af(tekst)
+                  if d is None:
+                      return None
+                  feeds = [v for k, v in d.items() if not k.startswith("_")]
+                  if feeds and all(isinstance(v, str) and "kampprogram.ashx" in v.lower() for v in feeds):
+                      return "tjans/data/feeds.json"
+                  if "forening_id" in d and "km_takst" in d:
+                      return "koerselsudligning/config.json"
+                  if "Skriv her hvad holdene hedder i Holdsport" in tekst:
+                      return "tjans/data/holdsport_hold.json"
+                  return None
+              return next((maal for kendetegn, maal in INDEHOLDER if kendetegn in tekst), None)
+
+          flyttet, ukendt = [], []
           for navn in sorted(os.listdir(".")):
-              if not os.path.isfile(navn) or not navn.endswith((".py", ".html", ".md")):
+              if not os.path.isfile(navn) or not navn.endswith((".py", ".html", ".md", ".csv", ".json")):
                   continue
               tekst = open(navn, encoding="utf-8", errors="replace").read()
-              for kendetegn, maal in MAAL:
-                  if kendetegn in tekst:
-                      os.makedirs(os.path.dirname(maal), exist_ok=True)
-                      shutil.move(navn, maal)
-                      subprocess.run(["git", "add", "-A", "--", navn, maal], check=True)
-                      flyttet.append(f"{navn} -> {maal}")
-                      break
+              maal = maal_for(navn, tekst)
+              if not maal:
+                  ukendt.append(navn)
+                  continue
+              if maal == navn:
+                  continue
+              os.makedirs(os.path.dirname(maal) or ".", exist_ok=True)
+              shutil.move(navn, maal)
+              subprocess.run(["git", "rm", "-q", "--cached", "--ignore-unmatch", "--", navn], check=True)
+              subprocess.run(["git", "add", "-A", "--", maal], check=True)
+              flyttet.append(f"{navn} -> {maal}")
           print("\n".join(flyttet) or "Ingen løse filer i roden.")
+          for navn in ukendt:
+              print(f"Kender ikke {navn} – lader den ligge i roden.")
           PY
           if ! git diff --cached --quiet; then
             git config user.name "github-actions[bot]"
@@ -91,6 +147,15 @@ jobs:
         continue-on-error: true
         working-directory: koerselsudligning
         run: python scripts/beregn.py --ud ../tjans/docs/koerselsudligning
+
+      # ---- Ny sæson: påmindelser, og natkørslen holdes i live ----------------
+      # Skriver docs/paamindelser.json til startsiden. Må aldrig stoppe siden.
+      - name: Hold natkørslen i live og mind om ny sæson
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SIDE: ${{ steps.pages.outputs.base_url }}/
+        run: python scripts/vedligehold.py
 
       - uses: actions/upload-pages-artifact@v3
         with:
