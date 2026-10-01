@@ -5,4 +5,4 @@
 # Adressen på tjansernes mellemmand: Google Apps Script-webappen, der gør Ignorér-knappen
 # på tjansesiden til ét tryk. Den slutter på /exec. Tom = ingen Ignorér-knap.
 # Sådan laves den: se tjans/MELLEMMAND.md.
-MELLEMMAND = "https://script.google.com/macros/s/AKfycbwg_vVW8vk2Tq89LqVi3NwkWf1sM6OfBdKA-9-8ODGc1xp9EdRu_pBsta-7ZWBFOnHe/exec"
+MELLEMMAND = "https://script.google.com/macros/s/AKfycbwV4aZDlauDsiEw2f6IL084Ej313qLnObzAv8ENXxdh3u4sjXWhPHIbRp95lPYNN2W1/exec"
