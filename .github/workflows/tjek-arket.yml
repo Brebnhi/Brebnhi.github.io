@@ -1,0 +1,78 @@
+name: Tjek tjanselisten
+
+# Kigger på Google-arket med tjanselisten hvert 10. minut fra morgen til midnat. Er arket
+# ændret siden sidst, starter den "Opdater tjans-kalendere", så tjansesiden og kalenderne
+# følger med med det samme i stedet for næste nat. Uden SHEET_CSV_URL gør den ingenting.
+# Ligger i .github/workflows/ – den kan robotten ikke flytte, så den uploades direkte her.
+on:
+  schedule:
+    - cron: "4,14,24,34,44,54 4-22 * * *"   # hvert 10. minut ca. kl. 6–1 (5–24 om vinteren)
+  workflow_dispatch:
+
+permissions:
+  actions: write                # så den kan starte robotten
+  contents: read
+
+concurrency:
+  group: tjek-arket
+  cancel-in-progress: true
+
+jobs:
+  tjek:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Hent tjanselisten fra Google-arket
+        id: ark
+        env:
+          SHEET_CSV_URL: ${{ vars.SHEET_CSV_URL }}
+        run: |
+          mkdir -p sidst
+          if [ -z "$SHEET_CSV_URL" ]; then
+            echo "Intet Google-ark sat op (SHEET_CSV_URL) – intet at tjekke."
+            exit 0
+          fi
+          if ! curl -fsSL --retry 2 --max-time 60 "$SHEET_CSV_URL" -o ark.csv; then
+            echo "Arket kunne ikke hentes lige nu – prøver igen om 10 minutter."
+            exit 0
+          fi
+          if ! grep -qi "kampnr" ark.csv; then
+            echo "Det hentede ligner ikke tjanselisten – prøver igen om 10 minutter."
+            exit 0
+          fi
+          echo "aftryk=$(sha256sum ark.csv | cut -c1-16)" >> "$GITHUB_OUTPUT"
+
+      - name: Find den udgave, der blev set sidst
+        if: steps.ark.outputs.aftryk != ''
+        uses: actions/cache/restore@v4
+        with:
+          path: sidst
+          key: tjanseark-sidst
+          restore-keys: tjanseark-
+
+      - name: Start robotten, hvis arket er ændret
+        id: start
+        if: steps.ark.outputs.aftryk != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          AFTRYK: ${{ steps.ark.outputs.aftryk }}
+        run: |
+          sidst=$(cat sidst/aftryk 2>/dev/null || true)
+          if [ "$sidst" = "$AFTRYK" ]; then
+            echo "Arket er uændret."
+            exit 0
+          fi
+          echo "Arket er ændret – starter Opdater tjans-kalendere."
+          if ! gh workflow run main.yml --repo "$GITHUB_REPOSITORY" --ref main; then
+            echo "Kunne ikke starte robotten – prøver igen om 10 minutter."
+            exit 0
+          fi
+          echo "$AFTRYK" > sidst/aftryk
+          echo "gem=ja" >> "$GITHUB_OUTPUT"
+
+      - name: Husk denne udgave
+        if: steps.start.outputs.gem == 'ja'
+        uses: actions/cache/save@v4
+        with:
+          path: sidst
+          key: tjanseark-${{ github.run_id }}-${{ github.run_attempt }}
