@@ -5,7 +5,9 @@ officielle kampprogrammer fra `resultater.volleyball.dk`. Kampprogrammerne og
 holdkoderne finder robotten selv hver nat — se *Kampprogrammer og holdkoder*.
 
 En kamp og dens tjans hænger sammen på **kampnummeret**. Flytter turnerings-
-systemet en kamp, flytter tjansen med — først her, natten efter i Holdsport.
+systemet en kamp, flytter tjansen med — først her, og i Holdsport næste gang den henter
+kalenderne (én gang i døgnet). Hjemme- og udehold tages også fra kampprogrammet, så
+titlen passer, selv om tjanselisten har dem omvendt.
 
 ## Hvad der bliver bygget
 
@@ -64,9 +66,13 @@ fester) over. Rækker uden noget i Tjans tæller ikke, og rækker uden kampnumme
 3. På GitHub: **Settings → Secrets and variables → Actions → fanen Variables → New
    repository variable**. Navn `SHEET_CSV_URL`, værdi = linket.
 
-Derefter er arket facit: ret i det, så har Holdsport ændringen næste morgen. Til en ny
-sæson laver du listen i det samme ark (gem evt. en kopi af den gamle først), så linket
-ikke skifter. Udgivelsen viser kun den valgte fane, og listen er alligevel offentlig på
+Derefter er arket facit: ret i det, så er tjansesiden og kalenderne opdateret ca. et
+kvarter efter, og Holdsport har ændringen, næste gang den henter kalenderne (én gang i
+døgnet). Det er workflowet *Tjek tjanselisten* (`.github/workflows/tjek-arket.yml`), der
+kigger efter ændringer i arket hvert 10. minut fra morgen til midnat og så starter robotten.
+
+Til en ny sæson laver du listen i det samme ark (gem evt. en kopi af den gamle først), så
+linket ikke skifter. Udgivelsen viser kun den valgte fane, og listen er alligevel offentlig på
 tjansesiden.
 
 Uden linket bruger robotten `data/tjanser.csv` i repoet.
@@ -77,6 +83,11 @@ Efter hver kørsel sammenholdes kampprogrammet med tjanselisten. Er der en komme
 hjemmekamp uden hold på tjans — eller en kommende tjans hvis kamp er forsvundet —
 oprettes ét GitHub-issue med listen, og GitHub sender en mail. Issuet lukker
 sig selv, når hullet er lukket. Er alt dækket, sker der ingenting.
+
+Er `HOLDSPORT_USER` og `HOLDSPORT_PASSWORD` sat som hemmeligheder, tjekker robotten også, at
+tjanserne ligger i Holdsport. Holdsport henter kalenderne én gang i døgnet, så en ny tjans
+(eller en tjans, der har skiftet hold) står som *venter* i halvandet døgn, før den tæller som
+slettet og kommer med i issuet.
 
 Pokal-, slutspils- og kvalifikationskampe tæller med for tjanseholdene (D1–D3, H1–H3),
 så en ny hjemmekamp i pokalen eller slutspillet dukker op, indtil den står i tjanselisten.

@@ -434,13 +434,19 @@ def main():
             continue
 
         if kamp:
+            # Volleyball Danmark er facit – også for, hvem der er hjemme og ude. Det betyder
+            # noget, når to af klubbens egne hold mødes (fx H2 mod H1 i pokalen), og
+            # tjanselisten har dem omvendt.
             match_start, match_slut = kamp["start"], kamp["slut"]
             sted = kamp["sted"] or row["spillested"]
+            hjemme = kamp["hjemme"] or row["hjemmehold"]
             ude = kamp["ude"] or row["udehold"]
+            klub = kamp["klubhold"] or row["klubhold"] or row["raekke"]
             kilde = "feed"
         else:
             match_start, match_slut = row["ark_start"], None
-            sted, ude = row["spillested"], row["udehold"]
+            sted, hjemme, ude = row["spillested"], row["hjemmehold"], row["udehold"]
+            klub = row["klubhold"] or row["raekke"]
             kilde = "mangler i feed" if row["kampnr"] else "regneark"
 
         antal = row["antal"]
@@ -450,7 +456,6 @@ def main():
                else match_start + DEFAULT_LEN.get(antal, DEFAULT_LEN[4]))
         flyttet = bool(kamp) and match_start != row["ark_start"]
 
-        klub = row["klubhold"] or row["raekke"]
         # antallet står også i titlen, så det er synligt selv hvis en
         # kalender-import ikke tager kommentarfeltet med
         summary = (f"Tjans ({antal} pers.): {klub} mod {ude}" if ude
@@ -458,7 +463,7 @@ def main():
         desc = (f"{ROLES.get(antal, ROLES[4])}\n\n"
                 f"Kampstart kl. {match_start.astimezone(DK).strftime('%H:%M')} "
                 f"– mød {lead} minutter før.\n"
-                f"{row['raekke']}: {row['hjemmehold'] or klub} - {ude}\n"
+                f"{row['raekke']}: {hjemme or klub} - {ude}\n"
                 f"Sted: {sted}")
         if row["kampnr"]:
             desc += f"\nKampnr. {row['kampnr']}"
@@ -475,13 +480,14 @@ def main():
             "seq": int(match_start.timestamp()) % 100000,
         })
         forventede.append({"tjans": row["tjans"], "kampnr": row["kampnr"],
-                           "navn": summary, "start": start.isoformat(),
+                           "navn": summary, "start": start.astimezone(DK).isoformat(),
                            "antal": antal,
-                           "kamp": f"{row['hjemmehold'] or klub} - {ude}"})
+                           "kamp": f"{hjemme or klub} - {ude}"})
         rapport.append({**snapshot(row), "status": "ok", "kilde": kilde,
                         "start": start.astimezone(DK).isoformat(),
                         "kampstart": match_start.astimezone(DK).isoformat(),
-                        "flyttet": flyttet, "sted": sted, "modstander": ude})
+                        "flyttet": flyttet, "sted": sted, "modstander": ude,
+                        "hjemmehold": hjemme})
 
     feeds_dir = os.path.join(ROOT, "docs", "feeds")
     os.makedirs(feeds_dir, exist_ok=True)
@@ -505,7 +511,7 @@ def main():
 
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import holdsport
-    hs = holdsport.koer(forventede, ROOT)
+    hs = venter_paa_holdsport(holdsport.koer(forventede, ROOT), forventede)
 
     huller, forsvundne = find_huller(rows, kampe)
     mm = mellemmand()
@@ -555,7 +561,8 @@ def main():
             print(f"Holdsport-tjek: {hs['fejl']}", file=sys.stderr)
         else:
             print(f"Holdsport-tjek: {hs['fundet']}/{hs['kontrolleret']} tjanser fundet"
-                  f" | mangler: {len(hs['mangler'])}")
+                  f" | mangler: {len(hs['mangler'])}"
+                  f" | nye, som Holdsport ikke har hentet endnu: {len(hs.get('venter') or [])}")
         print("Dine hold i Holdsport: " + ", ".join(
             f"{h['navn']} (id {h['id']})" for h in hs["alle_hold"]) or "ingen")
     else:
@@ -586,6 +593,58 @@ def gammel_adresse(feeds_dir):
 
 
 KAMPTID = timedelta(hours=2)            # så længe regnes en kamp at vare
+
+# Holdsport henter kalenderne én gang i døgnet, så en tjans, der lige er kommet i kalenderen,
+# mangler i Holdsport et stykke tid uden at være slettet. Hvornår hver tjans dukkede op,
+# huskes i docs/tjans_set.json, som hentes fra siden ved næste kørsel.
+SET_FIL = "tjans_set.json"
+VENTETID = timedelta(hours=36)
+
+
+def tjans_noegle(t):
+    """'150792-H3' – eller dato-hold for stævner. Virker på både forventede og manglende."""
+    return f"{t['kampnr'] or t['start'][:10]}-{t['tjans']}"
+
+
+def nye_tjanser(forventede, nu=None):
+    """Nøglerne på de tjanser, der er kommet i kalenderne inden for VENTETID."""
+    nu = nu or datetime.now(UTC)
+    try:
+        foer = json.loads(fetch(os.environ.get("BASE_URL", "") + SET_FIL))
+        if not isinstance(foer, dict):
+            raise ValueError("tjans_set.json er ikke en liste over tjanser")
+    except Exception as exc:                       # noqa: BLE001
+        # 404 = første kørsel med listen: alle regnes som nye. Andre fejl: alle som gamle.
+        foer = {} if getattr(exc, "code", None) == 404 else None
+    gammel = (nu - VENTETID).isoformat()
+    sete, nye = {}, set()
+    for f in forventede:
+        n = tjans_noegle(f)
+        sete[n] = (foer.get(n) or nu.isoformat()) if foer is not None else gammel
+        try:
+            if nu - datetime.fromisoformat(sete[n]) < VENTETID:
+                nye.add(n)
+        except (TypeError, ValueError):
+            sete[n] = gammel
+    json.dump(sete, open(os.path.join(ROOT, "docs", SET_FIL), "w", encoding="utf-8"),
+              indent=0, sort_keys=True)
+    return nye
+
+
+def venter_paa_holdsport(hs, forventede):
+    """Flytter de tjanser, Holdsport ikke har nået at hente endnu, fra "mangler" til
+    "venter", så de ikke bliver meldt som slettet i Holdsport."""
+    nye = nye_tjanser(forventede)
+    if not hs.get("aktiveret"):
+        return hs
+    mangler = hs.get("mangler") or []
+    hs["venter"] = [m for m in mangler if tjans_noegle(m) in nye]
+    hs["mangler"] = [m for m in mangler if tjans_noegle(m) not in nye]
+    for post in hs.get("hold") or []:
+        v = sum(1 for m in hs["venter"] if m["tjans"] == post.get("kode"))
+        post["venter"] = v
+        post["mangler"] = max(0, (post.get("mangler") or 0) - v)
+    return hs
 
 
 # Ignorér-knappen: tjansernes mellemmand (et Google Apps Script) husker, hvilke advarsler

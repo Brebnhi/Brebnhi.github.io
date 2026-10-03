@@ -71,11 +71,18 @@ def render(status, base_url=""):
     andre = len(huller) + len(forsv) + len(slettet)
     problemer = andre + len(konflikter)
 
+    venter = hs.get("venter") or []
+    if not hs.get("aktiveret") or hs.get("fejl"):
+        hs_tekst = "."
+    elif venter:
+        hs_tekst = (f', og {hs["fundet"]} af {hs["kontrolleret"]} tjanser ligger allerede i '
+                    f'Holdsport. {len(venter)} {"ny venter" if len(venter) == 1 else "nye venter"} '
+                    'på, at Holdsport henter kalenderen.')
+    else:
+        hs_tekst = f', og alle {hs["fundet"]} tjanser ligger i Holdsport.'
     ok_tekst = ('<strong>Alle hjemmekampe er dækket</strong>'
                 f'Alle {status["feed_kampe"]} kampe i kampprogrammet er tjekket mod '
-                'tjanselisten — hver hjemmekamp har et hold på tjans'
-                + (f', og alle {hs["fundet"]} tjanser ligger i Holdsport.'
-                   if hs.get("aktiveret") and not hs.get("fejl") else '.'))
+                'tjanselisten — hver hjemmekamp har et hold på tjans' + hs_tekst)
     bits = []
     if huller:
         bits.append(f"{len(huller)} hjemmekamp{'e' if len(huller)>1 else ''} uden hold på tjans")
@@ -164,9 +171,13 @@ def render(status, base_url=""):
                    f"<td>{E(m['navn'])}</td>"
                    f"<td><span class='tag'>{E(m['tjans'])}</span></td>"
                    f"<td class='muted'>{E(m['holdsport'])}</td></tr>" for m in slettet]
+        ve_rows = [f"<tr><td><code>{E(m['kampnr'])}</code></td><td>{E(m['start'])}</td>"
+                   f"<td>{E(m['navn'])}</td>"
+                   f"<td><span class='tag'>{E(m['tjans'])}</span></td></tr>" for m in venter]
         hold_rows = []
         for h in hs.get("hold", []):
             status_tekst = (f"{h['fundet']} af {h['forventet']}"
+                            + (f" · {h['venter']} venter" if h.get("venter") else "")
                             if not h.get("fejl") else E(h["fejl"]))
             hold_rows.append(
                 f"<tr><td><span class='tag'>{E(h['kode'])}</span></td>"
@@ -178,9 +189,14 @@ def render(status, base_url=""):
         holdsport_afsnit = (
             "<h2>Kontrol mod Holdsport</h2>"
             f"<p class='sub'>{hs['fundet']} af {hs['kontrolleret']} tjanser fundet i "
-            "Holdsport ved sidste kørsel. Mangler en, er den blevet slettet.</p>"
+            "Holdsport ved sidste kørsel. Holdsport henter kalenderne én gang i døgnet, så en "
+            "ny tjans får halvanden døgn, før den tæller som slettet.</p>"
             + tabel(sl_rows, ["Kampnr.", "Mødetid", "Aktivitet", "Tjans", "Hold i Holdsport"],
                     "Ingen tjanser er blevet slettet — alle ligger som de skal.")
+            + ("<p class='sub' style='margin-top:14px'>Nye i kalenderen — venter på, at "
+               "Holdsport henter dem:</p>"
+               + tabel(ve_rows, ["Kampnr.", "Mødetid", "Aktivitet", "Tjans"], "")
+               if venter else "")
             + "<h2>Holdopslag</h2>"
             + "<p class='sub'>Sådan er holdene fra tjanselisten koblet til dine hold i "
               "Holdsport. Passer et opslag ikke, så ret navnet eller nummeret i "
@@ -412,7 +428,8 @@ Nye importer kan bruge adresserne i tabellen.</p>
 {tabel(sae_rows, ["Dato", "Kampstart", "Mødetid", "Kamp", "Række", "Antal", "Tjans", ""], "")}
 
 <footer>Bygget automatisk ud fra tjanselisten og de officielle kampprogrammer fra
-resultater.volleyball.dk. Siden og kalenderne opdateres hver nat.</footer>
+resultater.volleyball.dk. Siden og kalenderne opdateres hver nat og kort efter ændringer i
+tjanselisten.</footer>
 </div>{ign_js}</body></html>"""
 
 
