@@ -10,7 +10,7 @@ Kører i natkørslen efter kørselsudligningen og før siden lægges ud:
    i 50 dage, skriver den også et livstegn i data/puls.txt.
 2. Påmindelser til en ny sæson som GitHub-issues med labelen "ny sæson" – GitHub
    sender en mail, når et issue oprettes. Dem robotten selv kan tjekke (tjanseliste,
-   takster, kontingentsatser), lukker sig selv, når det er gjort. Try-out og budget
+   takster, kontingentsatser, turpriser), lukker sig selv, når det er gjort. Try-out og budget
    kan robotten ikke se – de issues lukker du selv, når du er færdig.
 3. docs/paamindelser.json, som startsiden viser øverst.
 
@@ -155,6 +155,34 @@ Issuet lukker sig selv, når siden står til {ny}."""
             "link": f"{SIDE}kontingent/", "tekst": tekst}
 
 
+def turpris(nu):
+    """Kampprogrammet for en ny sæson er ude, men priserne i turprisen er fra sidste sæson."""
+    try:
+        side = open(os.path.join(ROOT, "docs", "turpris", "index.html"), encoding="utf-8").read()
+    except OSError:
+        return None
+    m = re.search(r'var\s+PRISER_SAESON\s*=\s*"(\d{4})/(\d{2})"', side)
+    vd_start = startaar(laes_json(ROOT, "docs", "koerselsudligning", "status.json").get("saeson"))
+    if not m or not vd_start:
+        return None
+    side_start = int(m.group(1))
+    ny = lang(vd_start)
+    tekst = f"""Turprisen regner sæsonens udeture for **{ny}** ud af sig selv, men priserne er stadig fra **{lang(side_start)}**. Tjek dem øverst i scriptet i `tjans/docs/turpris/index.html`:
+
+- [ ] `PRISER_SAESON` til `"{ny}"`
+- [ ] **Billeje** (`STANDARD.biler`): leje og Premium pr. dag, km inkluderet, pris pr. ekstra km og rabat – fra den nye sæsons første booking
+- [ ] **Færge** (`faerge`, pr. bil pr. vej) og **hotel** pr. dobbeltweekend (`hotel`)
+- [ ] **Brændstof**: diesel (`pris_l`) og benzin (`SAESON.benzin`)
+- [ ] **Hvem lejer biler til Sjælland?** `SAESON.lejebilHold` og `SAESON.dobbeltHold` (i {lang(side_start)}: D1)
+
+Kampene, dobbeltweekenderne og km følger med af sig selv fra kørselsudligningen. Claude kan lave rettelserne ud fra nye bookinger.
+Issuet lukker sig selv, når priserne står til {ny}."""
+    return {"noegle": "turpris", "auto": True, "aktiv": vd_start > side_start,
+            "titel": f"Turpris: priser for {ny}",
+            "kort": f"kampene er ude, priserne er fra {lang(side_start)}",
+            "link": f"{SIDE}turpris/", "tekst": tekst}
+
+
 def tryout(nu):
     """1. juni: try-out-systemet skal vækkes og gøres klar. Lukkes af dig."""
     if nu < date(nu.year, 6, 1):
@@ -203,7 +231,7 @@ Luk issuet, når det nye ark er i brug."""
             "link": ISSUES, "tekst": tekst}
 
 
-PAAMINDELSER = (tjanseliste, takster, kontingent, tryout, budget)
+PAAMINDELSER = (tjanseliste, takster, kontingent, turpris, tryout, budget)
 
 
 # ----------------------------------------------------------------------------- GitHub-issues

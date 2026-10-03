@@ -109,10 +109,11 @@ footer{margin-top:36px;color:var(--muted);font-size:12.5px;max-width:70ch}
     </a>
 
     <a class="card" href="turpris/">
-      <div class="top"><h2>Turpris</h2><span class="pil">Når du vil</span></div>
-      <p class="linje">Hvad koster en udebanetur – og kan en dobbeltweekend betale sig frem for to
-        enkeltture?</p>
-      <p class="meta" id="tp-meta">Ingen gemte ture i denne browser endnu.</p>
+      <div class="top"><h2>Turpris</h2><span class="pil">Hele sæsonen</span></div>
+      <p class="tal" id="tp-tal" hidden></p>
+      <p class="linje" id="tp-linje">Sæsonens udeture for alle hold – hvad klubben betaler, og hvad
+        spillerne betaler i egne biler – og en regner til den enkelte tur.</p>
+      <p class="meta" id="tp-meta">Åbn siden for at regne sæsonen ud.</p>
       <span class="go">Åbn turprisen →</span>
     </a>
 
@@ -352,13 +353,26 @@ footer{margin-top:36px;color:var(--muted);font-size:12.5px;max-width:70ch}
   } catch (e) { /* intet gemt eller lager slået fra */ }
 
   // ------------------------------------------------------------- turpris
-  // Turprisen gemmer ture i denne browser (samme domæne).
+  // Turprisen regner sæsonen ud, når den åbnes, og gemmer resultatet i denne browser
+  // (samme domæne) – det er det, kortet viser.
   try {
-    var ture = JSON.parse(localStorage.getItem("aav.turpris.ture") || "[]");
-    if (Array.isArray(ture) && ture.length) {
-      var ialt = ture.reduce(function (s, t) { return s + (+t.total || 0); }, 0);
-      el("tp-meta").textContent = flertal(ture.length, "gemt tur", "gemte ture") + " · " +
-        new Intl.NumberFormat("da-DK", { maximumFractionDigits: 0 }).format(ialt) + " kr. i alt";
+    var tp = JSON.parse(localStorage.getItem("aav.turpris.saeson") || "null");
+    var nf = new Intl.NumberFormat("da-DK", { maximumFractionDigits: 0 });
+    if (tp && typeof tp.klub === "number") {
+      var tpTal = el("tp-tal");
+      tpTal.textContent = nf.format(tp.klub) + " kr.";
+      tpTal.hidden = false;
+      el("tp-linje").textContent = "Klubbens udeture" + (tp.saeson ? " " + tp.saeson : "") +
+        (tp.klubTekst ? " – " + tp.klubTekst : (tp.klubHold || []).length ? " – " + tp.klubHold.join(", ") + " i lejebiler" : "") + ".";
+      var regnet = tp.beregnet ? new Date(tp.beregnet) : null;
+      el("tp-meta").textContent = "Spillerne i egne biler: " + nf.format(tp.spillere || 0) + " kr." +
+        (regnet && !isNaN(regnet) ? " · regnet " + ("0" + regnet.getDate()).slice(-2) + "-" +
+          ("0" + (regnet.getMonth() + 1)).slice(-2) + "-" + regnet.getFullYear() : "");
+    } else {
+      var ture = JSON.parse(localStorage.getItem("aav.turpris.ture") || "[]");
+      if (Array.isArray(ture) && ture.length) {
+        el("tp-meta").textContent = flertal(ture.length, "gemt tur", "gemte ture") + " i denne browser.";
+      }
     }
   } catch (e) { /* intet gemt eller lager slået fra */ }
 })();
