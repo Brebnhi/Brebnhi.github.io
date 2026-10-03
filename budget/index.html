@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<title>Aalborg Volley — budget</title>
+<style>
+:root{
+  --bg:#f6f7f9; --card:#fff; --ink:#15181d; --muted:#6b7280; --line:#e3e6ea;
+  --accent:#1f5f8b; --accent-soft:#e8f0f6; --pos:#15803d; --neg:#b91c1c;
+  --bar:#cbd5e1; --bar-fill:#1f5f8b; --warn:#92400e; --warn-bg:#fef3c7;
+  --radius:10px; --shadow:0 1px 2px rgba(0,0,0,.05),0 4px 12px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0f1216; --card:#171b21; --ink:#e7eaee; --muted:#9aa3ad; --line:#272d35;
+  --accent:#7fb3d5; --accent-soft:#1b2a36; --pos:#4ade80; --neg:#f87171;
+  --bar:#2b323b; --bar-fill:#7fb3d5; --warn:#fcd34d; --warn-bg:#2a2112;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 4px 12px rgba(0,0,0,.3);
+}}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-text-size-adjust:100%}
+.wrap{max-width:1040px;margin:0 auto;padding:0 16px 64px}
+h1{font-size:19px;margin:0;font-weight:650;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:13px;margin-top:2px}
+.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.pos{color:var(--pos)} .neg{color:var(--neg)}
+button{font:inherit;color:inherit}
+
+/* ---- lås ---- */
+#gate{min-height:100svh;display:flex;align-items:center;justify-content:center;padding:24px}
+.gatecard{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:28px;width:100%;max-width:380px}
+.gatecard h1{margin-bottom:4px}
+.gatecard p{color:var(--muted);font-size:13px;margin:8px 0 20px}
+.gatecard input[type=password]{width:100%;padding:11px 12px;font:inherit;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+.gatecard input:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+.gatecard button{width:100%;margin-top:12px;padding:11px;border:0;border-radius:8px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer}
+.gatecard button:disabled{opacity:.6;cursor:default}
+.remember{display:flex;gap:8px;align-items:center;margin-top:14px;font-size:13px;color:var(--muted)}
+.err{color:var(--neg);font-size:13px;margin-top:12px;min-height:18px}
+
+/* ---- top ---- */
+header{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line)}
+.hrow{max-width:1040px;margin:0 auto;padding:14px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.spacer{flex:1}
+.ghost{background:transparent;border:1px solid var(--line);border-radius:8px;padding:6px 11px;font-size:13px;cursor:pointer}
+.ghost:hover{border-color:var(--accent)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{background:transparent;border:0;padding:6px 12px;font-size:13px;cursor:pointer;color:var(--muted)}
+.seg button[aria-pressed=true]{background:var(--accent);color:#fff}
+
+/* ---- kpi ---- */
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow)}
+.kpi .lbl{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.kpi .big{font-size:25px;font-weight:650;margin-top:6px;letter-spacing:-.02em}
+.kpi .cmp{font-size:12.5px;color:var(--muted);margin-top:3px}
+.track{height:5px;border-radius:3px;background:var(--bar);margin-top:10px;overflow:hidden}
+.track i{display:block;height:100%;background:var(--bar-fill)}
+
+/* ---- faner ---- */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:4px;overflow-x:auto}
+.tabs button{background:transparent;border:0;border-bottom:2px solid transparent;padding:9px 14px;font-size:14px;cursor:pointer;color:var(--muted);white-space:nowrap}
+.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+
+/* ---- træ ---- */
+.group{margin-top:22px}
+.group>h2{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 7px;font-weight:650}
+.node{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:6px;box-shadow:var(--shadow);overflow:hidden}
+.node>.row{display:grid;grid-template-columns:1fr 112px 112px 104px;gap:10px;align-items:center;padding:11px 14px;cursor:pointer;background:none;border:0;width:100%;text-align:left}
+.node>.row:hover{background:var(--accent-soft)}
+.node>.row .name{display:flex;align-items:center;gap:8px;min-width:0;font-weight:560}
+.caret{flex:none;width:9px;height:9px;border-right:1.8px solid var(--muted);border-bottom:1.8px solid var(--muted);transform:rotate(-45deg);transition:transform .15s;margin-right:1px}
+.node.open>.row .caret{transform:rotate(45deg)}
+.node .name span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kids{display:none;border-top:1px solid var(--line);background:color-mix(in srgb,var(--card) 92%,var(--ink) 8%)}
+.node.open>.kids{display:block}
+.sub .row{grid-template-columns:1fr 112px 112px 104px;padding:9px 14px 9px 30px;font-weight:450}
+.sub2 .row{padding-left:48px}
+.colhead{display:grid;grid-template-columns:1fr 112px 112px 104px;gap:10px;padding:0 14px 6px;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:650}
+.colhead span:not(:first-child){text-align:right}
+.node .v{text-align:right;font-variant-numeric:tabular-nums;font-size:13.5px}
+
+/* ---- posteringer ---- */
+.post{display:grid;grid-template-columns:86px 1fr 112px;gap:10px;padding:7px 14px 7px 48px;font-size:13px;border-top:1px solid var(--line)}
+.sub2 .post{padding-left:64px}
+.post .d{color:var(--muted);font-variant-numeric:tabular-nums}
+.post .t{min-width:0}
+.post .t b{font-weight:560}
+.post .t em{font-style:normal;color:var(--muted)}
+.post .t .tag{display:inline-block;font-size:11px;background:var(--accent-soft);color:var(--accent);border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:1px}
+.post .a{text-align:right;font-variant-numeric:tabular-nums}
+.empty{padding:12px 14px 14px 48px;color:var(--muted);font-size:13px}
+.note{background:var(--warn-bg);color:var(--warn);border-radius:8px;padding:10px 12px;font-size:13px;margin:14px 0}
+footer{color:var(--muted);font-size:12.5px;margin-top:34px;line-height:1.7}
+@media (max-width:720px){
+  .kpis{grid-template-columns:1fr}
+  .node>.row,.colhead{grid-template-columns:1fr 96px 96px;}
+  .node>.row .v3,.colhead span.v3{display:none}
+  .post{grid-template-columns:72px 1fr;}
+  .post .a{grid-column:2;text-align:left;color:var(--muted)}
+  .sub .row{padding-left:24px}.sub2 .row{padding-left:36px}
+  .post{padding-left:24px}.sub2 .post{padding-left:36px}
+}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <form class="gatecard" id="gateform">
+    <h1>Aalborg Volley</h1>
+    <p>Budget og regnskab 26/27. Siden er låst — indtast klubbens kode for at se tallene.</p>
+    <input type="password" id="pass" autocomplete="current-password" placeholder="Kode" required>
+    <label class="remember"><input type="checkbox" id="remember"> Husk koden på denne enhed</label>
+    <button type="submit" id="gatebtn">Lås op</button>
+    <div class="err" id="gateerr"></div>
+  </form>
+</div>
+
+<div id="app" style="display:none">
+  <header>
+    <div class="hrow">
+      <div>
+        <h1>Aalborg Volley — budget 26/27</h1>
+        <div class="sub" id="stamp"></div>
+      </div>
+      <div class="spacer"></div>
+      <div class="seg" id="season">
+        <button data-s="Ja" aria-pressed="true">Denne sæson</button>
+        <button data-s="Alle" aria-pressed="false">Alle</button>
+      </div>
+      <button class="ghost" id="reload">Opdatér</button>
+      <button class="ghost" id="lock">Lås</button>
+    </div>
+  </header>
+  <div class="wrap">
+    <div class="kpis" id="kpis"></div>
+    <div class="tabs">
+      <button data-t="budget" aria-selected="true">Budgetposter</button>
+      <button data-t="hold" aria-selected="false">Hold</button>
+      <button data-t="fester" aria-selected="false">Fester</button>
+    </div>
+    <div id="view"></div>
+    <footer>
+      Tallene hentes direkte fra regnearket <b>Overblik</b> på Google Drev, hver gang siden åbnes — ret en postering i arket, og den står her med det samme.<br>
+      Klik en linje ud for at se dens underposter, og en underpost for at se de enkelte posteringer. Grå linjer mærket <i>budget</i> er budgetposterne; resten er rigtige bevægelser på kontoen.
+    </footer>
+  </div>
+</div>
+
+<script>
+/* ---------- små hjælpere ---------- */
+const $ = s => document.querySelector(s);
+const el = (t, c, h) => { const n = document.createElement(t); if (c) n.className = c; if (h !== undefined) n.innerHTML = h; return n; };
+const norm = s => (s == null ? '' : String(s)).trim();
+const low = s => norm(s).toLowerCase();
+
+function fmt(n, dec) {
+  if (n == null || isNaN(n)) return '–';
+  const d = dec === undefined ? 2 : dec;
+  if (Math.abs(n) < 0.005) n = 0;
+  return n.toLocaleString('da-DK', { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+const fmt0 = n => fmt(n, 0);
+function rest(n, isUdgift) {
+  const s = fmt0(n);
+  return (isUdgift && n < -0.005) ? '<span class="neg">' + s + '</span>' : '<span>' + s + '</span>';
+}
+function signed(n) {
+  const s = fmt0(n);
+  return '<span class="' + (n < -0.005 ? 'neg' : n > 0.005 ? 'pos' : '') + '">' + s + '</span>';
+}
+
+/* tolerant talparser: "1.234,56", "1234.56", "-1 234,50", "(500)" */
+function num(raw) {
+  let s = norm(raw);
+  if (!s) return 0;
+  let neg = false;
+  if (/^\(.*\)$/.test(s)) { neg = true; s = s.slice(1, -1); }
+  s = s.replace(/\s| |kr\.?|DKK/gi, '');
+  if (s.startsWith('-')) { neg = true; s = s.slice(1); }
+  const hasC = s.includes(','), hasD = s.includes('.');
+  if (hasC && hasD) {
+    s = s.lastIndexOf(',') > s.lastIndexOf('.') ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
+  } else if (hasC) {
+    s = /,\d{3}$/.test(s) && !/^\d{1,3},\d{3}$/.test(s) ? s.replace(/,/g, '') : s.replace(',', '.');
+  } else if (hasD) {
+    const p = s.split('.');
+    if (p.length > 2 || (p.length === 2 && p[1].length === 3 && p[0].length <= 3)) s = p.join('');
+  }
+  const v = parseFloat(s);
+  return isNaN(v) ? 0 : (neg ? -v : v);
+}
+
+function parseDate(raw) {
+  const s = norm(raw);
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+  m = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);
+  if (m) { let y = +m[3]; if (y < 100) y += 2000; return new Date(y, +m[2] - 1, +m[1]); }
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+const dstr = d => d ? String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getFullYear()).slice(2) : '';
+
+/* ---------- CSV ---------- */
+function parseCSV(text) {
+  const rows = []; let row = [], f = '', q = false;
+  text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; }
+      else f += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { row.push(f); f = ''; }
+    else if (c === '\n') { row.push(f); rows.push(row); row = []; f = ''; }
+    else f += c;
+  }
+  if (f.length || row.length) { row.push(f); rows.push(row); }
+  return rows;
+}
+
+/* ---------- pænt navn på en postering ---------- */
+function cleanText(t) {
+  let s = norm(t);
+  s = s.replace(/\s*-?\s*SE\s+MEDD\.?\s*$/i, '');
+  s = s.replace(/^MCD\s+\d+\s*/i, '').replace(/^LS\s+\d+\s*/i, '');
+  s = s.replace(/^\d{6,}\s*/, '').replace(/\s+\d{6,}\s*$/, '');
+  s = s.replace(/\s{2,}/g, ' ').trim();
+  if (/^[\d\s.,-]*$/.test(s)) return '';
+  return s;
+}
+function postName(r) {
+  const ref = norm(r.ref), ct = cleanText(r.tekst);
+  if (ref && ct && low(ct) !== low(ref)) return '<b>' + esc(ref) + '</b> <em>· ' + esc(ct) + '</em>';
+  if (ref) return '<b>' + esc(ref) + '</b>';
+  return '<b>' + esc(ct || r.tekst || 'Postering') + '</b>';
+}
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+/* ---------- global state ---------- */
+const S = { rows: [], budget: [], lines: [], season: 'Ja', tab: 'budget', fetched: null, open: new Set() };
+
+/* ---------- indlæsning ---------- */
+function csvUrl(cfg, key) {
+  if (cfg.mode === 'pub') return cfg.urls[key];
+  const name = cfg.sheets[key];
+  return 'https://docs.google.com/spreadsheets/d/' + cfg.id + '/gviz/tq?tqx=out:csv&sheet=' + encodeURIComponent(name);
+}
+async function grab(url) {
+  const r = await fetch(url + (url.includes('?') ? '&' : '?') + 'cb=' + Date.now(), { credentials: 'omit' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return parseCSV(await r.text());
+}
+
+function readKonto(grid, konto) {
+  let h = grid.findIndex(r => low(r[0]) === 'dato');
+  if (h < 0) h = 2;
+  const out = [];
+  for (let i = h + 1; i < grid.length; i++) {
+    const r = grid[i]; if (!r) continue;
+    const d = parseDate(r[0]); if (!d) continue;
+    const andelRaw = norm(r[12]);
+    out.push({
+      konto, dato: d, tekst: norm(r[1]), beloeb: num(r[2]), ref: norm(r[3]),
+      over: norm(r[4]), under: norm(r[5]), u2: norm(r[6]), afd: norm(r[7]),
+      hold: norm(r[8]), saeson: norm(r[9]), holdA: norm(r[10]), holdB: norm(r[11]),
+      andel: andelRaw === '' ? 1 : num(andelRaw)
+    });
+  }
+  return out;
+}
+
+function readBudget(grid) {
+  let h = grid.findIndex(r => low(r[0]) === 'overkategori' && low(r[6]) === 'budgetlinje');
+  if (h < 0) h = 3;
+  const lines = [], posts = [];
+  for (let i = h + 1; i < grid.length; i++) {
+    const r = grid[i]; if (!r) break;
+    if (!norm(r[0]) || !norm(r[1])) break;
+    lines.push({ over: norm(r[0]), line: norm(r[1]), type: low(r[0]) === 'nettoomsætning' ? 'Indtægt' : 'Udgift' });
+  }
+  for (let i = h + 1; i < grid.length; i++) {
+    const r = grid[i]; if (!r) continue;
+    const g = norm(r[6]); if (!g) { if (low(norm(r[7])) === 'i alt') break; else continue; }
+    if (low(g) === 'kontingentbudget' || low(g) === 'hold') break;
+    posts.push({ line: g, post: norm(r[7]), amt: num(r[8]), hold: norm(r[9]), type: norm(r[10]), note: norm(r[11]) });
+  }
+  return { lines, posts };
+}
+
+/* ---------- beregning ---------- */
+const inSeason = r => S.season === 'Alle' || low(r.saeson) === 'ja';
+const activeRows = () => S.rows.filter(inSeason);
+const lineKey = s => low(s);
+
+function weight(r, team) {
+  const a = (r.andel === '' || isNaN(r.andel)) ? 1 : r.andel;
+  let w = 0;
+  if (r.holdA && r.holdA === team) w += a;
+  if (r.holdB && r.holdB === team) w += (1 - a);
+  return w;
+}
+
+function model() {
+  const rows = activeRows();
+  const lineSet = new Set(S.lines.map(l => lineKey(l.line)));
+  const byLine = new Map();
+  const outside = [];
+  rows.forEach(r => {
+    const k = lineKey(r.under);
+    if (lineSet.has(k)) { if (!byLine.has(k)) byLine.set(k, []); byLine.get(k).push(r); }
+    else outside.push(r);
+  });
+  const budgetByLine = new Map();
+  S.budget.forEach(p => { const k = lineKey(p.line); if (!budgetByLine.has(k)) budgetByLine.set(k, []); budgetByLine.get(k).push(p); });
+
+  const lines = S.lines.map(l => {
+    const k = lineKey(l.line);
+    const rs = byLine.get(k) || [], bs = budgetByLine.get(k) || [];
+    const sum = rs.reduce((a, r) => a + r.beloeb, 0);
+    return {
+      ...l, rows: rs, posts: bs,
+      budget: bs.reduce((a, b) => a + b.amt, 0),
+      real: l.type === 'Udgift' ? -sum : sum
+    };
+  });
+  return { lines, outside };
+}
+
+/* gruppér posteringer og budgetposter i underposter */
+function subgroups(line) {
+  const g = new Map();
+  const get = (key, label) => { if (!g.has(key)) g.set(key, { key, label, rows: [], posts: [], budget: 0, real: 0 }); return g.get(key); };
+  line.rows.forEach(r => {
+    const u2 = norm(r.u2);
+    const key = u2 ? 'u2:' + low(u2) : 'hold:' + low(r.holdA || 'uden hold');
+    const label = u2 || (r.holdA || 'Uden hold');
+    get(key, label).rows.push(r);
+  });
+  const u2keys = [...g.keys()].filter(k => k.startsWith('u2:')).map(k => ({ k, t: g.get(k).label }));
+  const holdkeys = [...g.keys()].filter(k => k.startsWith('hold:')).map(k => ({ k, t: g.get(k).label }));
+  line.posts.forEach(p => {
+    const pl = low(p.post);
+    let hit = u2keys.find(x => pl.startsWith(low(x.t)));
+    if (!hit && p.hold) hit = holdkeys.find(x => low(x.t) === low(p.hold) && pl.includes(low(p.hold)));
+    const key = hit ? hit.k : 'post:' + pl;
+    get(key, hit ? g.get(hit.k).label : (p.post || '(uden navn)')).posts.push(p);
+  });
+  const arr = [...g.values()];
+  arr.forEach(s => {
+    s.budget = s.posts.reduce((a, b) => a + b.amt, 0);
+    const sum = s.rows.reduce((a, r) => a + r.beloeb, 0);
+    s.real = line.type === 'Udgift' ? -sum : sum;
+    s.rows.sort((a, b) => a.dato - b.dato);
+  });
+  arr.sort((a, b) => Math.max(Math.abs(b.budget), Math.abs(b.real)) - Math.max(Math.abs(a.budget), Math.abs(a.real)));
+  return arr;
+}
+
+/* ---------- hold ---------- */
+const TEAMGROUPS = [
+  ['Senior', ['Herre 1', 'Herre 2', 'Herre 3', 'Herre 4', 'Herre 5', 'Dame 1', 'Dame 2', 'Dame 3', 'Dame 4', 'Dame 5']],
+  ['Ungdom', ['DU 15', 'DU 17', 'DU 20', 'HU15/17', 'HU 20', 'Ungdom fælles', 'Kids']],
+  ['Mix', ['Mix']],
+  ['Klub', ['Klub']]
+];
+function teamModel(team) {
+  const rows = activeRows().map(r => ({ r, w: weight(r, team) })).filter(x => x.w > 0.0001);
+  const posts = S.budget.filter(p => p.hold === team);
+  const bIn = posts.filter(p => low(p.type) === 'indtægt').reduce((a, b) => a + b.amt, 0);
+  const bUd = posts.filter(p => low(p.type) === 'udgift').reduce((a, b) => a + b.amt, 0);
+  const rIn = rows.filter(x => low(x.r.over) === 'nettoomsætning').reduce((a, x) => a + x.w * x.r.beloeb, 0);
+  const rUd = -rows.filter(x => low(x.r.over) !== 'nettoomsætning').reduce((a, x) => a + x.w * x.r.beloeb, 0);
+  const byLine = new Map();
+  const get = k => { if (!byLine.has(k.toLowerCase())) byLine.set(k.toLowerCase(), { label: k, rows: [], posts: [], budget: 0, real: 0, type: 'Udgift' }); return byLine.get(k.toLowerCase()); };
+  const known = new Map(S.lines.map(l => [lineKey(l.line), l]));
+  rows.forEach(x => {
+    const l = known.get(lineKey(x.r.under));
+    const g = get(l ? l.line : (x.r.under || 'Uden budgetlinje'));
+    if (l) g.type = l.type;
+    g.rows.push(x);
+  });
+  posts.forEach(p => { const l = known.get(lineKey(p.line)); const g = get(l ? l.line : p.line); if (l) g.type = l.type; g.posts.push(p); });
+  const groups = [...byLine.values()];
+  groups.forEach(g => {
+    g.budget = g.posts.reduce((a, b) => a + b.amt, 0);
+    const sum = g.rows.reduce((a, x) => a + x.w * x.r.beloeb, 0);
+    g.real = g.type === 'Udgift' ? -sum : sum;
+    g.rows.sort((a, b) => a.r.dato - b.r.dato);
+  });
+  groups.sort((a, b) => Math.max(Math.abs(b.budget), Math.abs(b.real)) - Math.max(Math.abs(a.budget), Math.abs(a.real)));
+  return { team, bIn, bUd, rIn, rUd, bNet: bIn - bUd, rNet: rIn - rUd, groups, n: rows.length };
+}
+
+/* ---------- fester ---------- */
+const FESTER = ['Opstartsfest', 'Julefrokost', 'Afslutningsfest', 'Juleturnering', 'Frivilligarrangement', 'NM-MIX', 'Bambusa'];
+function festModel(name) {
+  const p = low(name);
+  const rows = activeRows().filter(r => low(r.u2).startsWith(p)).sort((a, b) => a.dato - b.dato);
+  const posts = S.budget.filter(b => low(b.post).startsWith(p));
+  const bIn = posts.filter(x => low(x.type) === 'indtægt').reduce((a, b) => a + b.amt, 0);
+  const bUd = posts.filter(x => low(x.type) === 'udgift').reduce((a, b) => a + b.amt, 0);
+  const rIn = rows.filter(r => r.beloeb > 0).reduce((a, r) => a + r.beloeb, 0);
+  const rUd = -rows.filter(r => r.beloeb < 0).reduce((a, r) => a + r.beloeb, 0);
+  return { name, rows, posts, bIn, bUd, bNet: bIn - bUd, rIn, rUd, rNet: rIn - rUd };
+}
+
+/* ---------- render-byggeklodser ---------- */
+function node(path, label, v1, v2, v3, buildKids, extra) {
+  const n = el('div', 'node' + (extra || '') + (S.open.has(path) ? ' open' : ''));
+  const btn = el('button', 'row');
+  btn.innerHTML = '<span class="name"><i class="caret"></i><span>' + esc(label) + '</span></span>' +
+    '<span class="v">' + v1 + '</span><span class="v">' + v2 + '</span><span class="v v3">' + v3 + '</span>';
+  const kids = el('div', 'kids');
+  let built = false;
+  const open = () => { if (!built) { buildKids(kids); built = true; } };
+  if (S.open.has(path)) open();
+  btn.onclick = () => {
+    const on = n.classList.toggle('open');
+    if (on) { S.open.add(path); open(); } else S.open.delete(path);
+  };
+  n.append(btn, kids);
+  return n;
+}
+function postingRow(r, w) {
+  const amt = (w === undefined ? 1 : w) * r.beloeb;
+  const tag = r.holdA ? '<span class="tag">' + esc(r.holdA + (r.holdB ? ' / ' + r.holdB : '')) + '</span>' : '';
+  const part = (w !== undefined && w > 0 && w < 0.999) ? ' <em>(' + Math.round(w * 100) + ' % af ' + fmt(r.beloeb) + ')</em>' : '';
+  const d = el('div', 'post');
+  d.innerHTML = '<span class="d">' + dstr(r.dato) + '</span><span class="t">' + postName(r) + tag + part +
+    '</span><span class="a ' + (amt < 0 ? 'neg' : 'pos') + '">' + fmt(amt) + '</span>';
+  return d;
+}
+function colhead(a, b, c) {
+  return el('div', 'colhead', '<span></span><span>' + a + '</span><span>' + b + '</span><span class="v3">' + c + '</span>');
+}
+
+/* ---------- fane: budget ---------- */
+function renderBudget(host) {
+  const m = model();
+  const mk = (title, lines) => {
+    const g = el('div', 'group'); g.append(el('h2', null, title), colhead('Budget', 'Realiseret', 'Rest'));
+    lines.forEach(l => {
+        g.append(node('b|' + l.line, l.line, fmt0(l.budget), fmt0(l.real), rest(l.budget - l.real, l.type === 'Udgift'), kids => {
+        const subs = subgroups(l);
+        if (!subs.length) { kids.append(el('div', 'empty', 'Ingen poster endnu.')); return; }
+        subs.forEach(s => {
+          kids.append(node('b|' + l.line + '|' + s.key, s.label, fmt0(s.budget), fmt0(s.real), rest(s.budget - s.real, l.type === 'Udgift'), k2 => {
+            s.posts.forEach(p => {
+              const d = el('div', 'post');
+              d.innerHTML = '<span class="d">budget</span><span class="t"><b>' + esc(p.post) + '</b>' +
+                (p.hold ? '<span class="tag">' + esc(p.hold) + '</span>' : '') +
+                (p.note ? ' <em>· ' + esc(p.note) + '</em>' : '') + '</span><span class="a">' + fmt(p.amt) + '</span>';
+              k2.append(d);
+            });
+            if (!s.rows.length) k2.append(el('div', 'empty', 'Ingen posteringer endnu.'));
+            s.rows.forEach(r => k2.append(postingRow(r)));
+          }, ' sub2'));
+        });
+      }, ' sub'));
+    });
+    host.append(g);
+  };
+  mk('Indtægter', m.lines.filter(l => l.type === 'Indtægt'));
+  mk('Udgifter', m.lines.filter(l => l.type === 'Udgift'));
+
+  if (m.outside.length) {
+    const g = el('div', 'group'); g.append(el('h2', null, 'Uden for budgettet'), colhead('Budget', 'Bevægelse', ''));
+    const by = new Map();
+    m.outside.forEach(r => { const k = (r.under || 'Ukategoriseret') + (r.u2 ? ' · ' + r.u2 : ''); if (!by.has(k)) by.set(k, []); by.get(k).push(r); });
+    [...by.entries()].sort((a, b) => a[0].localeCompare(b[0], 'da')).forEach(([k, rs]) => {
+      const sum = rs.reduce((a, r) => a + r.beloeb, 0);
+      g.append(node('o|' + k, k, '–', signed(sum), '', kids => {
+        rs.sort((a, b) => a.dato - b.dato).forEach(r => kids.append(postingRow(r)));
+      }, ' sub'));
+    });
+    host.append(g);
+  }
+}
+
+/* ---------- fane: hold ---------- */
+function renderHold(host) {
+  const seen = new Set(TEAMGROUPS.flatMap(g => g[1]));
+  const extra = [...new Set(S.rows.flatMap(r => [r.holdA, r.holdB]).concat(S.budget.map(b => b.hold)).filter(t => t && !seen.has(t)))];
+  const groups = extra.length ? TEAMGROUPS.concat([['Andre', extra]]) : TEAMGROUPS;
+  groups.forEach(([title, teams]) => {
+    const g = el('div', 'group'); g.append(el('h2', null, title), colhead('Budget netto', 'Realiseret', 'Forskel'));
+    teams.forEach(t => {
+      const m = teamModel(t);
+      g.append(node('h|' + t, t, signed(m.bNet), signed(m.rNet), signed(m.rNet - m.bNet), kids => {
+        const head = el('div', 'post');
+        head.innerHTML = '<span class="d"></span><span class="t"><em>Budget: ' + fmt0(m.bIn) + ' ind, ' + fmt0(m.bUd) +
+          ' ud · Realiseret: ' + fmt0(m.rIn) + ' ind, ' + fmt0(m.rUd) + ' ud · ' + m.n + ' posteringer</em></span><span class="a"></span>';
+        kids.append(head);
+        if (!m.groups.length) { kids.append(el('div', 'empty', 'Ingen budget og ingen posteringer.')); return; }
+        m.groups.forEach(s => {
+          kids.append(node('h|' + t + '|' + s.label, s.label, fmt0(s.budget), fmt0(s.real), rest(s.budget - s.real, s.type === 'Udgift'), k2 => {
+            s.posts.forEach(p => {
+              const d = el('div', 'post');
+              d.innerHTML = '<span class="d">budget</span><span class="t"><b>' + esc(p.post) + '</b>' +
+                (p.note ? ' <em>· ' + esc(p.note) + '</em>' : '') + '</span><span class="a">' + fmt(p.amt) + '</span>';
+              k2.append(d);
+            });
+            if (!s.rows.length) k2.append(el('div', 'empty', 'Ingen posteringer endnu.'));
+            s.rows.forEach(x => k2.append(postingRow(x.r, x.w)));
+          }, ' sub2'));
+        });
+      }, ' sub'));
+    });
+    host.append(g);
+  });
+}
+
+/* ---------- fane: fester ---------- */
+function renderFester(host) {
+  const g = el('div', 'group'); g.append(el('h2', null, 'Fester og klubaktiviteter'), colhead('Budget netto', 'Realiseret', 'Forskel'));
+  FESTER.forEach(f => {
+    const m = festModel(f);
+    g.append(node('f|' + f, f, signed(m.bNet), signed(m.rNet), signed(m.rNet - m.bNet), kids => {
+      const head = el('div', 'post');
+      head.innerHTML = '<span class="d"></span><span class="t"><em>Budget: ' + fmt0(m.bIn) + ' ind, ' + fmt0(m.bUd) +
+        ' ud · Realiseret: ' + fmt0(m.rIn) + ' ind, ' + fmt0(m.rUd) + ' ud</em></span><span class="a"></span>';
+      kids.append(head);
+      m.posts.forEach(p => {
+        const d = el('div', 'post');
+        d.innerHTML = '<span class="d">budget</span><span class="t"><b>' + esc(p.post) + '</b><span class="tag">' + esc(p.type) + '</span>' +
+          (p.note ? ' <em>· ' + esc(p.note) + '</em>' : '') + '</span><span class="a">' + fmt(p.amt) + '</span>';
+        kids.append(d);
+      });
+      if (!m.rows.length) kids.append(el('div', 'empty', 'Ingen posteringer endnu.'));
+      m.rows.forEach(r => kids.append(postingRow(r)));
+    }, ' sub'));
+  });
+  host.append(g);
+  host.append(el('div', 'note', 'Ungdomsstævnerne står ikke her. Deltagerbetaling og tilmelding til dem ligger på det enkelte ungdomshold under fanen Hold.'));
+}
+
+/* ---------- top ---------- */
+function renderTop() {
+  const m = model();
+  const bIn = m.lines.filter(l => l.type === 'Indtægt').reduce((a, l) => a + l.budget, 0);
+  const bUd = m.lines.filter(l => l.type === 'Udgift').reduce((a, l) => a + l.budget, 0);
+  const rIn = m.lines.filter(l => l.type === 'Indtægt').reduce((a, l) => a + l.real, 0);
+  const rUd = m.lines.filter(l => l.type === 'Udgift').reduce((a, l) => a + l.real, 0);
+  const pct = (a, b) => b === 0 ? 0 : Math.max(0, Math.min(100, a / b * 100));
+  const kpi = (lbl, big, cmp, p, cls) =>
+    '<div class="kpi"><div class="lbl">' + lbl + '</div><div class="big ' + (cls || '') + '">' + big +
+    '</div><div class="cmp">' + cmp + '</div><div class="track"><i style="width:' + p + '%"></i></div></div>';
+  $('#kpis').innerHTML =
+    kpi('Indtægter', fmt0(rIn), 'af ' + fmt0(bIn) + ' budgetteret', pct(rIn, bIn)) +
+    kpi('Udgifter', fmt0(rUd), 'af ' + fmt0(bUd) + ' budgetteret', pct(rUd, bUd)) +
+    kpi('Resultat', fmt0(rIn - rUd), 'budget ' + fmt0(bIn - bUd), pct(Math.abs(rIn - rUd), Math.abs(bIn - bUd) || 1),
+      (rIn - rUd) < 0 ? 'neg' : 'pos');
+}
+
+function render() {
+  renderTop();
+  document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.t === S.tab));
+  const host = $('#view'); host.innerHTML = '';
+  if (S.tab === 'budget') renderBudget(host);
+  else if (S.tab === 'hold') renderHold(host);
+  else renderFester(host);
+  $('#stamp').textContent = S.fetched ? 'Hentet ' + S.fetched.toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' }) : '';
+}
+
+/* ---------- kryptering ---------- */
+const b64d = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function decryptConfig(blob, pass) {
+  const enc = new TextEncoder();
+  const base = await crypto.subtle.importKey('raw', enc.encode(pass), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: b64d(blob.salt), iterations: blob.it || 250000, hash: 'SHA-256' },
+    base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64d(blob.iv) }, key, b64d(blob.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+/* ---------- opstart ---------- */
+async function loadAll(cfg) {
+  const [k1, k2, bd] = await Promise.all([grab(csvUrl(cfg, 'k1')), grab(csvUrl(cfg, 'k2')), grab(csvUrl(cfg, 'budget'))]);
+  S.rows = readKonto(k1, 'Konto 1').concat(readKonto(k2, 'Konto 2'));
+  const b = readBudget(bd);
+  S.lines = b.lines; S.budget = b.posts; S.fetched = new Date();
+  if (!S.rows.length || !S.lines.length) throw new Error('Arket svarede, men der var ingen rækker at læse.');
+}
+
+async function unlock(pass, remember) {
+  const res = await fetch('config.enc.json?cb=' + Date.now());
+  if (!res.ok) throw new Error('Filen config.enc.json ligger ikke ved siden af index.html.');
+  const blob = await res.json();
+  let cfg;
+  try { cfg = await decryptConfig(blob, pass); } catch (e) { throw new Error('__PASS__'); }
+  await loadAll(cfg);
+  window.__cfg = cfg;
+  sessionStorage.setItem('aav_pass', pass);
+  try { if (remember) localStorage.setItem('aav_pass', pass); } catch (e) { }
+  $('#gate').style.display = 'none';
+  $('#app').style.display = '';
+  render();
+}
+
+function boot() {
+  document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { S.tab = b.dataset.t; render(); });
+  document.querySelectorAll('#season button').forEach(b => b.onclick = () => {
+    S.season = b.dataset.s;
+    document.querySelectorAll('#season button').forEach(x => x.setAttribute('aria-pressed', x.dataset.s === S.season));
+    render();
+  });
+  $('#reload').onclick = async () => {
+    $('#reload').disabled = true; $('#reload').textContent = 'Henter…';
+    try { await loadAll(window.__cfg); render(); } catch (e) { alert('Kunne ikke hente: ' + e.message); }
+    $('#reload').disabled = false; $('#reload').textContent = 'Opdatér';
+  };
+  $('#lock').onclick = () => { sessionStorage.removeItem('aav_pass'); try { localStorage.removeItem('aav_pass'); } catch (e) { } location.reload(); };
+
+  const form = $('#gateform');
+  form.onsubmit = async e => {
+    e.preventDefault();
+    const btn = $('#gatebtn'); btn.disabled = true; btn.textContent = 'Låser op…'; $('#gateerr').textContent = '';
+    try { await unlock($('#pass').value, $('#remember').checked); }
+    catch (err) {
+      const m = err.message || '';
+      const msg = m === '__PASS__' || err.name === 'OperationError' ? 'Forkert kode.' :
+        /Failed to fetch|NetworkError|Load failed/i.test(m) ? 'Kunne ikke nå regnearket. Er de tre faner udgivet til nettet?' :
+        (m || 'Noget gik galt.');
+      $('#gateerr').textContent = msg;
+    }
+    btn.disabled = false; btn.textContent = 'Lås op';
+  };
+  const saved = (() => { try { return sessionStorage.getItem('aav_pass') || localStorage.getItem('aav_pass'); } catch (e) { return null; } })();
+  if (saved) { $('#pass').value = saved; form.requestSubmit(); }
+}
+document.addEventListener('DOMContentLoaded', boot);
+</script>
+</body>
+</html>
