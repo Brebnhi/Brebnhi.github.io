@@ -17,11 +17,15 @@ fører videre til det enkelte projekt:
 
 Robotten i `.github/workflows/main.yml` kører hver nat kl. 04.20 (vintertid) / 05.20
 (sommertid), ved hver ændring i repoet og når du trykker Run workflow under Actions.
+Ændrer du tjanselisten i Google-arket, starter `.github/workflows/tjek-arket.yml` den
+inden for ca. 10 minutter – den kigger efter ændringer i arket hvert 10. minut fra morgen
+til midnat.
 
 **Upload fra telefonen:** læg filerne løst i roden af repoet (Add file → Upload files).
 Robotten kender hver fil på indholdet og lægger den på plads – også `build (1).py` og
 lignende. En helt ny fil kan have en linje `sti: mappe/fil` øverst. Kun
-`.github/workflows/main.yml` kan robotten ikke flytte – den retter du direkte på GitHub.
+filerne i `.github/workflows/` kan robotten ikke flytte – dem uploader eller retter du
+direkte i den mappe på GitHub.
 
 ## Repoets navn og den gamle adresse
 
