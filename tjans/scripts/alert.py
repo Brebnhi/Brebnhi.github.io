@@ -22,6 +22,7 @@ def main():
     kilde = st.get("tjanskilde") or ""
     arkfejl = kilde.split(": ", 1)[-1] if "Google-arket kunne ikke læses" in kilde else ""
     konflikter = st.get("konflikter") or []
+    genbrugt = hs.get("genbrugt") or []
 
     gh("label", "create", LABEL, "--color", "B60205",
        "--description", "Huller i tjansedækningen")
@@ -30,7 +31,7 @@ def main():
                 "--json", "number,body", "--limit", "1")
     aabne = json.loads(fundet.stdout or "[]")
 
-    if not huller and not forsvundne and not slettet and not arkfejl and not konflikter:
+    if not huller and not forsvundne and not slettet and not arkfejl and not konflikter and not genbrugt:
         if aabne:
             nr = str(aabne[0]["number"])
             gh("issue", "comment", nr, "--body",
@@ -80,8 +81,20 @@ def main():
         linjer += [f"## {len(slettet)} tjans(er) er slettet i Holdsport", "",
                    "| Kampnr. | Mødetid | Aktivitet | Tjans | Hold i Holdsport |",
                    "|---|---|---|---|---|"]
-        linjer += [f"| {m['kampnr']} | {m['start']} | {m['navn']} | {m['tjans']} "
-                   f"| {m['holdsport']} |" for m in slettet]
+        linjer += [f"| {m['kampnr']} | {m['start']} | {m['navn']}"
+                   + (" (var i Holdsport før)" if m.get("foer_fundet") else "")
+                   + f" | {m['tjans']} | {m['holdsport']} |" for m in slettet]
+        linjer.append("")
+    if genbrugt:
+        linjer += [f"## Holdsport har genbrugt {len(genbrugt)} tjans(er)", "",
+                   "Holdsport har lavet en eksisterende tjans om til en ny, da den hentede "
+                   "kalenderen. Tilmeldingerne fulgte med, så de står nu på den forkerte dag. "
+                   "Tjek, hvem der er tilmeldt, og om den gamle tjans er kommet igen.", "",
+                   "| Hold | Var tjansen | Er nu tjansen | Aktivitet i Holdsport |",
+                   "|---|---|---|---|"]
+        linjer += [f"| {g['tjans']} | {g['foer_start']} (kamp {g['foer'].split('-')[0]}) | "
+                   f"{g['nu_start']} (kamp {g['nu'].split('-')[0]}) | {g['aktivitet']} |"
+                   for g in genbrugt]
         linjer.append("")
     linjer.append("Ret tjanselisten eller genopret aktiviteten i Holdsport, "
                   "så lukker issuet sig selv ved næste kørsel.")

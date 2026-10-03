@@ -511,7 +511,7 @@ def main():
 
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import holdsport
-    hs = venter_paa_holdsport(holdsport.koer(forventede, ROOT), forventede)
+    hs = holdsport_historik(holdsport.koer(forventede, ROOT), forventede)
 
     huller, forsvundne = find_huller(rows, kampe)
     mm = mellemmand()
@@ -595,53 +595,115 @@ def gammel_adresse(feeds_dir):
 KAMPTID = timedelta(hours=2)            # så længe regnes en kamp at vare
 
 # Holdsport henter kalenderne én gang i døgnet, så en tjans, der lige er kommet i kalenderen,
-# mangler i Holdsport et stykke tid uden at være slettet. Hvornår hver tjans dukkede op,
-# huskes i docs/tjans_set.json, som hentes fra siden ved næste kørsel.
-SET_FIL = "tjans_set.json"
-VENTETID = timedelta(hours=36)
+# mangler i Holdsport et stykke tid uden at være slettet. Robotten husker derfor for hver
+# tjans, hvornår den kom i kalenderen, hvornår den sidst blev fundet i Holdsport, og i hvilken
+# Holdsport-aktivitet. Listen gemmes i docs/tjans_holdsport.json og hentes fra siden ved
+# næste kørsel.
+HISTORIK_FIL = "tjans_holdsport.json"
+VENTETID = timedelta(hours=36)          # så længe får en ny tjans til at komme i Holdsport
+GENBRUG_VISES = timedelta(days=3)       # så længe står en advarsel om genbrug på siden
+
+
+def _alder(iso, nu):
+    """Hvor længe siden et gemt tidspunkt er – uendeligt længe, hvis det ikke kan læses."""
+    try:
+        return nu - datetime.fromisoformat(iso)
+    except (TypeError, ValueError):
+        return timedelta.max
 
 
 def tjans_noegle(t):
-    """'150792-H3' – eller dato-hold for stævner. Virker på både forventede og manglende."""
+    """'150792-H3' – eller dato-hold for stævner. Virker på forventede og manglende tjanser
+    og på tjanserne i status.json."""
     return f"{t['kampnr'] or t['start'][:10]}-{t['tjans']}"
 
 
-def nye_tjanser(forventede, nu=None):
-    """Nøglerne på de tjanser, der er kommet i kalenderne inden for VENTETID."""
-    nu = nu or datetime.now(UTC)
+def _sidste_historik(base, gammel):
+    """Listen fra sidste kørsel. Findes den ikke endnu, bygges den ud fra sidste kørsels
+    status.json: tjanser, der stod dér, er ikke nye, og dem, Holdsport-tjekket fandt
+    dengang, har været i Holdsport. None, hvis intet kan læses – så regnes alt for gammelt."""
     try:
-        foer = json.loads(fetch(os.environ.get("BASE_URL", "") + SET_FIL))
-        if not isinstance(foer, dict):
-            raise ValueError("tjans_set.json er ikke en liste over tjanser")
+        h = json.loads(fetch(base + HISTORIK_FIL))
+        return h if isinstance(h, dict) else None
     except Exception as exc:                       # noqa: BLE001
-        # 404 = første kørsel med listen: alle regnes som nye. Andre fejl: alle som gamle.
-        foer = {} if getattr(exc, "code", None) == 404 else None
-    gammel = (nu - VENTETID).isoformat()
-    sete, nye = {}, set()
+        if getattr(exc, "code", None) != 404:
+            return None
+    try:
+        st = json.loads(fetch(base + "status.json"))
+    except Exception:                              # noqa: BLE001
+        return None
+    hs = st.get("holdsport") or {}
+    tjekket = hs.get("aktiveret") and not hs.get("fejl")
+    ikke_fundet = {tjans_noegle(m) for m in (hs.get("mangler") or []) + (hs.get("venter") or [])}
+    h = {}
+    for t in st.get("tjanser") or []:
+        if t.get("status") != "ok" or not t.get("start"):
+            continue
+        n = tjans_noegle(t)
+        h[n] = {"set": gammel, "fundet": gammel if tjekket and n not in ikke_fundet else None}
+    return h
+
+
+def holdsport_historik(hs, forventede, nu=None):
+    """Sorterer de tjanser, Holdsport-tjekket ikke fandt:
+      venter   – ny i kalenderen, Holdsport har ikke nået at hente den (under VENTETID)
+      mangler  – har været i Holdsport og er væk nu, eller er ikke kommet inden for VENTETID
+    og finder de aktiviteter, Holdsport har genbrugt til en anden tjans (hs["genbrugt"]) —
+    så følger tilmeldingerne med til den forkerte tjans."""
+    nu = nu or datetime.now(UTC)
+    nu_iso, gammel = nu.isoformat(), (nu - VENTETID).isoformat()
+    foer = _sidste_historik(os.environ.get("BASE_URL", ""), gammel)
+    tjekket = hs.get("aktiveret") and not hs.get("fejl")
+    fundne = {tjans_noegle(f): f for f in hs.get("fundne") or []} if tjekket else {}
+
+    hist, foer_akt = {}, {}
+    for n, p in (foer or {}).items():
+        if isinstance(p, dict) and p.get("aktivitet") and not n.startswith("_"):
+            foer_akt[p["aktivitet"]] = (n, p)
     for f in forventede:
         n = tjans_noegle(f)
-        sete[n] = (foer.get(n) or nu.isoformat()) if foer is not None else gammel
-        try:
-            if nu - datetime.fromisoformat(sete[n]) < VENTETID:
-                nye.add(n)
-        except (TypeError, ValueError):
-            sete[n] = gammel
-    json.dump(sete, open(os.path.join(ROOT, "docs", SET_FIL), "w", encoding="utf-8"),
-              indent=0, sort_keys=True)
-    return nye
+        p = (foer or {}).get(n)
+        if foer is None:                          # kunne ikke læse noget: regn den for gammel
+            post = {"set": gammel}
+        elif isinstance(p, dict):
+            post = {k: p[k] for k in ("set", "fundet", "aktivitet") if p.get(k)}
+            post.setdefault("set", nu_iso)
+        else:
+            post = {"set": nu_iso}
+        post["start"], post["tjans"] = f["start"][:16].replace("T", " "), f["tjans"]
+        if n in fundne:
+            post["fundet"] = nu_iso
+            post["aktivitet"] = fundne[n].get("aktivitet") or post.get("aktivitet")
+        hist[n] = post
 
-
-def venter_paa_holdsport(hs, forventede):
-    """Flytter de tjanser, Holdsport ikke har nået at hente endnu, fra "mangler" til
-    "venter", så de ikke bliver meldt som slettet i Holdsport."""
-    nye = nye_tjanser(forventede)
-    if not hs.get("aktiveret"):
+    # Holdsport har flyttet en aktivitet fra én tjans til en anden (tilmeldingerne følger med)
+    genbrugt = [g for g in ((foer or {}).get("_genbrugt") or [])
+                if isinstance(g, dict) and _alder(g.get("tid"), nu) < GENBRUG_VISES]
+    for n, f in fundne.items():
+        gl = foer_akt.get(f.get("aktivitet"))
+        if gl and gl[0] != n and not any(g["aktivitet"] == f["aktivitet"] and g["nu"] == n
+                                         for g in genbrugt):
+            genbrugt.append({"aktivitet": f["aktivitet"], "tid": nu_iso,
+                             "foer": gl[0], "foer_start": gl[1].get("start", ""),
+                             "nu": n, "nu_start": hist[n]["start"], "tjans": hist[n]["tjans"]})
+    hist["_genbrugt"] = genbrugt
+    json.dump(hist, open(os.path.join(ROOT, "docs", HISTORIK_FIL), "w", encoding="utf-8"),
+              indent=0, sort_keys=True, ensure_ascii=False)
+    if not tjekket:
         return hs
-    mangler = hs.get("mangler") or []
-    hs["venter"] = [m for m in mangler if tjans_noegle(m) in nye]
-    hs["mangler"] = [m for m in mangler if tjans_noegle(m) not in nye]
+
+    venter, mangler = [], []
+    for m in hs.get("mangler") or []:
+        post = hist.get(tjans_noegle(m), {})
+        if post.get("fundet"):
+            mangler.append({**m, "foer_fundet": True})      # var i Holdsport, nu væk
+        elif _alder(post.get("set"), nu) < VENTETID:
+            venter.append(m)
+        else:
+            mangler.append(m)
+    hs["venter"], hs["mangler"], hs["genbrugt"] = venter, mangler, genbrugt
     for post in hs.get("hold") or []:
-        v = sum(1 for m in hs["venter"] if m["tjans"] == post.get("kode"))
+        v = sum(1 for m in venter if m["tjans"] == post.get("kode"))
         post["venter"] = v
         post["mangler"] = max(0, (post.get("mangler") or 0) - v)
     return hs

@@ -180,7 +180,7 @@ def _par(forventede_hold, aktiviteter):
 
 def tjek(forventede, konfig, bruger, kode):
     """forventede: liste af {tjans, kampnr, navn, start, antal, kamp}"""
-    resultat = {"aktiveret": True, "fejl": None, "hold": [], "mangler": [],
+    resultat = {"aktiveret": True, "fejl": None, "hold": [], "mangler": [], "fundne": [],
                 "kontrolleret": 0, "fundet": 0, "alle_hold": []}
     try:
         hold = hent_hold(bruger, kode)
@@ -228,6 +228,12 @@ def tjek(forventede, konfig, bruger, kode):
             if k in parret:
                 post["fundet"] += 1
                 resultat["fundet"] += 1
+                # aktivitetens nummer i Holdsport – så kan build.py se, hvis Holdsport
+                # senere genbruger aktiviteten til en anden tjans
+                resultat["fundne"].append({
+                    "tjans": kode_hold, "kampnr": f["kampnr"],
+                    "start": f["start"][:16].replace("T", " "),
+                    "aktivitet": akt[parret[k]].get("id")})
             else:
                 post["mangler"] += 1
                 resultat["mangler"].append({

@@ -68,7 +68,8 @@ def render(status, base_url=""):
     tj = [t for t in status["tjanser"] if t["status"] == "ok"]
     pr_hold = Counter(t["tjans"] for t in status["tjanser"])
     konflikter = status.get("konflikter") or []
-    andre = len(huller) + len(forsv) + len(slettet)
+    genbrugt = hs.get("genbrugt") or []
+    andre = len(huller) + len(forsv) + len(slettet) + len(genbrugt)
     problemer = andre + len(konflikter)
 
     venter = hs.get("venter") or []
@@ -90,6 +91,9 @@ def render(status, base_url=""):
         bits.append(f"{len(forsv)} tjans{'er' if len(forsv)>1 else ''} hvor kampen ikke længere findes")
     if slettet:
         bits.append(f"{len(slettet)} tjans{'er' if len(slettet)>1 else ''} slettet i Holdsport")
+    if genbrugt:
+        bits.append(f"{len(genbrugt)} tjans{'er' if len(genbrugt)>1 else ''} i Holdsport, der har "
+                    "fået en andens tilmeldinger")
     andre_bits = " og ".join(bits)
     if konflikter:
         bits.append(f"{len(konflikter)} tjans{'er' if len(konflikter)>1 else ''} oven i holdets egen kamp")
@@ -168,7 +172,9 @@ def render(status, base_url=""):
                             f'{E(hs["fejl"])}</div>')
     else:
         sl_rows = [f"<tr><td><code>{E(m['kampnr'])}</code></td><td>{E(m['start'])}</td>"
-                   f"<td>{E(m['navn'])}</td>"
+                   f"<td>{E(m['navn'])}"
+                   + ("<br><span class='muted'>var i Holdsport før</span>" if m.get("foer_fundet") else "")
+                   + "</td>"
                    f"<td><span class='tag'>{E(m['tjans'])}</span></td>"
                    f"<td class='muted'>{E(m['holdsport'])}</td></tr>" for m in slettet]
         ve_rows = [f"<tr><td><code>{E(m['kampnr'])}</code></td><td>{E(m['start'])}</td>"
@@ -186,11 +192,23 @@ def render(status, base_url=""):
                 f"<td>{status_tekst}</td>"
                 f"<td class='muted'>{E(h.get('match',''))}</td></tr>")
         alle = ", ".join(f"{E(h['navn'])} (id {E(h['id'])})" for h in hs.get("alle_hold", []))
+        gb_rows = [f"<tr><td><span class='tag'>{E(g['tjans'])}</span></td>"
+                   f"<td>{E(g['foer_start'])} <span class='muted'>kamp {E(g['foer'].split('-')[0])}</span></td>"
+                   f"<td>{E(g['nu_start'])} <span class='muted'>kamp {E(g['nu'].split('-')[0])}</span></td>"
+                   f"<td class='muted'>{E(g['aktivitet'])}</td></tr>" for g in genbrugt]
+        genbrug_afsnit = (
+            "<div class='banner bad'><strong>Holdsport har genbrugt en tjans</strong>"
+            "Holdsport har lavet en eksisterende tjans om til en ny, da den hentede kalenderen. "
+            "Tilmeldingerne fulgte med, så de står nu på den forkerte dag. Tjek, hvem der er "
+            "tilmeldt, og om den gamle tjans er kommet igen.</div>"
+            + tabel(gb_rows, ["Hold", "Var tjansen", "Er nu tjansen", "Aktivitet i Holdsport"], "")
+            if genbrugt else "")
         holdsport_afsnit = (
-            "<h2>Kontrol mod Holdsport</h2>"
+            "<h2>Kontrol mod Holdsport</h2>" + genbrug_afsnit +
             f"<p class='sub'>{hs['fundet']} af {hs['kontrolleret']} tjanser fundet i "
             "Holdsport ved sidste kørsel. Holdsport henter kalenderne én gang i døgnet, så en "
-            "ny tjans får halvanden døgn, før den tæller som slettet.</p>"
+            "ny tjans får halvandet døgn til at komme over. En tjans, der har været i Holdsport "
+            "og er væk, meldes med det samme.</p>"
             + tabel(sl_rows, ["Kampnr.", "Mødetid", "Aktivitet", "Tjans", "Hold i Holdsport"],
                     "Ingen tjanser er blevet slettet — alle ligger som de skal.")
             + ("<p class='sub' style='margin-top:14px'>Nye i kalenderen — venter på, at "

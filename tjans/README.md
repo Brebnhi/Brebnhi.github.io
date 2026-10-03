@@ -87,7 +87,13 @@ sig selv, når hullet er lukket. Er alt dækket, sker der ingenting.
 Er `HOLDSPORT_USER` og `HOLDSPORT_PASSWORD` sat som hemmeligheder, tjekker robotten også, at
 tjanserne ligger i Holdsport. Holdsport henter kalenderne én gang i døgnet, så en ny tjans
 (eller en tjans, der har skiftet hold) står som *venter* i halvandet døgn, før den tæller som
-slettet og kommer med i issuet.
+slettet og kommer med i issuet. En tjans, der har været i Holdsport og er væk, meldes med det
+samme. Robotten husker det i `docs/tjans_holdsport.json` på siden.
+
+Den husker også, hvilken aktivitet i Holdsport hver tjans ligger i. Laver Holdsport en
+eksisterende tjans om til en ny, når den henter kalenderen (det skete med H3 1/11 → 11/10 i
+oktober 2026), følger tilmeldingerne med til den forkerte dag. Det står så øverst under
+*Kontrol mod Holdsport* og i issuet i tre døgn: tjek, hvem der er tilmeldt.
 
 Pokal-, slutspils- og kvalifikationskampe tæller med for tjanseholdene (D1–D3, H1–H3),
 så en ny hjemmekamp i pokalen eller slutspillet dukker op, indtil den står i tjanselisten.
