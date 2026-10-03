@@ -9,8 +9,8 @@
   Startsiden for https://brebnhi.github.io/ (repoet Brebnhi.github.io).
   Filen er statisk og bygges IKKE af robotten.
   Den henter selv status fra status.json (tjanser) og koerselsudligning/status.json,
-  når den åbnes. Tjansesiden ligger i tjanser/, kørselsudligningen i koerselsudligning/
-  og kontingentsiden i kontingent/.
+  når den åbnes. Tjansesiden ligger i tjanser/, kørselsudligningen i koerselsudligning/,
+  kontingentsiden i kontingent/ og turprisen i turpris/.
   Bestyrelsens opgaver (/bestyrelse/) ligger i sit eget repo, Brebnhi/bestyrelse. Kortet
   henter antal åbne opgaver direkte fra repoets issues via GitHubs åbne API.
   Boksen "Til den nye sæson" kommer fra paamindelser.json, som robotten skriver hver nat
@@ -76,7 +76,7 @@ footer{margin-top:36px;color:var(--muted);font-size:12.5px;max-width:70ch}
   <header>
     <p class="eyebrow">Aalborg Volley</p>
     <h1>Klubbens værktøjer</h1>
-    <p class="sub">Tjanser, kørselsudligning, kontingent og bestyrelsens opgaver samlet ét sted.
+    <p class="sub">Tjanser, kørselsudligning, turpris, kontingent og bestyrelsens opgaver samlet ét sted.
       Tjanser og kørselsudligning opdateres af sig selv hver nat.</p>
   </header>
 
@@ -108,6 +108,14 @@ footer{margin-top:36px;color:var(--muted);font-size:12.5px;max-width:70ch}
       <span class="go">Åbn kørselsudligningen →</span>
     </a>
 
+    <a class="card" href="turpris/">
+      <div class="top"><h2>Turpris</h2><span class="pil">Når du vil</span></div>
+      <p class="linje">Hvad koster en udebanetur – og kan en dobbeltweekend betale sig frem for to
+        enkeltture?</p>
+      <p class="meta" id="tp-meta">Ingen gemte ture i denne browser endnu.</p>
+      <span class="go">Åbn turprisen →</span>
+    </a>
+
     <a class="card" href="kontingent/">
       <div class="top"><h2>Kontingent</h2><span class="pil">Når du vil</span></div>
       <p class="linje">Læg en eksport fra Holdsport ind, så regner siden forventet kontingent
@@ -133,15 +141,15 @@ footer{margin-top:36px;color:var(--muted);font-size:12.5px;max-width:70ch}
       <li><a href="https://github.com/Brebnhi/bestyrelse/issues">Bestyrelsens opgaver i GitHub</a>
         <span>her opretter og retter du opgaverne</span></li>
       <li><a href="https://github.com/Brebnhi/Brebnhi.github.io">Koden på GitHub</a>
-        <span>tjanser, kørselsudligning, kontingent og denne side</span></li>
+        <span>tjanser, kørselsudligning, turpris, kontingent og denne side</span></li>
       <li><a href="https://github.com/Brebnhi/Brebnhi.github.io/actions">Natkørslen</a>
         <span>GitHub Actions · her ser du, om robotten er kørt</span></li>
     </ul>
   </section>
 
   <footer>Siden ligger på GitHub Pages. Tallene hentes fra natkørslens statusfiler, hver gang
-    siden åbnes – bestyrelsens opgaver direkte fra GitHub. Kontingentsiden gemmer kun i din
-    egen browser.</footer>
+    siden åbnes – bestyrelsens opgaver direkte fra GitHub. Kontingentsiden og turprisen gemmer
+    kun i din egen browser.</footer>
 </div>
 
 <script>
@@ -340,6 +348,17 @@ footer{margin-top:36px;color:var(--muted);font-size:12.5px;max-width:70ch}
         el("ko-meta").textContent = "Senest indlæst " + dd +
           " (" + slags + ")" + (d.filnavn ? " · " + d.filnavn : "");
       }
+    }
+  } catch (e) { /* intet gemt eller lager slået fra */ }
+
+  // ------------------------------------------------------------- turpris
+  // Turprisen gemmer ture i denne browser (samme domæne).
+  try {
+    var ture = JSON.parse(localStorage.getItem("aav.turpris.ture") || "[]");
+    if (Array.isArray(ture) && ture.length) {
+      var ialt = ture.reduce(function (s, t) { return s + (+t.total || 0); }, 0);
+      el("tp-meta").textContent = flertal(ture.length, "gemt tur", "gemte ture") + " · " +
+        new Intl.NumberFormat("da-DK", { maximumFractionDigits: 0 }).format(ialt) + " kr. i alt";
     }
   } catch (e) { /* intet gemt eller lager slået fra */ }
 })();
