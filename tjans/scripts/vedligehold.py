@@ -174,6 +174,7 @@ def turpris(nu):
 - [ ] **Færge** (`faerge`, pr. bil pr. vej) og **hotel** pr. dobbeltweekend (`hotel`)
 - [ ] **Brændstof**: diesel (`pris_l`) og benzin (`SAESON.benzin`)
 - [ ] **Hvem lejer biler til Sjælland?** `SAESON.lejebilHold` og `SAESON.dobbeltHold` (i {lang(side_start)}: D1)
+- [ ] **Mangler der udekampe** i Volleyball Danmarks program (fx et hold, der har afløst et andet)? Så tilføj dem i `EKSTRA_UDEKAMPE` – de gamle gælder kun deres egen sæson
 
 Kampene, dobbeltweekenderne og km følger med af sig selv fra kørselsudligningen. Claude kan lave rettelserne ud fra nye bookinger.
 Issuet lukker sig selv, når priserne står til {ny}."""

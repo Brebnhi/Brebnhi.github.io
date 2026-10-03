@@ -594,6 +594,13 @@
     kml: 15                // egne biler, km pr. liter
   };
   var BROPRIS_TR = 346;    // Storebælt pr. bil tur/retur – hentes fra kørselsudligningen
+  // Udekampe, som mangler i Volleyball Danmarks kampprogram. De tæller kun med i den sæson, der står ved dem,
+  // og kun indtil kampen dukker op i programmet (samme hold og modstander) – så bruges programmets dato og km.
+  // dato som "dd-mm-åååå" eller tom, hvis den ikke er fastsat. km = én vej fra Aalborg.
+  var EKSTRA_UDEKAMPE = [
+    { saeson: "2026/27", kode: "H1", modstander: "Aarhus 1900", sted: "Aarhus Svømmestadion", dato: "", km: 125,
+      note: "erstatter IF Lyseng i 1. division vest" }
+  ];
   var NOEGLE = "aav.turpris";
   // ======================================================================
 
@@ -778,21 +785,31 @@
     return !!(x && y && x.getDay() === 6 && Math.round((y - x) / 864e5) === 1);
   }
 
+  function navnNorm(s) { return String(s || "").toLowerCase().replace(/å/g, "aa").replace(/[^a-z0-9æø]/g, ""); }
+  function efterDato(a, b) {                 // kampe uden fastsat dato kommer sidst
+    var x = dato(a.dato), y = dato(b.dato);
+    return x && y ? x - y : x ? -1 : y ? 1 : 0;
+  }
+
+  // Kun grundspillet tæller: pokal og slutspil er ekstra og er ikke med.
   function lavProgram(k) {
-    var hold = {}, orden = [];
-    function tilfoej(kode, raekke, ture, art) {
-      if (!kode) return;
-      if (!hold[kode]) { hold[kode] = { kode: kode, raekke: raekke || "", ture: [] }; orden.push(kode); }
-      if (raekke && !hold[kode].raekke) hold[kode].raekke = raekke;
-      (ture || []).forEach(function (t) {
-        if (!t || !(t.km > 0) || !dato(t.dato)) return;      // fx derby i egen hal
-        hold[kode].ture.push({ dato: t.dato, modstander: String(t.modstander || ""), sted: String(t.sted || ""),
-          km: +t.km, bro: !!t.bro, art: art });
+    var hold = {}, orden = [], saeson = String(k.saeson || "");
+    (k.klubhold || []).forEach(function (h) {
+      if (!h || !h.kode) return;
+      if (!hold[h.kode]) { hold[h.kode] = { kode: h.kode, raekke: h.raekke || "", ture: [] }; orden.push(h.kode); }
+      (h.ture || []).forEach(function (t) {
+        if (!t || typeof t.km !== "number" || !(t.km >= 0) || !dato(t.dato)) return;
+        hold[h.kode].ture.push({ dato: t.dato, modstander: String(t.modstander || ""), sted: String(t.sted || ""),
+          km: t.km, bro: !!t.bro, art: "", egenHal: t.km === 0 });     // km 0 = udekamp i egen hal (fx H2–H3)
       });
-    }
-    (k.klubhold || []).forEach(function (h) { tilfoej(h.kode, h.raekke, h.ture, ""); });
-    (k.pokal || []).forEach(function (r) { (r.hold || []).forEach(function (h) { tilfoej(h.kode, "", h.ture, "Pokal"); }); });
-    (k.slutspil || []).forEach(function (r) { (r.hold || []).forEach(function (h) { tilfoej(h.kode, "", h.ture, "Slutspil"); }); });
+    });
+    EKSTRA_UDEKAMPE.forEach(function (e) {
+      var h = hold[e.kode];
+      if (!h || e.saeson !== saeson) return;
+      if (h.ture.some(function (t) { return navnNorm(t.modstander) === navnNorm(e.modstander); })) return;
+      h.ture.push({ dato: e.dato || "", modstander: e.modstander, sted: e.sted || "", km: +e.km || 0, bro: !!e.bro,
+        art: "", egenHal: false, ekstra: e.note || "tilføjet manuelt" });
+    });
 
     var liste = orden.map(function (kode) {
       var h = hold[kode], set = {};
@@ -801,7 +818,7 @@
         if (set[n]) return false;
         set[n] = true;
         return true;
-      }).sort(function (a, b) { return dato(a.dato) - dato(b.dato); });
+      }).sort(efterDato);
       // Lørdag + søndag ude over Storebælt er én dobbeltweekend – kun for hold i SAESON.dobbeltHold.
       var dobbelt = SAESON.dobbeltHold.indexOf(kode) >= 0;
       h.turListe = [];
@@ -813,7 +830,7 @@
         else h.turListe.push({ kode: kode, kampe: [a] });
       }
       h.turListe.forEach(function (t) {
-        t.noegle = kode + "|" + t.kampe.map(function (x) { return isoAf(x.dato); }).join("+");
+        t.noegle = kode + "|" + t.kampe.map(function (x) { return isoAf(x.dato) || "x-" + navnNorm(x.modstander); }).join("+");
       });
       return h;
     }).filter(function (h) { return h.turListe.length; });
@@ -829,7 +846,7 @@
     var art = t.kampe.map(function (x) { return x.art; }).filter(Boolean)[0];
     var s = klon(STANDARD);
     s.navn = t.kode + ": " + t.kampe.map(function (x) { return x.modstander; }).join(" + ") + (art ? " (" + art.toLowerCase() + ")" : "");
-    s.dato = b ? kort(a.dato) + "–" + kort(b.dato) : kort(a.dato);
+    s.dato = b ? kort(a.dato) + "–" + kort(b.dato) : dato(a.dato) ? kort(a.dato) : "";
     s.kilde = t.noegle;
     s.kampe = b ? 2 : 1;
     s.dage = s.kampe;
@@ -903,7 +920,7 @@
     var sats = godt.sats, sum = 0, km = 0, ture = 0, spil = 0, klubLeje = 0, rk = [];
     program.hold.forEach(function (h) {
       klubLeje += h.klub;
-      var egne = h.turListe.filter(function (t) { return !t.klub; });
+      var egne = h.turListe.filter(function (t) { return !t.klub && t.pris.kmBil > 0; });   // ikke udekampe i egen hal
       if (!egne.length) return;
       var med = godt.fra[h.kode] !== false, hk = 0;
       egne.forEach(function (t) { hk += t.pris.biler * t.pris.kmBil; spil += t.pris.total; });
@@ -946,7 +963,8 @@
       h.turListe.forEach(function (t) {
         t.pris = prisFor(t, gemte);
         t.klub = lejebilTur(t);
-        t.spillet = dato(t.kampe[t.kampe.length - 1].dato) < idag;
+        var sidste = dato(t.kampe[t.kampe.length - 1].dato);
+        t.spillet = !!sidste && sidste < idag;
         h.sum += t.pris.total;
         h.kampe += t.kampe.length;
         if (!t.spillet) h.rest += t.pris.total;
@@ -965,7 +983,7 @@
     $("t-klub").textContent = kr0(klub);
     var klubTekst = klubHold.length ? klubHold.join(", ") + " til Sjælland i lejebiler" : "Ingen ture i lejebiler";
     $("t-klub-s").textContent = klubTekst + " · " + flertal(klubTure, "tur", "ture") + ", " +
-      flertal(klubKampe, "kamp", "kampe") + (klubRest < klub - 0.5 ? " · " + kr0(klubRest) + " tilbage af sæsonen" : "");
+      flertal(klubKampe, "udekamp", "udekampe") + (klubRest < klub - 0.5 ? " · " + kr0(klubRest) + " tilbage af sæsonen" : "");
     $("t-spil").textContent = kr0(spil);
     $("t-spil-s").textContent = (spilHold.join(", ") || "Ingen hold") + " i egne biler · brændstof og Storebælt" +
       (spilRest < spil - 0.5 ? " · " + kr0(spilRest) + " tilbage" : "");
@@ -1016,11 +1034,13 @@
       var over = overBroen(t);
       var steder = [];
       t.kampe.forEach(function (x) { if (x.sted && steder.indexOf(x.sted) < 0) steder.push(x.sted); });
-      var under = steder.join(" · ") + (over ? (leje ? " · via Aarhus–Odden" : " · over Storebælt") : "");
+      var under = steder.join(" · ") + (over ? (leje ? " · via Aarhus–Odden" : " · over Storebælt") : "") +
+        (a.ekstra ? " · " + a.ekstra : "");
       var tags = [];
-      if (blandet) tags.push(leje ? '<span class="tag dobbelt">Lejebiler · klubben</span>' : '<span class="tag">Egne biler</span>');
+      if (a.egenHal) tags.push('<span class="tag">Egen hal – ingen kørsel</span>');
+      else if (blandet) tags.push(leje ? '<span class="tag dobbelt">Lejebiler · klubben</span>' : '<span class="tag">Egne biler</span>');
       if (b) tags.push('<span class="tag dobbelt">Dobbeltweekend</span>');
-      t.kampe.forEach(function (x) { if (x.art && tags.join("").indexOf(">" + x.art + "<") < 0) tags.push('<span class="tag">' + esc(x.art) + "</span>"); });
+      if (a.ekstra) tags.push('<span class="tag">Mangler i VD\'s program</span>');
       if (p.rettet) tags.push('<span class="tag ret">Dine tal</span>');
       if (t.spillet) tags.push('<span class="tag">Spillet</span>');
       var prisUnder = "";
@@ -1030,16 +1050,18 @@
       } else if (!leje && p.biler > 1 && p.total > 0) {
         prisUnder = "<small>" + kr0(p.total / p.biler) + " pr. bil</small>";
       }
-      return "<tr" + (t.spillet ? ' class="spillet"' : "") + '><td class="l">' + kort(a.dato) + (b ? "–" + kort(b.dato) : "") +
-        "<small>" + ugedag(a.dato) + (b ? "–" + ugedag(b.dato) : "") + "</small></td>" +
+      var datoCelle = dato(a.dato)
+        ? kort(a.dato) + (b ? "–" + kort(b.dato) : "") + "<small>" + ugedag(a.dato) + (b ? "–" + ugedag(b.dato) : "") + "</small>"
+        : "–<small>ikke fastsat</small>";
+      return "<tr" + (t.spillet ? ' class="spillet"' : "") + '><td class="l">' + datoCelle + "</td>" +
         '<td class="l w"><button type="button" class="turlink" data-tur="' + esc(t.noegle) + '">' +
         esc(t.kampe.map(function (x) { return x.modstander; }).join(" + ")) + "</button><small>" + esc(under) + "</small>" +
         (tags.length ? '<span class="tags">' + tags.join("") + "</span>" : "") + "</td>" +
         '<td class="n km">' + hel(p.kmBil) + "</td>" +
         '<td class="n">' + kr0(p.total) + prisUnder + "</td></tr>";
     }).join("");
-    $("hold-fod").innerHTML = '<tr><td class="l" colspan="2">I alt · ' + flertal(h.turListe.length, "tur", "ture") +
-      (h.kampe !== h.turListe.length ? ", " + flertal(h.kampe, "kamp", "kampe") : "") +
+    $("hold-fod").innerHTML = '<tr><td class="l" colspan="2">I alt · ' + flertal(h.kampe, "udekamp", "udekampe") +
+      (h.kampe !== h.turListe.length ? " på " + flertal(h.turListe.length, "tur", "ture") : "") +
       (h.klub > 0.5 && h.spil > 0.5 ? "<small>klubben " + kr0(h.klub) + " · spillerne " + kr0(h.spil) + "</small>" : "") +
       (h.rest < h.sum - 0.5 ? "<small>heraf tilbage af sæsonen: " + kr0(h.rest) + "</small>" : "") +
       '</td><td class="km"></td><td class="n">' + kr0(h.sum) + "</td></tr>";
@@ -1064,7 +1086,8 @@
   function visSadan() {
     var leje = SAESON.lejebilHold.join(", "), dob = SAESON.dobbeltHold.join(", ");
     $("sadan").innerHTML = [
-      "Kampe og km kommer fra kørselsudligningen, som robotten opdaterer hver nat. Når kampprogrammet for næste sæson er ude, skifter siden selv. Pokal- og slutspilskampe tæller med, når de er trukket.",
+      "Kampe og km kommer fra kørselsudligningen, som robotten opdaterer hver nat. Når kampprogrammet for næste sæson er ude, skifter siden selv.",
+      "Kun grundspillets udekampe tæller med – pokal og slutspil er ekstra. En udekamp i egen hal (fx H2 mod H3) tæller som udekamp uden kørsel. Mangler en udekamp i Volleyball Danmarks program, står den i <code>EKSTRA_UDEKAMPE</code> øverst i scriptet, indtil den dukker op i programmet.",
       leje + " lejer biler til udekampe på Sjælland (over Storebælt), og det betaler klubben. Turen køres via Aarhus–Odden med færge begge veje.",
       dob + ": to udekampe lørdag og søndag på Sjælland i samme weekend er én tur med 2 lejedage, hotel og km mellem kampene. Ved dobbeltweekenderne står der, hvad det sparer i forhold til at køre to gange.",
       "Alle andre udeture – også " + leje + "s i Jylland og på Fyn – er hver sin tur i egne biler. Prisen er brændstof og Storebælt. Det betaler spillerne selv, så det tæller ikke med i klubbens total.",
@@ -1228,9 +1251,12 @@
       hint.innerHTML = "Over Storebælt: regnet via Aarhus–Odden med <b>" + hel(si.sjKm) + " km én vej</b> og færge " +
         "begge veje – ret km, hvis I kører anderledes. Kørselsudligningen regner med " +
         t.kampe.map(function (x) { return hel(x.km); }).join(" og ") + " km via broen.";
+    } else if (t.kampe[0].egenHal) {
+      hint.innerHTML = "Udekamp i egen hal – ingen kørsel.";
     } else {
       hint.innerHTML = "Egne biler: " + flertal(bilerFor(t.kode), "bil", "biler") + ", kun brændstof" +
-        (over ? " og Storebælt" : "") + ". Det betaler spillerne selv.";
+        (over ? " og Storebælt" : "") + ". Det betaler spillerne selv." +
+        (t.kampe[0].ekstra ? " Kampen mangler i Volleyball Danmarks program (" + esc(t.kampe[0].ekstra) + "), så km er et skøn." : "");
     }
     hint.hidden = false;
   }
@@ -1672,8 +1698,9 @@
         o.value = t.noegle;
         o.textContent = b
           ? kort(a.dato) + "–" + kort(b.dato) + " · " + a.modstander + " + " + b.modstander + " (dobbeltweekend)"
-          : kort(a.dato) + " · " + a.modstander + (art ? " (" + art.toLowerCase() + ")" : "") + " · " + a.sted +
-            (a.bro ? " · over Storebælt" : " · " + a.km + " km");
+          : (dato(a.dato) ? kort(a.dato) : "Dato ikke fastsat") + " · " + a.modstander +
+            (art ? " (" + art.toLowerCase() + ")" : "") + " · " + a.sted +
+            (a.egenHal ? " · egen hal" : a.bro ? " · over Storebælt" : " · " + a.km + " km");
         g.appendChild(o);
       });
       sel.appendChild(g);
