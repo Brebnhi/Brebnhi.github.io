@@ -12,6 +12,7 @@ fører videre til det enkelte projekt:
 | Kalender-feeds | `/feeds/*.ics` | Kalenderne til Holdsport | bygges af `tjans/scripts/build.py` |
 | Kørselsudligning | `/koerselsudligning/` | Forventet rejseudligning fra Volleyball Danmark | `koerselsudligning/` – se README dér |
 | Kontingent | `/kontingent/` | Forventet kontingent ud fra en Holdsport-eksport | `tjans/docs/kontingent/index.html` (fast fil) |
+| Turpris | `/turpris/` | Prisen på en udebanetur, og om en dobbeltweekend kan betale sig frem for to enkeltture | `tjans/docs/turpris/index.html` (fast fil) |
 | Gammel adresse | `/Tjanser-i-Holdsport/` | Holdsports importer peger herhen – se nedenfor | bygges af `tjans/scripts/build.py` |
 | Påmindelser | `/paamindelser.json` | Det, der skal gøres til en ny sæson – vises øverst på startsiden | bygges af `tjans/scripts/vedligehold.py` |
 
@@ -49,7 +50,7 @@ videre til de nye.
 
 - **Lægge medlemsdata i repoet.** Repoet og siden er offentlige. Kontingentsiden viser først
   tal, når du selv lægger en Holdsport-eksport ind, og eksporten og fritagelseslisten gemmes
-  kun i din egen browser.
+  kun i din egen browser. Det samme gælder turprisens gemte ture.
 - **Flytte `/feeds/` eller den gamle sti.** Holdsport henter derfra.
 
 ## Når natkørslen står stille
@@ -74,6 +75,7 @@ når det er gjort. Lukker du selv et issue, lader robotten det være.
 | Tjanser | Sæsonen i overskriften, kampprogrammer og holdkoder, kalenderne, flyttede kampe | Ny tjanseliste i Google-arket – se *Tjanselisten* i `tjans/README.md` | Når VD har lagt den nye sæsons kampprogram ud. Lukker sig selv |
 | Kørselsudligning | Sæson, hold, pokal og slutspil | Årets km-takst og bropris i `koerselsudligning/config.json` | 10. januar. Lukker sig selv |
 | Kontingent | Overskrifter, U17-årgang og budgetboks | `BUDGET_SAESON`, `HOLD` og `BUDGET_IALT` øverst i scriptet i `tjans/docs/kontingent/index.html` (fra fanen *Kontingent status*), og `MOENSTRE`/`ERMIX` ved nye holdnavne | 1. august. Lukker sig selv |
+| Turpris | Kampvælgeren følger kørselsudligningens udeture | Ret `STANDARD` øverst i scriptet i `tjans/docs/turpris/index.html`, når billeje-, færge- eller brændstofpriserne ændrer sig | – |
 | Try-out (Vercel) | – | Væk Supabase og følg [guiden](https://docs.google.com/document/d/19cpzGXU_s858MQe_A-r4YyGGtSu8ppPURRt6Rq8Q1bY/edit) | 1. juni. Luk den selv, når billederne er slettet |
 | Budgetarket | – | Nyt budget, nyt ark og primosaldi pr. 1. juni | 1. juni. Luk den selv |
 

@@ -1,0 +1,944 @@
+<!doctype html>
+<!-- sti: tjans/docs/turpris/index.html -->
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Turpris · Aalborg Volley</title>
+<!--
+  Turpris – hvad koster en udebanetur? https://brebnhi.github.io/turpris/
+  Filen er statisk og bygges IKKE af robotten. Standardpriserne står i STANDARD øverst i scriptet.
+  Turen gemmes kun i browseren (localStorage "aav.turpris.*" – startsiden læser "aav.turpris.ture").
+  Et delt link bærer hele turen i adressen (#tur=…).
+  Kampvælgeren henter klubbens udeture fra ../koerselsudligning/status.json (natkørslen).
+-->
+<style>body{margin:0}[hidden]{display:none!important}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+  :root{
+    --ground:#F4F6F8; --surface:#FFFFFF; --surface-2:#EDF1F5;
+    --ink:#16202C; --muted:#5B6A7B; --faint:#7A8A9B;
+    --line:#DCE2E9; --line-strong:#C3CDD8;
+    --accent:#1B4B73; --accent-soft:#D6E3EF;
+    --clay:#9E403C; --clay-soft:#F6E2E0;
+    --green:#28644F; --green-soft:#DBEBE2;
+    --knap-tekst:#FFFFFF;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#0E141C; --surface:#151E29; --surface-2:#1C2836;
+      --ink:#E4EAF1; --muted:#96A5B6; --faint:#7F91A3;
+      --line:#25323F; --line-strong:#33434F;
+      --accent:#7FB2DA; --accent-soft:#1E3549;
+      --clay:#DE8079; --clay-soft:#3B2320;
+      --green:#69B896; --green-soft:#1B3329;
+      --knap-tekst:#0E141C;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0E141C; --surface:#151E29; --surface-2:#1C2836;
+    --ink:#E4EAF1; --muted:#96A5B6; --faint:#7F91A3;
+    --line:#25323F; --line-strong:#33434F;
+    --accent:#7FB2DA; --accent-soft:#1E3549;
+    --clay:#DE8079; --clay-soft:#3B2320;
+    --green:#69B896; --green-soft:#1B3329;
+    --knap-tekst:#0E141C;
+  }
+
+  *{box-sizing:border-box;}
+  html{color-scheme:light dark;-webkit-text-size-adjust:100%;}
+  body{margin:0;background:var(--ground);color:var(--ink);
+    font-family:"Source Serif 4",Georgia,serif;font-size:16px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;}
+  [hidden]{display:none !important;}
+  .wrap{max-width:1120px;margin:0 auto;padding-inline:16px;padding-block:32px 104px;}
+  h1,h2,h3,button,input,select,label,table,.felt,.ui{font-family:Archivo,"Helvetica Neue",Arial,sans-serif;}
+  .num{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums;}
+
+  .tilbage{margin:0 0 14px;font-family:Archivo,Arial,sans-serif;font-size:13.5px;font-weight:500;}
+  .tilbage a{color:var(--muted);text-decoration:none;}
+  .tilbage a:hover,.tilbage a:focus-visible{color:var(--ink);text-decoration:underline;}
+  .eyebrow{font-family:Archivo,Arial,sans-serif;font-size:11.5px;font-weight:600;
+    letter-spacing:.13em;text-transform:uppercase;color:var(--accent);margin:0 0 10px;}
+  h1{font-size:clamp(29px,5vw,42px);font-weight:700;letter-spacing:-.02em;
+    line-height:1.1;margin:0 0 14px;text-wrap:balance;}
+  .lede{font-size:18px;color:var(--muted);margin:0;max-width:62ch;text-wrap:pretty;}
+  .call{margin:18px 0 0;padding:11px 15px;border-radius:8px;border:1px solid var(--accent);
+    background:var(--accent-soft);font-family:Archivo,Arial,sans-serif;font-size:14px;max-width:62ch;}
+
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,410px);gap:24px;
+    align-items:start;margin-top:28px;}
+
+  /* ---- indtastning ---- */
+  .blok{background:var(--surface);border:1px solid var(--line);border-radius:10px;
+    padding:18px 18px 20px;margin:0 0 16px;}
+  .blok > h2{font-size:17px;font-weight:600;letter-spacing:-.005em;margin:0 0 14px;}
+  .blok{container-type:inline-size;}
+  .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;}
+  @container (min-width:470px){
+    .grid.fire{grid-template-columns:repeat(4,minmax(0,1fr));}
+    .grid.tre{grid-template-columns:repeat(3,minmax(0,1fr));}
+  }
+  .felt{display:flex;flex-direction:column;justify-content:flex-end;gap:5px;min-width:0;
+    font-size:12.5px;font-weight:600;color:var(--muted);line-height:1.3;}
+  .felt small{font-size:12px;font-weight:400;color:var(--faint);white-space:nowrap;}
+  .felt.bred{grid-column:1/-1;}
+  .felt.halv{grid-column:span 2;}
+  input[type="text"],select{width:100%;min-width:0;height:42px;padding:8px 10px;border:1px solid var(--line-strong);
+    border-radius:6px;background:var(--surface);color:var(--ink);
+    font:500 15.5px/1.3 "IBM Plex Mono",ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums;}
+  input.tekst,select{font-family:Archivo,"Helvetica Neue",Arial,sans-serif;font-weight:500;}
+  input::placeholder{color:var(--faint);font-weight:400;}
+  input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent);}
+  input[aria-invalid="true"]{border-color:var(--clay);background:var(--clay-soft);}
+  .seg{display:flex;height:42px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:3px;gap:3px;}
+  .seg button{flex:1;font-size:14px;font-weight:500;color:var(--muted);background:transparent;
+    border:1px solid transparent;border-radius:6px;padding:0 8px;cursor:pointer;white-space:nowrap;}
+  .seg button:hover{color:var(--ink);}
+  .seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);border-color:var(--line-strong);font-weight:600;}
+  .seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+  .hint{font-size:14px;color:var(--muted);margin:12px 0 0;line-height:1.5;text-wrap:pretty;}
+  .hint b{color:var(--ink);font-weight:600;}
+  .vaelger{margin:0 0 16px;padding:0 0 16px;border-bottom:1px solid var(--line);}
+
+  .bil{border:1px solid var(--line);border-radius:8px;padding:14px;margin:0 0 12px;background:var(--surface);}
+  .bil-top{display:flex;gap:10px;align-items:center;margin:0 0 12px;}
+  .bil-top input{font-weight:600;font-size:15.5px;}
+  .fjern{flex:none;font-size:13px;font-weight:600;color:var(--clay);background:none;border:none;
+    cursor:pointer;padding:6px 4px;}
+  .fjern:hover{text-decoration:underline;}
+  .bil-linje{margin:12px 0 0;font-family:Archivo,Arial,sans-serif;font-size:13px;line-height:1.55;
+    color:var(--muted);font-variant-numeric:tabular-nums;}
+  .bil-linje span{display:block;}
+  .bil-linje b{color:var(--ink);font-weight:600;}
+
+  details.hjaelp{margin:12px 0 0;}
+  details.hjaelp summary{cursor:pointer;font-family:Archivo,Arial,sans-serif;font-size:13.5px;
+    font-weight:600;color:var(--accent);}
+  details.hjaelp p{margin:8px 0 0;font-size:14px;color:var(--muted);}
+
+  .knap{font-size:14px;font-weight:600;border:none;border-radius:6px;cursor:pointer;
+    padding:10px 16px;background:var(--accent);color:var(--knap-tekst);}
+  .knap:hover{filter:brightness(1.08);}
+  .knap:focus-visible,.link:focus-visible,.fjern:focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
+  .knap.stille{background:var(--surface-2);color:var(--accent);border:1px solid var(--line-strong);}
+  .knapper{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;}
+  .link{font-family:Archivo,Arial,sans-serif;font-size:13.5px;font-weight:600;color:var(--accent);
+    background:none;border:none;padding:2px 0;cursor:pointer;text-decoration:underline;text-underline-offset:2px;}
+  .link.fare{color:var(--clay);}
+
+  /* ---- resultat ---- */
+  .resultat{position:sticky;top:16px;}
+  .kort{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px 18px 16px;margin:0 0 16px;}
+  .kort > h2{font-size:11.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin:0 0 6px;}
+  .stor{font-family:Archivo,Arial,sans-serif;font-size:40px;font-weight:700;letter-spacing:-.03em;
+    line-height:1.05;margin:0;font-variant-numeric:tabular-nums;}
+  .pr{margin:6px 0 0;font-family:Archivo,Arial,sans-serif;font-size:15px;color:var(--muted);}
+  .pr b{color:var(--ink);font-weight:600;}
+  table.opg{width:100%;border-collapse:collapse;margin-top:14px;font-size:14px;}
+  table.opg th{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);
+    text-align:right;padding:0 0 7px 8px;border-bottom:1px solid var(--line-strong);white-space:nowrap;}
+  table.opg th:first-child{text-align:left;padding-left:0;}
+  table.opg td{padding:7px 0 7px 8px;border-bottom:1px solid var(--line);vertical-align:baseline;}
+  table.opg td:first-child{padding-left:0;}
+  table.opg td small{color:var(--faint);font-size:12.5px;}
+  table.opg td.v{text-align:right;white-space:nowrap;font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+    font-variant-numeric:tabular-nums;font-size:13.5px;}
+  table.opg tr.sum td{border-top:2px solid var(--line-strong);border-bottom:none;font-weight:600;padding-top:9px;}
+  table.opg tr.efter td{border-bottom:none;color:var(--muted);}
+  td.godt{color:var(--green);} td.skidt{color:var(--clay);}
+  .dom{font-family:Archivo,Arial,sans-serif;font-size:24px;font-weight:700;letter-spacing:-.015em;line-height:1.2;margin:0;}
+  .dom.godt{color:var(--green);} .dom.skidt{color:var(--clay);}
+  .besked{min-height:1.4em;margin:10px 0 0;font-family:Archivo,Arial,sans-serif;font-size:13.5px;color:var(--green);}
+  .besked .link{margin-left:6px;}
+
+  /* ---- gemte ture ---- */
+  .gemte{margin-top:36px;}
+  .gemte > h2{font-size:22px;font-weight:600;letter-spacing:-.01em;margin:0 0 6px;padding-top:22px;border-top:1px solid var(--line);}
+  .sub{color:var(--muted);font-size:15px;margin:0 0 16px;max-width:68ch;text-wrap:pretty;}
+  .tom{font-family:Archivo,Arial,sans-serif;font-size:14px;color:var(--faint);padding:16px 18px;
+    border:1.5px dashed var(--line-strong);border-radius:10px;}
+  .tablecard{background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow-x:auto;}
+  table.liste{border-collapse:collapse;width:100%;}
+  table.liste th{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);
+    text-align:right;padding:12px 10px;border-bottom:1px solid var(--line-strong);white-space:nowrap;background:var(--surface-2);}
+  table.liste td{padding:10px;border-bottom:1px solid var(--line);text-align:right;font-size:14px;white-space:nowrap;}
+  table.liste .l{text-align:left;}
+  table.liste td.w{white-space:normal;min-width:170px;}
+  table.liste td.n{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums;font-size:13.5px;}
+  table.liste tfoot td{border-top:2px solid var(--line-strong);border-bottom:none;font-weight:600;background:var(--surface-2);}
+  table.liste tbody tr:last-child td{border-bottom:none;}
+  .handl{display:flex;gap:14px;justify-content:flex-end;}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+
+  footer{margin-top:40px;color:var(--muted);font-size:13px;max-width:72ch;font-family:Archivo,Arial,sans-serif;}
+  footer code{font-family:"IBM Plex Mono",monospace;font-size:12px;background:var(--surface-2);
+    border:1px solid var(--line);border-radius:3px;padding:1px 4px;}
+
+  /* ---- bundbjælke på telefon ---- */
+  .bund{position:fixed;left:0;right:0;bottom:0;z-index:5;display:none;align-items:center;
+    justify-content:space-between;gap:12px;background:var(--surface);border-top:1px solid var(--line-strong);
+    padding:10px 16px calc(10px + env(safe-area-inset-bottom));font-family:Archivo,Arial,sans-serif;
+    box-shadow:0 -8px 20px -16px rgba(0,0,0,.45);transition:transform .2s;}
+  .bund b{font-size:18px;letter-spacing:-.01em;font-variant-numeric:tabular-nums;}
+  .bund span{font-size:13.5px;color:var(--muted);}
+  .bund a{font-size:14px;font-weight:600;color:var(--accent);text-decoration:none;white-space:nowrap;}
+  .bund.skjult{transform:translateY(110%);}
+
+  @media (max-width:900px){
+    .layout{grid-template-columns:minmax(0,1fr);}
+    .resultat{position:static;}
+    .bund{display:flex;}
+  }
+  @media (max-width:430px){
+    .stor{font-size:36px;}
+  }
+  @media (prefers-reduced-motion:reduce){.bund{transition:none;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="tilbage"><a href="../">← Alle projekter</a></p>
+  <p class="eyebrow">Aalborg Volley · udebaneture</p>
+  <h1>Hvad koster turen?</h1>
+  <p class="lede">Skriv tallene fra bookingerne ind, så regner siden prisen på turen. Er der to kampe
+    på samme tur, viser den også, hvad det ville koste at køre derover to gange.</p>
+  <p class="call" id="fra-link" role="status" hidden>Turen er hentet fra et delt link.</p>
+
+  <div class="layout">
+    <form id="form" autocomplete="off" novalidate>
+      <section class="blok" aria-labelledby="h-tur">
+        <h2 id="h-tur">Turen</h2>
+        <div class="vaelger" id="vaelger" hidden>
+          <label class="felt"><span>Hent fra kampprogrammet</span>
+            <select id="kamp"><option value="">Vælg en udekamp …</option></select>
+          </label>
+          <p class="hint" id="kamp-hint" hidden></p>
+        </div>
+        <div class="grid fire">
+          <label class="felt bred"><span>Navn på turen</span>
+            <input type="text" class="tekst" data-felt="navn" placeholder="fx D1: Team Køge + Farum VK"></label>
+          <label class="felt"><span>Dato</span>
+            <input type="text" class="tekst" data-felt="dato" placeholder="fx 31/10–1/11"></label>
+          <label class="felt"><span>Personer</span>
+            <input type="text" inputmode="numeric" data-felt="personer"></label>
+          <div class="felt halv" role="group" aria-labelledby="l-kampe">
+            <span id="l-kampe">Kampe på turen</span>
+            <div class="seg" id="kampe">
+              <button type="button" data-kampe="1" aria-pressed="false">1 kamp</button>
+              <button type="button" data-kampe="2" aria-pressed="true">2 kampe</button>
+            </div>
+          </div>
+          <label class="felt"><span>Dage med lejebil</span>
+            <input type="text" inputmode="numeric" data-felt="dage"></label>
+          <label class="felt"><span>Km én vej <small>Aalborg → hallen</small></span>
+            <input type="text" inputmode="numeric" data-felt="km"></label>
+          <label class="felt" id="felt-mellem"><span>Km mellem kampene</span>
+            <input type="text" inputmode="numeric" data-felt="mellem"></label>
+        </div>
+        <p class="hint" id="km-ialt"></p>
+      </section>
+
+      <section class="blok" aria-labelledby="h-biler">
+        <h2 id="h-biler">Lejebiler</h2>
+        <div id="biler"></div>
+        <button type="button" class="knap stille" id="tilfoej">+ Tilføj bil</button>
+        <p class="hint">Del bookingens beløb med antal dage – fx 2 dages leje 1.678 kr. = 839 kr. pr. dag.
+          Rabatten trækkes kun fra lejen, ikke fra Premium og km.</p>
+        <details class="hjaelp">
+          <summary>Privatbil i stedet for lejebil?</summary>
+          <p>Sæt leje, Premium og km inkl. til 0, ekstra km til den km-sats, klubben betaler, og forbrug
+            til 0 – så regnes der ikke brændstof oveni.</p>
+        </details>
+      </section>
+
+      <section class="blok" aria-labelledby="h-ophold">
+        <h2 id="h-ophold">Færge, brændstof og ophold</h2>
+        <div class="grid fire">
+          <label class="felt"><span>Færge/bro <small>kr. pr. bil pr. vej</small></span>
+            <input type="text" inputmode="decimal" data-felt="faerge"></label>
+          <label class="felt"><span>Brændstof <small>kr. pr. liter</small></span>
+            <input type="text" inputmode="decimal" data-felt="pris_l"></label>
+          <label class="felt"><span>Hotel m.m. <small>kr. i alt</small></span>
+            <input type="text" inputmode="decimal" data-felt="hotel"></label>
+          <label class="felt"><span>Andet pr. tur <small>kr., fx mad</small></span>
+            <input type="text" inputmode="decimal" data-felt="andet"></label>
+        </div>
+        <p class="hint" id="faerge-hint"></p>
+      </section>
+      <p class="hint"><button type="button" class="link" id="nulstil">Nulstil til standardpriserne</button></p>
+    </form>
+
+    <aside class="resultat" id="resultat" aria-labelledby="h-res">
+      <div class="kort">
+        <h2 id="h-res">Turen koster</h2>
+        <p class="stor" id="r-total">–</p>
+        <p class="pr" id="r-pr"></p>
+        <table class="opg"><tbody id="r-tabel"></tbody></table>
+        <div class="knapper">
+          <button type="button" class="knap" id="gem">Gem turen</button>
+          <button type="button" class="knap stille" id="del">Kopiér link</button>
+          <button type="button" class="knap stille" id="tekst">Kopiér tekst</button>
+        </div>
+        <p class="besked" id="besked" role="status" aria-live="polite"></p>
+      </div>
+
+      <div class="kort" id="sammen" hidden>
+        <h2>Dobbeltweekend eller to enkeltture?</h2>
+        <p class="dom" id="s-dom"></p>
+        <p class="pr" id="s-hotel"></p>
+        <table class="opg">
+          <thead><tr><th></th><th>Dobbelt</th><th>2 × enkelt</th><th>Forskel</th></tr></thead>
+          <tbody id="s-tabel"></tbody>
+        </table>
+        <p class="hint" id="s-antag"></p>
+      </div>
+    </aside>
+  </div>
+
+  <section class="gemte" aria-labelledby="h-gemte">
+    <h2 id="h-gemte">Gemte ture</h2>
+    <p class="sub" id="gemte-sub">Ture, du gemmer, ligger kun i denne browser. Vil du have en tur over på
+      telefonen eller sende den til kassereren, så brug <b>Kopiér link</b>.</p>
+    <div class="tom" id="gemte-tom">Ingen gemte ture endnu. Tryk <b>Gem turen</b>, så kommer den her.</div>
+    <div class="tablecard" id="gemte-kort" hidden>
+      <table class="liste">
+        <thead><tr><th class="l">Dato</th><th class="l">Tur</th><th>Kampe</th><th>I alt</th>
+          <th>Pr. kamp</th><th>Pr. person</th><th><span class="sr">Handling</span></th></tr></thead>
+        <tbody id="gemte-tabel"></tbody>
+        <tfoot id="gemte-fod"></tfoot>
+      </table>
+    </div>
+    <div class="knapper">
+      <button type="button" class="knap stille" id="tsv" hidden>Kopiér til regnearket</button>
+    </div>
+    <p class="besked" id="gemte-besked" role="status" aria-live="polite"></p>
+  </section>
+
+  <footer>Siden ligger på GitHub Pages og gemmer kun i din egen browser. Standardpriserne – billeje,
+    færge og brændstof – står øverst i scriptet i <code>tjans/docs/turpris/index.html</code>.
+    Kampvælgeren bruger udeturene fra kørselsudligningen, som natkørslen opdaterer.</footer>
+</div>
+
+<div class="bund" id="bund">
+  <span><b id="bund-total">–</b> <span id="bund-pr"></span></span>
+  <a href="#resultat">Se regnestykket ↓</a>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ======================================================================
+  // STANDARDPRISER – ret her, når priserne ændrer sig.
+  // Billeje: bookingerne til 31/10–1/11 2026 (2 dage, 100 km pr. dag inkl., 400 ekstra km
+  //          for 720 kr. = 1,80 kr./km, Sølv-rabat 10 % af lejen). Premium regnes pr. dag.
+  // Færge:   Molslinjen Aarhus–Odden, 4 billetter 31/10–1/11 = 1.928,88 kr. inkl. kortgebyr.
+  // Brændstof: diesel hos de store kæder, oktober 2026.
+  // ======================================================================
+  var STANDARD = {
+    navn: "", dato: "",
+    kampe: 2,          // 1 eller 2 kampe på turen
+    personer: 15,
+    dage: 2,           // dage med lejebil
+    km: 250,           // Aalborg → hallen, én vej (Sjælland via Aarhus–Odden)
+    mellem: 100,       // km mellem de to kampe
+    faerge: 482.22,    // færge/bro pr. bil pr. vej
+    pris_l: 18.79,     // brændstof, kr. pr. liter
+    hotel: 4009,       // hotel m. morgenmad, 15 personer
+    andet: 0,          // andet pr. tur
+    biler: [
+      { navn: "9-personers", leje: 839, premium: 199, rabat: 10, inkl: 100, ekstra: 1.8, kml: 12 },
+      { navn: "7-personers", leje: 563, premium: 199, rabat: 10, inkl: 100, ekstra: 1.8, kml: 15 }
+    ]
+  };
+  // Vælges en kamp over Storebælt i kampvælgeren, regnes turen via Aarhus–Odden:
+  var SJAELLAND = { km: 250, faerge: 482.22 };
+  var BROPRIS_TR = 346;     // Storebælt tur/retur m. weekendrabat – hentes fra kørselsudligningen
+  var NOEGLE = "aav.turpris";
+  // ======================================================================
+
+  var TUR_TAL = ["personer", "dage", "km", "mellem", "faerge", "pris_l", "hotel", "andet"];
+  var TUR_TEKST = ["navn", "dato"];
+  var BIL_TAL = ["leje", "premium", "rabat", "inkl", "ekstra", "kml"];
+  var MAKS_BILER = 8;
+
+  function $(id) { return document.getElementById(id); }
+  function klon(x) { return JSON.parse(JSON.stringify(x)); }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  // ------------------------------------------------------------------ tal
+  var F0 = new Intl.NumberFormat("da-DK", { maximumFractionDigits: 0 });
+  var F1 = new Intl.NumberFormat("da-DK", { maximumFractionDigits: 1 });
+  var F2 = new Intl.NumberFormat("da-DK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  var FI = new Intl.NumberFormat("da-DK", { maximumFractionDigits: 2 });
+  function nul(x, graense) { return Math.abs(x) < graense ? 0 : x; }
+  function kr(x) { return F2.format(nul(x, 0.005)) + " kr."; }
+  function kr0(x) { return F0.format(nul(x, 0.5)) + " kr."; }
+  function hel(x) { return F0.format(nul(x, 0.5)); }
+  function fortegn(x) { return x >= 0.5 ? "+" + F0.format(x) : x <= -0.5 ? "−" + F0.format(-x) : "0"; }
+  function feltvaerdi(x) { return typeof x === "number" && isFinite(x) ? FI.format(x) : ""; }
+  function flertal(n, en, flere) { return hel(n) + " " + (n === 1 ? en : flere); }
+
+  // Dansk talformat: "1.126", "1.126,50", "482,22", "18.79", "1 126" og "1126 kr." er alle gyldige.
+  function tal(s) {
+    s = String(s == null ? "" : s).trim().replace(/\s+/g, "").replace(/kr\.?$/i, "").replace(/[−–]/g, "-");
+    if (s === "") return 0;
+    if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) s = s.replace(/\./g, "").replace(",", ".");
+    else if (/^-?\d+,\d+$/.test(s)) s = s.replace(",", ".");
+    else if (!/^-?\d*\.?\d+$/.test(s)) return NaN;
+    var x = parseFloat(s);
+    return isFinite(x) ? x : NaN;
+  }
+
+  // ------------------------------------------------------------- lager
+  var kanGemme = (function () {
+    try { localStorage.setItem(NOEGLE + ".test", "1"); localStorage.removeItem(NOEGLE + ".test"); return true; }
+    catch (e) { return false; }
+  })();
+  function laes(n) {
+    try { var v = localStorage.getItem(NOEGLE + "." + n); return v ? JSON.parse(v) : null; }
+    catch (e) { return null; }
+  }
+  function skriv(n, v) {
+    try { localStorage.setItem(NOEGLE + "." + n, JSON.stringify(v)); return true; }
+    catch (e) { return false; }
+  }
+
+  // En tur fra lager eller link: kun kendte felter med gyldige værdier, resten fra STANDARD.
+  function rens(s) {
+    var u = klon(STANDARD);
+    if (!s || typeof s !== "object") return u;
+    TUR_TEKST.forEach(function (k) { if (typeof s[k] === "string") u[k] = s[k].slice(0, 120); });
+    TUR_TAL.forEach(function (k) { if (typeof s[k] === "number" && isFinite(s[k])) u[k] = s[k]; });
+    u.kampe = s.kampe === 1 ? 1 : 2;
+    if (typeof s._hotel2 === "number" && isFinite(s._hotel2)) u._hotel2 = s._hotel2;
+    if (Array.isArray(s.biler) && s.biler.length) {
+      u.biler = s.biler.slice(0, MAKS_BILER).map(function (b) {
+        var n = klon(STANDARD.biler[STANDARD.biler.length - 1]);
+        n.navn = "";
+        if (b && typeof b === "object") {
+          if (typeof b.navn === "string") n.navn = b.navn.slice(0, 60);
+          BIL_TAL.forEach(function (k) { if (typeof b[k] === "number" && isFinite(b[k])) n[k] = b[k]; });
+        }
+        return n;
+      });
+    }
+    return u;
+  }
+
+  // ---------------------------------------------------------- delt link
+  function tilLink(s) {
+    var b64 = btoa(unescape(encodeURIComponent(JSON.stringify(s))))
+      .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    return location.href.split("#")[0] + "#tur=" + b64;
+  }
+  function fraLink() {
+    var m = /[#&]tur=([A-Za-z0-9_-]+)/.exec(location.hash || "");
+    if (!m) return null;
+    try {
+      var b64 = m[1].replace(/-/g, "+").replace(/_/g, "/");
+      while (b64.length % 4) b64 += "=";
+      return JSON.parse(decodeURIComponent(escape(atob(b64))));
+    } catch (e) { return null; }
+  }
+
+  // ------------------------------------------------------------ beregning
+  function bilTur(b, dage, km, prisL) {
+    var leje = b.leje * dage;
+    var rabat = leje * b.rabat / 100;
+    var premium = b.premium * dage;
+    var inkl = b.inkl * dage;
+    var ekstraKm = Math.max(0, km - inkl);
+    var kmPris = ekstraKm * b.ekstra;
+    var liter = b.kml > 0 ? km / b.kml : 0;
+    return { leje: leje, rabat: rabat, premium: premium, inkl: inkl, ekstraKm: ekstraKm, kmPris: kmPris,
+      billeje: leje - rabat + premium + kmPris, liter: liter, braendstof: liter * prisL };
+  }
+  function tur(s, dage, km, hotel) {
+    var biler = s.biler.map(function (b) { return bilTur(b, dage, km, s.pris_l); });
+    var r = { dage: dage, km: km, biler: biler, billeje: 0, braendstof: 0, liter: 0,
+      billetter: s.faerge ? s.biler.length * 2 : 0, faerge: s.biler.length * 2 * s.faerge,
+      hotel: hotel, andet: s.andet };
+    biler.forEach(function (b) { r.billeje += b.billeje; r.braendstof += b.braendstof; r.liter += b.liter; });
+    r.total = r.billeje + r.braendstof + r.faerge + r.hotel + r.andet;
+    return r;
+  }
+  // Ved to kampe regnes også to enkeltture: halvt så mange lejedage pr. tur (mindst 1),
+  // ingen km mellem kampene, færge/bro begge veje hver gang og intet hotel.
+  function beregn(s) {
+    var to = s.kampe === 2;
+    var hoved = tur(s, s.dage, 2 * s.km + (to ? s.mellem : 0), s.hotel);
+    var enkelt = to ? tur(s, Math.max(1, Math.ceil(s.dage / 2)), 2 * s.km, 0) : null;
+    var toEnkelt = null;
+    if (enkelt) {
+      toEnkelt = {};
+      ["billeje", "braendstof", "faerge", "hotel", "andet", "total", "liter", "billetter"].forEach(function (k) {
+        toEnkelt[k] = 2 * enkelt[k];
+      });
+    }
+    return { hoved: hoved, enkelt: enkelt, toEnkelt: toEnkelt };
+  }
+
+  // ------------------------------------------------------------- tilstand
+  var st;
+  var fraDelt = fraLink();
+  if (fraDelt) {
+    st = rens(fraDelt);
+    $("fra-link").hidden = false;
+    try { history.replaceState(null, "", location.href.split("#")[0]); } catch (e) { /* intet */ }
+  } else {
+    st = rens(laes("nu"));
+  }
+
+  // ------------------------------------------------------------- felter
+  function visFelter() {
+    document.querySelectorAll("#form [data-felt]:not([data-bil])").forEach(function (i) {
+      var k = i.getAttribute("data-felt");
+      i.value = TUR_TEKST.indexOf(k) >= 0 ? st[k] : feltvaerdi(st[k]);
+      i.removeAttribute("aria-invalid");
+    });
+    document.querySelectorAll("#kampe button").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(+b.getAttribute("data-kampe") === st.kampe));
+    });
+    $("felt-mellem").hidden = st.kampe !== 2;
+    visBiler();
+  }
+
+  function bilFelt(i, k, tekst, enhed) {
+    return '<label class="felt"><span>' + tekst + (enhed ? " <small>" + enhed + "</small>" : "") + "</span>" +
+      '<input type="text" inputmode="decimal" data-bil="' + i + '" data-felt="' + k + '" value="' +
+      esc(feltvaerdi(st.biler[i][k])) + '"></label>';
+  }
+  function visBiler() {
+    $("biler").innerHTML = st.biler.map(function (b, i) {
+      return '<div class="bil">' +
+        '<div class="bil-top"><input type="text" class="tekst" data-bil="' + i + '" data-felt="navn" value="' +
+        esc(b.navn) + '" placeholder="Bil ' + (i + 1) + '" aria-label="Navn på bil ' + (i + 1) + '">' +
+        (st.biler.length > 1 ? '<button type="button" class="fjern" data-fjern="' + i + '">Fjern</button>' : "") +
+        '</div><div class="grid tre">' +
+        bilFelt(i, "leje", "Leje pr. dag", "kr.") +
+        bilFelt(i, "premium", "Premium pr. dag", "kr.") +
+        bilFelt(i, "rabat", "Rabat på leje", "%") +
+        bilFelt(i, "inkl", "Km inkl. pr. dag", "") +
+        bilFelt(i, "ekstra", "Ekstra km", "kr. pr. km") +
+        bilFelt(i, "kml", "Forbrug", "km pr. liter") +
+        '</div><p class="bil-linje" id="bil-linje-' + i + '"></p></div>';
+    }).join("");
+    $("tilfoej").hidden = st.biler.length >= MAKS_BILER;
+  }
+
+  // ------------------------------------------------------------ resultat
+  function raekke(tekst, v, klasse) {
+    return "<tr" + (klasse ? ' class="' + klasse + '"' : "") + "><td>" + tekst + '</td><td class="v">' + kr(v) + "</td></tr>";
+  }
+
+  function opdater() {
+    var r = beregn(st), h = r.hoved;
+
+    $("km-ialt").innerHTML = st.kampe === 2
+      ? "= <b>" + hel(h.km) + " km pr. bil</b> på hele turen: " + hel(st.km) + " ud, " + hel(st.mellem) +
+        " mellem kampene og " + hel(st.km) + " hjem."
+      : "= <b>" + hel(h.km) + " km pr. bil</b> tur/retur.";
+
+    h.biler.forEach(function (b, i) {
+      var el = $("bil-linje-" + i);
+      if (!el) return;
+      var leje = "leje " + F2.format(b.leje) +
+        (b.rabat ? " − rabat " + F2.format(b.rabat) : "") +
+        (b.premium ? " + Premium " + F2.format(b.premium) : "") +
+        (b.kmPris ? " + " + hel(b.ekstraKm) + " ekstra km " + F2.format(b.kmPris) : "");
+      el.innerHTML = "<span><b>Billeje " + kr(b.billeje) + "</b> = " + leje + "</span>" +
+        "<span><b>Brændstof " + kr(b.braendstof) + "</b> = " +
+        (b.liter ? F1.format(b.liter) + " l à " + FI.format(st.pris_l) + " kr." : "ikke regnet med") + "</span>";
+    });
+
+    $("r-total").textContent = kr0(h.total);
+    var pr = [];
+    if (st.kampe === 2) pr.push("<b>" + kr0(h.total / 2) + "</b> pr. kamp");
+    if (st.personer > 0) pr.push("<b>" + kr0(h.total / st.personer) + "</b> pr. person");
+    $("r-pr").innerHTML = pr.join(" · ");
+    $("r-tabel").innerHTML =
+      raekke("Billeje <small>" + flertal(st.biler.length, "bil", "biler") + "</small>", h.billeje) +
+      raekke("Brændstof <small>" + F0.format(h.liter) + " l</small>", h.braendstof) +
+      raekke("Færge/bro <small>" + (h.billetter ? flertal(h.billetter, "billet", "billetter") : "ingen") + "</small>", h.faerge) +
+      raekke("Hotel m.m.", h.hotel) +
+      (h.andet ? raekke("Andet", h.andet) : "") +
+      raekke("I alt", h.total, "sum");
+
+    $("sammen").hidden = !r.enkelt;
+    if (r.enkelt) {
+      var to = r.toEnkelt, diff = to.total - h.total;
+      var dom = $("s-dom");
+      if (diff >= 0.5) { dom.textContent = "Dobbeltweekenden sparer " + kr0(diff); dom.className = "dom godt"; }
+      else if (diff <= -0.5) { dom.textContent = "To enkeltture er " + kr0(-diff) + " billigere"; dom.className = "dom skidt"; }
+      else { dom.textContent = "Det er lige dyrt"; dom.className = "dom"; }
+
+      var maksHotel = to.total - (h.total - h.hotel);
+      $("s-hotel").innerHTML = maksHotel > 0.5
+        ? "Hotellet må koste op til <b>" + kr0(maksHotel) + "</b>" +
+          (st.personer > 0 ? " (" + kr0(maksHotel / st.personer) + " pr. person)" : "") +
+          ", før to enkeltture bliver billigst."
+        : "To enkeltture er billigst – også selv om hotellet var gratis.";
+
+      var kat = [["Billeje", "billeje"], ["Brændstof", "braendstof"], ["Færge/bro", "faerge"], ["Hotel m.m.", "hotel"]];
+      if (h.andet) kat.push(["Andet", "andet"]);
+      var rk = kat.map(function (k) {
+        var d = to[k[1]] - h[k[1]];
+        return "<tr><td>" + k[0] + '</td><td class="v">' + hel(h[k[1]]) + '</td><td class="v">' + hel(to[k[1]]) +
+          '</td><td class="v">' + fortegn(d) + "</td></tr>";
+      });
+      rk.push('<tr class="sum"><td>I alt</td><td class="v">' + hel(h.total) + '</td><td class="v">' + hel(to.total) +
+        '</td><td class="v ' + (diff >= 0.5 ? "godt" : diff <= -0.5 ? "skidt" : "") + '">' + fortegn(diff) + "</td></tr>");
+      if (st.personer > 0) {
+        rk.push('<tr class="efter"><td>Pr. person</td><td class="v">' + hel(h.total / st.personer) + '</td><td class="v">' +
+          hel(to.total / st.personer) + '</td><td class="v">' + fortegn(diff / st.personer) + "</td></tr>");
+      }
+      $("s-tabel").innerHTML = rk.join("");
+      var e = r.enkelt;
+      $("s-antag").textContent = "Hver enkelttur: " + flertal(e.dage, "dag", "dage") + " med lejebil, " +
+        hel(e.km) + " km pr. bil, " + (e.billetter ? flertal(e.billetter, "færge/bro-billet", "færge/bro-billetter") : "ingen færge") +
+        (st.andet ? ", andet " + kr0(st.andet) : "") + " og intet hotel. Forskel = to enkeltture minus dobbeltweekenden.";
+    }
+
+    $("bund-total").textContent = kr0(h.total);
+    $("bund-pr").textContent = st.personer > 0 ? "· " + kr0(h.total / st.personer) + " pr. person" : "";
+
+    skriv("nu", st);
+  }
+
+  function visFaergeHint() {
+    $("faerge-hint").innerHTML = "Jeres 4 færgebilletter 31/10–1/11 kostede 1.928,88 kr. inkl. kortgebyr – " +
+      "<b>482,22 kr. pr. billet</b>. Storebælt: ca. " + kr0(BROPRIS_TR / 2) + " pr. bil pr. vej (" + kr0(BROPRIS_TR) +
+      " tur/retur med weekendrabat). Skriv 0, hvis turen ikke krydser vand.";
+  }
+
+  // ------------------------------------------------------------- hændelser
+  var form = $("form");
+  form.addEventListener("submit", function (e) { e.preventDefault(); });
+  form.addEventListener("input", function (e) {
+    var t = e.target, k = t.getAttribute && t.getAttribute("data-felt");
+    if (!k) return;
+    var bi = t.getAttribute("data-bil"), maal = bi != null ? st.biler[+bi] : st;
+    if (!maal) return;
+    if (k === "navn" || k === "dato") {
+      maal[k] = t.value;
+    } else {
+      var x = tal(t.value);
+      if (isNaN(x)) { t.setAttribute("aria-invalid", "true"); return; }
+      t.removeAttribute("aria-invalid");
+      maal[k] = x;
+    }
+    opdater();
+  });
+  form.addEventListener("focusout", function (e) {          // pænt talformat, når feltet forlades
+    var t = e.target, k = t.getAttribute && t.getAttribute("data-felt");
+    if (!k || k === "navn" || k === "dato" || t.getAttribute("aria-invalid") === "true") return;
+    var bi = t.getAttribute("data-bil"), maal = bi != null ? st.biler[+bi] : st;
+    if (maal) t.value = feltvaerdi(maal[k]);
+  });
+
+  function saetKampe(n) {
+    if (n === st.kampe) return;
+    if (n === 1) { st._hotel2 = st.hotel; st.hotel = 0; st.dage = 1; }
+    else { st.hotel = typeof st._hotel2 === "number" ? st._hotel2 : STANDARD.hotel; st.dage = 2; }
+    st.kampe = n;
+  }
+  $("kampe").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-kampe]");
+    if (!b) return;
+    saetKampe(+b.getAttribute("data-kampe"));
+    visFelter(); opdater();
+  });
+
+  $("tilfoej").addEventListener("click", function () {
+    if (st.biler.length >= MAKS_BILER) return;
+    var ny = klon(st.biler[st.biler.length - 1] || STANDARD.biler[0]);
+    ny.navn = "";
+    st.biler.push(ny);
+    visBiler(); opdater();
+    var felter = $("biler").querySelectorAll('.bil-top input');
+    if (felter.length) felter[felter.length - 1].focus();
+  });
+  $("biler").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-fjern]");
+    if (!b || st.biler.length < 2) return;
+    st.biler.splice(+b.getAttribute("data-fjern"), 1);
+    visBiler(); opdater();
+  });
+
+  $("nulstil").addEventListener("click", function () {
+    st = klon(STANDARD);
+    $("kamp").value = "";
+    $("kamp-hint").hidden = true;
+    visFelter(); opdater();
+    besked($("besked"), "Standardpriserne er sat ind igen.");
+  });
+
+  // ----------------------------------------------------- kopiér og del
+  var timere = {};
+  function besked(el, tekst, handling) {
+    el.textContent = tekst;
+    if (handling) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "link"; b.textContent = handling.tekst;
+      b.addEventListener("click", function () { handling.fn(); el.textContent = ""; });
+      el.appendChild(b);
+    }
+    clearTimeout(timere[el.id]);
+    timere[el.id] = setTimeout(function () { el.textContent = ""; }, handling ? 9000 : 4000);
+  }
+  function kopier(tekst) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(tekst);
+    return new Promise(function (ok, fejl) {
+      var ta = document.createElement("textarea");
+      ta.value = tekst; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      var gik = false;
+      try { gik = document.execCommand("copy"); } catch (e) { gik = false; }
+      document.body.removeChild(ta);
+      if (gik) { ok(); } else { fejl(new Error("kopi")); }
+    });
+  }
+  function turNavn() { return st.navn.trim() || (st.kampe === 2 ? "Dobbeltweekend" : "Udebanetur"); }
+
+  $("del").addEventListener("click", function () {
+    var link = tilLink(st);
+    var telefon = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+    if (telefon && navigator.share) {
+      navigator.share({ title: turNavn(), url: link }).catch(function () { /* afbrudt */ });
+      return;
+    }
+    kopier(link).then(function () {
+      besked($("besked"), "Linket er kopieret – det åbner præcis denne tur.");
+    }, function () {
+      try { history.replaceState(null, "", link); } catch (e) { /* intet */ }
+      besked($("besked"), "Kunne ikke kopiere – linket står nu i adresselinjen.");
+    });
+  });
+
+  function opsummering() {
+    var r = beregn(st), h = r.hoved, l = [];
+    l.push(turNavn() + (st.dato.trim() ? " (" + st.dato.trim() + ")" : ""));
+    l.push(flertal(st.kampe, "kamp", "kampe") + " · " + flertal(st.personer, "person", "personer") + " · " +
+      flertal(st.biler.length, "bil", "biler") + " · " + hel(h.km) + " km pr. bil");
+    l.push("Billeje " + kr(h.billeje) + " · brændstof " + kr(h.braendstof) + " · færge/bro " + kr(h.faerge) +
+      (h.hotel ? " · hotel " + kr(h.hotel) : "") + (h.andet ? " · andet " + kr(h.andet) : ""));
+    l.push("I alt " + kr(h.total) + (st.kampe === 2 ? " – " + kr0(h.total / 2) + " pr. kamp" : "") +
+      (st.personer > 0 ? (st.kampe === 2 ? " og " : " – ") + kr0(h.total / st.personer) + " pr. person" : ""));
+    if (r.toEnkelt) {
+      var d = r.toEnkelt.total - h.total;
+      l.push("To enkeltture ville koste " + kr(r.toEnkelt.total) + " – " +
+        (d >= 0.5 ? "dobbeltweekenden sparer " + kr0(d) : d <= -0.5 ? "dobbeltweekenden koster " + kr0(-d) + " mere." : "det er lige dyrt."));
+    }
+    l.push(tilLink(st));
+    return l.join("\n");
+  }
+  $("tekst").addEventListener("click", function () {
+    kopier(opsummering()).then(function () {
+      besked($("besked"), "Teksten er kopieret – sæt den ind i en mail eller besked.");
+    }, function () {
+      besked($("besked"), "Kunne ikke kopiere i denne browser.");
+    });
+  });
+
+  // ------------------------------------------------------------ gemte ture
+  function gemteTure() { var l = laes("ture"); return Array.isArray(l) ? l : []; }
+  function iso(s) {
+    var m = /(\d{1,2})\s*[\/.\-]\s*(\d{1,2})(?:\s*[\/.\-]\s*(\d{4}|\d{2}(?![\d\/.])))?/.exec(s || "");
+    if (!m) return "";
+    var d = +m[1], md = +m[2], aar = m[3] ? +m[3] : null;
+    if (md < 1 || md > 12 || d < 1 || d > 31) return "";
+    if (aar != null && aar < 100) aar += 2000;
+    if (aar == null) {                       // uden årstal: sæsonen, vi er i (juli–juni)
+      var nu = new Date(), start = nu.getMonth() >= 6 ? nu.getFullYear() : nu.getFullYear() - 1;
+      aar = md >= 7 ? start : start + 1;
+    }
+    return aar + "-" + ("0" + md).slice(-2) + "-" + ("0" + d).slice(-2);
+  }
+  function sorteret() {
+    return gemteTure().slice().sort(function (a, b) {
+      var x = a.iso || "9999", y = b.iso || "9999";
+      return x < y ? -1 : x > y ? 1 : (a.gemt < b.gemt ? -1 : 1);
+    });
+  }
+  function r2(x) { return Math.round(x * 100) / 100; }
+
+  $("gem").addEventListener("click", function () {
+    var r = beregn(st), h = r.hoved, ture = gemteTure();
+    var post = {
+      navn: turNavn(), dato: st.dato.trim(), iso: iso(st.dato), kampe: st.kampe, personer: st.personer,
+      kmBil: h.km, biler: st.biler.length, billeje: r2(h.billeje), braendstof: r2(h.braendstof),
+      faerge: r2(h.faerge), hotel: r2(h.hotel), andet: r2(h.andet), total: r2(h.total),
+      toEnkelt: r.toEnkelt ? r2(r.toEnkelt.total) : null, gemt: new Date().toISOString(), tilstand: klon(st)
+    };
+    var i = -1;
+    ture.forEach(function (t, j) { if (t.navn === post.navn && t.dato === post.dato) i = j; });
+    if (i >= 0) { post.id = ture[i].id; ture[i] = post; }
+    else { post.id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6); ture.push(post); }
+    if (!skriv("ture", ture)) {
+      besked($("besked"), "Browseren vil ikke gemme – brug Kopiér link i stedet.");
+      return;
+    }
+    visGemte();
+    besked($("besked"), i >= 0 ? "Turen er opdateret under Gemte ture." : "Gemt under Gemte ture længere nede.");
+  });
+
+  function visGemte() {
+    var ture = sorteret();
+    $("gemte-tom").hidden = ture.length > 0;
+    $("gemte-kort").hidden = !ture.length;
+    $("tsv").hidden = !ture.length;
+    $("gemte-tabel").innerHTML = ture.map(function (t) {
+      return '<tr><td class="l">' + esc(t.dato || "–") + '</td><td class="l w">' + esc(t.navn) + "</td><td>" + t.kampe +
+        '</td><td class="n">' + kr0(t.total) + '</td><td class="n">' + kr0(t.total / (t.kampe || 1)) +
+        '</td><td class="n">' + (t.personer > 0 ? kr0(t.total / t.personer) : "–") +
+        '</td><td><span class="handl"><button type="button" class="link" data-aabn="' + esc(t.id) + '">Åbn</button>' +
+        '<button type="button" class="link fare" data-slet="' + esc(t.id) + '">Slet</button></span></td></tr>';
+    }).join("");
+    if (ture.length) {
+      var sum = 0, kampe = 0;
+      ture.forEach(function (t) { sum += t.total; kampe += t.kampe; });
+      $("gemte-fod").innerHTML = '<tr><td class="l" colspan="2">I alt · ' + flertal(ture.length, "tur", "ture") +
+        "</td><td>" + kampe + '</td><td class="n">' + kr0(sum) + '</td><td class="n">' + (kampe ? kr0(sum / kampe) : "–") +
+        "</td><td></td><td></td></tr>";
+    } else {
+      $("gemte-fod").innerHTML = "";
+    }
+  }
+
+  var sidstSlettet = null;
+  $("gemte-tabel").addEventListener("click", function (e) {
+    var a = e.target.closest("[data-aabn]"), s = e.target.closest("[data-slet]");
+    var ture = gemteTure();
+    if (a) {
+      var t = ture.filter(function (x) { return x.id === a.getAttribute("data-aabn"); })[0];
+      if (!t) return;
+      st = rens(t.tilstand);
+      $("kamp").value = ""; $("kamp-hint").hidden = true;
+      visFelter(); opdater();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      besked($("besked"), "Åbnede " + t.navn + ".");
+    } else if (s) {
+      var id = s.getAttribute("data-slet"), rest = [], slettet = null;
+      ture.forEach(function (x) { if (x.id === id) slettet = x; else rest.push(x); });
+      if (!slettet) return;
+      sidstSlettet = slettet;
+      skriv("ture", rest); visGemte();
+      besked($("gemte-besked"), slettet.navn + " er slettet.", { tekst: "Fortryd", fn: function () {
+        if (!sidstSlettet) return;
+        var l = gemteTure(); l.push(sidstSlettet); sidstSlettet = null;
+        skriv("ture", l); visGemte();
+      } });
+    }
+  });
+
+  // Til Google Sheets: tabulator mellem kolonner og komma som decimaltegn.
+  $("tsv").addEventListener("click", function () {
+    function n(x) { return (Math.round(x * 100) / 100).toFixed(2).replace(".", ","); }
+    function t(x) { return String(x == null ? "" : x).replace(/[\t\r\n]+/g, " "); }
+    var linjer = [["Dato", "Tur", "Kampe", "Personer", "Km pr. bil", "Billeje", "Brændstof", "Færge/bro",
+      "Hotel", "Andet", "I alt", "Pr. person"].join("\t")];
+    sorteret().forEach(function (x) {
+      linjer.push([t(x.dato), t(x.navn), x.kampe, x.personer, Math.round(x.kmBil), n(x.billeje), n(x.braendstof),
+        n(x.faerge), n(x.hotel), n(x.andet), n(x.total), x.personer > 0 ? n(x.total / x.personer) : ""].join("\t"));
+    });
+    kopier(linjer.join("\n")).then(function () {
+      besked($("gemte-besked"), "Kopieret – sæt ind i regnearket med Ctrl+V.");
+    }, function () {
+      besked($("gemte-besked"), "Kunne ikke kopiere i denne browser.");
+    });
+  });
+
+  // ------------------------------------------------- kampvælger
+  // Udeturene kommer fra kørselsudligningen (km = vejafstand én vej fra hjemmebanen,
+  // bro = turen krydser Storebælt). To udekampe på hinanden følgende dage bliver også
+  // tilbudt som dobbeltweekend.
+  var valg = {};
+  function dato(s) { var m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(s || ""); return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null; }
+  function kort(s) { var d = dato(s); return d ? d.getDate() + "/" + (d.getMonth() + 1) : String(s || ""); }
+  function dageMellem(a, b) { var x = dato(a), y = dato(b); return x && y ? Math.round((y - x) / 864e5) : NaN; }
+  function tilfoejValg(gruppe, noegle, tekst, data) {
+    var o = document.createElement("option");
+    o.value = noegle; o.textContent = tekst;
+    gruppe.appendChild(o);
+    valg[noegle] = data;
+  }
+  fetch("../koerselsudligning/status.json", { cache: "no-store" }).then(function (r) {
+    if (!r.ok) throw new Error(r.status); return r.json();
+  }).then(function (k) {
+    if (typeof k.bro === "number" && k.bro > 0) { BROPRIS_TR = k.bro; visFaergeHint(); }
+    var sel = $("kamp"), antal = 0;
+    (k.klubhold || []).forEach(function (h) {
+      var ture = (h.ture || []).filter(function (t) { return t && t.km > 0 && dato(t.dato); })
+        .sort(function (a, b) { return dato(a.dato) - dato(b.dato); });
+      if (!ture.length) return;
+      var g = document.createElement("optgroup");
+      g.label = (h.kode ? h.kode + " · " : "") + (h.raekke || h.hold || "");
+      ture.forEach(function (t, i) {
+        var naeste = ture[i + 1];
+        if (naeste && dageMellem(t.dato, naeste.dato) === 1) {
+          tilfoejValg(g, h.kode + "|" + i + "+" + (i + 1), kort(t.dato) + "–" + kort(naeste.dato) + " · " +
+            t.modstander + " + " + naeste.modstander + " (dobbeltweekend)", { kode: h.kode, ture: [t, naeste] });
+        }
+        tilfoejValg(g, h.kode + "|" + i, kort(t.dato) + " · " + t.modstander + " · " + t.sted +
+          (t.bro ? " · over Storebælt" : " · " + t.km + " km"), { kode: h.kode, ture: [t] });
+      });
+      sel.appendChild(g);
+      antal++;
+    });
+    $("vaelger").hidden = !antal;
+  }).catch(function () { /* ingen kampvælger – siden virker uden */ });
+
+  $("kamp").addEventListener("change", function () {
+    var v = valg[this.value], hint = $("kamp-hint");
+    if (!v) { hint.hidden = true; return; }
+    var a = v.ture[0], b = v.ture[1];
+    var over = v.ture.some(function (t) { return t.bro; });
+    st.navn = (v.kode ? v.kode + ": " : "") + v.ture.map(function (t) { return t.modstander; }).join(" + ");
+    st.dato = b ? kort(a.dato) + "–" + kort(b.dato) : kort(a.dato);
+    saetKampe(b ? 2 : 1);
+    st.dage = b ? 2 : 1;
+    if (over) {
+      st.km = SJAELLAND.km;
+      if (!(st.faerge > 0)) st.faerge = SJAELLAND.faerge;
+      hint.innerHTML = "Over Storebælt: regnet via Aarhus–Odden med <b>" + hel(SJAELLAND.km) + " km én vej</b> og " +
+        "færgeprisen herunder – ret km, hvis I kører anderledes. Kørselsudligningen regner med " +
+        v.ture.map(function (t) { return hel(t.km); }).join(" og ") + " km via broen.";
+    } else {
+      st.km = Math.round(b ? (a.km + b.km) / 2 : a.km);
+      st.faerge = 0;
+      hint.innerHTML = "Km er vejafstanden fra kørselsudligningen. Ingen færge eller bro.";
+    }
+    hint.hidden = false;
+    visFelter(); opdater();
+  });
+
+  // ------------------------------------------------- bundbjælke på telefon
+  if ("IntersectionObserver" in window) {
+    new IntersectionObserver(function (poster) {
+      $("bund").classList.toggle("skjult", poster[0].isIntersecting);
+    }, { threshold: 0.1 }).observe($("resultat"));
+  }
+
+  if (!kanGemme) {
+    $("gemte-sub").textContent = "Denne browser gemmer ikke data (fx privat vindue). Brug Kopiér link for at " +
+      "beholde en tur.";
+  }
+
+  visFaergeHint();
+  visFelter();
+  opdater();
+  visGemte();
+})();
+</script>
+</body>
+</html>
