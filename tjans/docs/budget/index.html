@@ -32,7 +32,7 @@
   --green:#28644F; --green-soft:#DBEBE2;
   --clay:#9E403C; --clay-soft:#F6E2E0;
   --ochre:#8F6410; --ochre-soft:#F6E9C9;
-  --bar:#3C7CA8; --bar-track:#E3E9EF;
+  --bar:#3C7CA8; --bar-track:#E3E9EF; --bar-soft:#DDE9F3;
   --shadow:0 1px 2px rgba(22,32,44,.05),0 6px 18px -10px rgba(22,32,44,.18);
 }
 @media (prefers-color-scheme: dark){
@@ -44,7 +44,7 @@
     --green:#69B896; --green-soft:#1B3329;
     --clay:#DE8079; --clay-soft:#3B2320;
     --ochre:#DCA842; --ochre-soft:#3A2F16;
-    --bar:#5A9BC7; --bar-track:#212E3B;
+    --bar:#5A9BC7; --bar-track:#212E3B; --bar-soft:#1D3346;
     --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px -10px rgba(0,0,0,.6);
   }
 }
@@ -56,7 +56,7 @@
   --green:#69B896; --green-soft:#1B3329;
   --clay:#DE8079; --clay-soft:#3B2320;
   --ochre:#DCA842; --ochre-soft:#3A2F16;
-  --bar:#5A9BC7; --bar-track:#212E3B;
+  --bar:#5A9BC7; --bar-track:#212E3B; --bar-soft:#1D3346;
   --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px -10px rgba(0,0,0,.6);
 }
 *{box-sizing:border-box}
@@ -122,145 +122,154 @@ a{color:var(--accent)}
 @media (max-width:520px){.trinkort{padding:16px 16px 16px 16px}.trinkort::before{position:static;margin-bottom:8px}}
 
 /* ---------------------------------------------------------------- top */
-.top{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--ground) 92%,transparent);
+.top{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--ground) 94%,transparent);
   backdrop-filter:saturate(1.4) blur(8px);-webkit-backdrop-filter:saturate(1.4) blur(8px);border-bottom:1px solid var(--line)}
-.topin{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;padding-block:10px}
-.topin .eyebrow{margin:0 0 1px;font-size:10.5px}
-.topin h1{font-size:20px;margin:0;letter-spacing:-.015em;line-height:1.2}
+.topin{display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap;padding-block:6px}
+.topin .eyebrow{margin:0;font-size:9.5px;letter-spacing:.12em}
+.topin h1{font-size:17px;margin:0;letter-spacing:-.01em;line-height:1.15}
 .spacer{flex:1}
-.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:9px;overflow:hidden;background:var(--surface)}
-.seg button{border:0;background:transparent;padding:6px 11px;font-size:13.5px;cursor:pointer;color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:7px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:transparent;padding:4px 9px;font-size:12.5px;cursor:pointer;color:var(--muted)}
 .seg button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);font-weight:600}
-.ikonknap{border:1px solid var(--line-strong);background:var(--surface);border-radius:9px;padding:6px 11px;font-size:13.5px;cursor:pointer}
+.ikonknap{border:1px solid var(--line-strong);background:var(--surface);border-radius:7px;padding:4px 9px;font-size:12.5px;cursor:pointer}
 .ikonknap:hover{border-color:var(--accent)}
-.topknapper{display:flex;gap:8px}
+.topknapper{display:flex;gap:6px}
 @media (max-width:640px){
   .top{position:static;backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--ground)}
-  .topin{padding-block:12px 10px}
   .topin .titelblok{order:1}
   .topin .spacer{order:2}
   .topin .topknapper{order:3}
-  .topin .seg{order:4;flex-basis:100%;display:flex}
-  .topin .seg button{flex:1;padding:7px 8px}
-  .ikonknap{padding:5px 10px;font-size:13px}
+  .topin #filterseg{order:4;flex-basis:100%;display:flex}
+  .topin #filterseg button{flex:1;padding:5px 8px}
 }
 
 /* ---------------------------------------------------------------- bannere */
-.bannere{margin-top:16px;display:grid;gap:8px}
-.banner{border-radius:11px;padding:11px 14px;font-size:14px;border:1px solid}
+.bannere{margin-top:8px;display:grid;gap:6px}
+.bannere:empty{display:none}
+.banner{border-radius:8px;padding:7px 10px;font-size:13px;border:1px solid}
 .banner.gul{background:var(--ochre-soft);border-color:color-mix(in srgb,var(--ochre) 40%,transparent);color:var(--ink)}
 .banner.gul strong{color:var(--ochre)}
 .banner.blaa{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 35%,transparent)}
-.banner ul{margin:6px 0 0;padding-left:20px}
-.banner .knap{margin-top:8px}
+.banner ul{margin:4px 0 0;padding-left:18px}
 
 /* ---------------------------------------------------------------- nøgletal */
-.kpi{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0 6px}
-.kpikort{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 15px 14px;box-shadow:var(--shadow);min-width:0}
-.kpikort .lbl{font-size:11.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-.kpikort .stor{font-size:23px;font-weight:600;margin-top:4px;letter-spacing:-.03em}
-.kpikort .smaa{font-size:12.5px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.spor{height:5px;border-radius:3px;background:var(--bar-track);margin-top:9px;overflow:hidden}
-.spor i{display:block;height:100%;background:var(--bar);border-radius:3px}
+.kpi{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0 0}
+.kpikort{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px 7px;min-width:0}
+.kpikort .lbl{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.kpikort .stor{font-size:18px;font-weight:600;letter-spacing:-.02em;line-height:1.25}
+.kpikort .smaa{font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spor{height:3px;border-radius:2px;background:var(--bar-track);margin-top:4px;overflow:hidden}
+.spor i{display:block;height:100%;background:var(--bar);border-radius:2px}
 .spor i.over{background:var(--clay)}
 .neg{color:var(--clay)}
 .pos{color:var(--green)}
-@media (max-width:820px){.kpi{grid-template-columns:repeat(2,minmax(0,1fr))}.kpikort .smaa{white-space:normal}}
-@media (max-width:640px){.kpi{gap:10px;margin-top:6px}.kpikort{padding:11px 12px 12px}.kpikort .stor{font-size:20px}}
+.daemp{color:var(--faint)}
+@media (max-width:820px){.kpi{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}}
+@media (max-width:640px){.kpikort{padding:5px 9px 6px}.kpikort .stor{font-size:16px}}
 
 /* ---------------------------------------------------------------- faner og søgning */
-.navlinje{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-top:18px;border-bottom:1px solid var(--line)}
-.faner{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin-bottom:-1px}
+.navlinje{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;margin-top:8px;border-bottom:1px solid var(--line)}
+.faner{display:flex;gap:0;overflow-x:auto;scrollbar-width:none;margin-bottom:-1px}
 .faner::-webkit-scrollbar{display:none}
-.faner button{border:0;background:transparent;border-bottom:2px solid transparent;padding:10px 12px;font-size:14.5px;cursor:pointer;color:var(--muted);white-space:nowrap}
+.faner button{border:0;background:transparent;border-bottom:2px solid transparent;padding:6px 10px;font-size:13.5px;cursor:pointer;color:var(--muted);white-space:nowrap}
 .faner button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
-.soeg{flex:1;min-width:220px;display:flex;justify-content:flex-end;padding-bottom:8px}
-.soeg input{width:100%;max-width:320px;padding:8px 12px;border:1px solid var(--line-strong);border-radius:9px;background:var(--surface);font-size:15px}
-@media (max-width:640px){.soeg{order:-1;min-width:100%;padding-bottom:4px}.soeg input{max-width:none}}
+.soeg{flex:1;min-width:200px;display:flex;justify-content:flex-end;padding-bottom:5px}
+.soeg input{width:100%;max-width:280px;padding:5px 10px;border:1px solid var(--line-strong);border-radius:7px;background:var(--surface);font-size:14px}
+@media (max-width:640px){.soeg{order:-1;min-width:100%;padding-bottom:2px}.soeg input{max-width:none;font-size:16px;padding:5px 10px}
+  .faner button{padding:6px 8px;font-size:13px}}
 
-/* ---------------------------------------------------------------- træet */
-.gruppe{margin-top:22px}
-.gruppe>h2{font-size:12px;font-weight:650;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 8px;display:flex;justify-content:space-between;gap:12px}
-.gruppe>h2.soegtitel{font-size:15px;letter-spacing:0;text-transform:none;color:var(--ink)}
-.gruppe>h2.soegtitel .num{color:var(--muted);font-size:13.5px;font-weight:500}
-.overkat{font-size:12px;color:var(--faint);margin:14px 2px 6px;font-weight:600}
-.kolhoved{display:grid;gap:10px;padding:0 14px 6px;font-size:11px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
-.kolhoved span:not(:first-child){text-align:right}
-.knude{background:var(--surface);border:1px solid var(--line);border-radius:12px;margin-bottom:6px;box-shadow:var(--shadow);overflow:hidden}
-.knude .knude{box-shadow:none;border-radius:10px;margin:6px 10px;background:var(--surface)}
-.raekke{display:grid;gap:10px;align-items:center;width:100%;padding:11px 14px;border:0;background:transparent;text-align:left;cursor:pointer}
+/* ---------------------------------------------------------------- træet: én ramme pr. afsnit, rækker som en tabel */
+.gruppe{margin-top:12px}
+.afsnit{display:grid;gap:8px;align-items:end;padding:0 10px 3px;font-size:10.5px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.afsnit span:not(:first-child){text-align:right;color:var(--faint)}
+.afsnit .lang{text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)}
+.liste{background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.liste>*+*{border-top:1px solid var(--line)}
+.overkat{padding:4px 10px 1px;font-size:10px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);background:var(--surface)}
+.raekke{display:grid;gap:8px;align-items:center;width:100%;padding:5px 10px 5px calc(10px + var(--d,0) * 16px);border:0;background:transparent;
+  text-align:left;cursor:pointer;font-size:14px;line-height:1.3}
 .raekke:hover{background:var(--surface-2)}
-.raekke .navn{display:flex;align-items:flex-start;gap:9px;min-width:0}
+.raekke .navn{display:flex;align-items:center;gap:7px;min-width:0}
+.raekke .navn .tx{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .raekke .navn b{font-weight:600}
-.raekke .navn .tx{min-width:0}
-.raekke .navn .tx>span{display:block;overflow:hidden;text-overflow:ellipsis}
-.raekke .navn small{display:block;color:var(--muted);font-size:12.5px;margin-top:1px}
-.raekke .v{text-align:right;font-size:14px}
-.raekke .v small{display:block;color:var(--faint);font-size:11.5px;margin-top:1px}
-.pil{flex:none;width:8px;height:8px;margin-top:7px;border-right:1.8px solid var(--faint);border-bottom:1.8px solid var(--faint);transform:rotate(-45deg);transition:transform .15s}
+.raekke .navn small{color:var(--faint);font-size:11.5px;margin-left:6px}
+.raekke .v{text-align:right;font-size:13px}
+.v.db{background:linear-gradient(var(--bar),var(--bar)) left bottom/var(--p,0%) 2px no-repeat,linear-gradient(var(--bar-track),var(--bar-track)) left bottom/100% 2px no-repeat;padding-bottom:2px}
+.v.db.over{background:linear-gradient(var(--clay),var(--clay)) left bottom/100% 2px no-repeat}
+.pil{flex:none;width:6px;height:6px;border-right:1.6px solid var(--faint);border-bottom:1.6px solid var(--faint);transform:rotate(-45deg);transition:transform .15s;margin:0 1px 0 0}
 .knude.aaben>.raekke .pil{transform:rotate(45deg)}
-.minispor{height:3px;border-radius:2px;background:var(--bar-track);margin-top:6px;overflow:hidden;max-width:220px}
-.minispor i{display:block;height:100%;background:var(--bar)}
-.minispor i.over{background:var(--clay)}
-.boern{display:none;border-top:1px solid var(--line);background:var(--surface-2);padding-bottom:6px}
+.knude.aaben>.raekke{background:var(--surface-2)}
+.knude.aaben>.raekke .navn b{color:var(--accent)}
+.boern{display:none;background:var(--surface-2);border-top:1px solid var(--line)}
+.boern>*+*{border-top:1px solid var(--line)}
 .knude.aaben>.boern{display:block}
-.k-linje{grid-template-columns:minmax(0,1fr) 108px 108px}
-.k-hold{grid-template-columns:minmax(0,1fr) 108px 108px 118px}
-.k-to{grid-template-columns:minmax(0,1fr) 118px 118px}
-.k-et{grid-template-columns:minmax(0,1fr) 150px}
-.total{display:grid;gap:10px;padding:10px 14px;font-weight:650;border-top:2px solid var(--line-strong);margin-top:4px}
-.total .v{text-align:right}
-.resultat{background:var(--surface);border:1px solid var(--line);border-radius:12px;margin-top:14px;box-shadow:var(--shadow)}
-.tom{padding:12px 16px;color:var(--muted);font-size:13.5px}
-.note{padding:10px 16px 2px;color:var(--muted);font-size:13px}
-.underoverskrift{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:12px 16px 4px;font-size:12px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
-.underoverskrift .num{text-transform:none;letter-spacing:0;font-weight:500;font-size:12.5px}
-.opsummering{padding:10px 16px 2px;font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 18px}
-.opsummering b{color:var(--ink);font-weight:600}
+.k-linje{grid-template-columns:minmax(0,1fr) 96px 104px}
+.k-hold{grid-template-columns:minmax(0,1fr) 88px 88px 96px 96px}
+.k-to{grid-template-columns:minmax(0,1fr) 104px 104px}
+.k-et{grid-template-columns:minmax(0,1fr) 140px}
+.k-afv{grid-template-columns:minmax(0,1fr) 92px 100px 104px}
+.total{display:grid;gap:8px;padding:5px 10px;font-weight:650;font-size:13.5px;background:var(--surface)}
+.liste>.total{border-top:1.5px solid var(--line-strong)}
+.total .v{text-align:right;font-size:13px}
+.mellem{display:grid;gap:8px;align-items:center;padding:5px 10px 3px calc(10px + var(--d,1) * 16px);font-size:11px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--surface-2)}
+.mellem .v{text-align:right;letter-spacing:0;text-transform:none;font-weight:500;font-size:12px}
+.mellem.ny{text-transform:none;letter-spacing:0;font-size:12px;color:var(--ink);background:var(--surface)}
+.tom{padding:4px 10px 5px calc(10px + var(--d,0) * 16px);color:var(--muted);font-size:12.5px;margin:0;background:var(--surface)}
+.note{padding:4px 10px 4px calc(10px + var(--d,0) * 16px);color:var(--muted);font-size:12px;margin:0}
+.forklaring{color:var(--muted);font-size:12.5px;margin:6px 2px 0}
+.styr{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-top:10px}
+.styr .seg button{padding:3px 8px;font-size:12px}
 @media (max-width:640px){
-  .k-linje{grid-template-columns:minmax(0,1fr) 84px 88px}
-  .k-hold{grid-template-columns:minmax(0,1fr) 104px}
-  .k-hold .v.ind,.k-hold .v.ud,.kolhoved.k-hold span.ind,.kolhoved.k-hold span.ud{display:none}
-  .k-to{grid-template-columns:minmax(0,1fr) 92px 92px}
-  .raekke{padding:10px 12px}
-  .raekke .v{font-size:13px}
-  .knude .knude{margin:6px 6px}
+  .raekke{padding:6px 8px 6px calc(8px + var(--d,0) * 12px);font-size:13.5px}
+  .raekke .v{font-size:12px}
+  .afsnit{padding:0 8px 3px}
+  .k-linje{grid-template-columns:minmax(0,1fr) 74px 84px}
+  .k-hold{grid-template-columns:minmax(0,1fr) 78px 80px}
+  .k-hold .ind,.k-hold .ud{display:none}
+  .k-to{grid-template-columns:minmax(0,1fr) 80px 80px}
+  .k-et{grid-template-columns:minmax(0,1fr) 112px}
+  .k-afv{grid-template-columns:minmax(0,1fr) 76px 80px}
+  .k-afv .bud{display:none}
+  .mellem{padding:5px 8px 3px calc(8px + var(--d,1) * 12px)}
+  .tom,.note{padding-left:calc(8px + var(--d,0) * 12px)}
+  .boern .raekke .navn small{display:none}
 }
 
 /* ---------------------------------------------------------------- posteringer */
-.post{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:4px 12px;padding:9px 16px;border-top:1px solid var(--line);cursor:pointer;background:var(--surface)}
-.post:first-child{border-top:0}
+.post{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:1px 10px;padding:3px 10px 3px calc(10px + var(--d,1) * 16px);cursor:pointer;
+  background:var(--surface);font-size:13px;line-height:1.35}
 .post:hover{background:var(--surface-3)}
-.post .d{color:var(--muted);font-size:13px;padding-top:1px}
+.post .d{color:var(--muted);font-size:12px;padding-top:1px}
 .post .t{min-width:0}
 .post .t b{font-weight:600}
 .post .t .det{color:var(--muted)}
-.post .a{text-align:right;font-size:14px}
-.post .a small{display:block;color:var(--faint);font-size:11.5px}
-.post.budgetpost{cursor:default;background:transparent}
+.post .a{text-align:right;font-size:13px}
+.post .a small{display:block;color:var(--faint);font-size:11px;line-height:1.2}
+.post.budgetpost{cursor:default;background:var(--surface-2)}
 .post.budgetpost .t b{font-weight:500}
 .post.budgetpost .a{color:var(--muted)}
-.maerke{display:inline-block;font-size:11px;line-height:1.5;padding:0 6px;border-radius:5px;margin-left:6px;vertical-align:1px;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
+.maerke{display:inline-block;font-size:10.5px;line-height:1.45;padding:0 5px;border-radius:4px;margin-left:2px;vertical-align:1px;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
 .maerke.graa{background:var(--surface-3);color:var(--muted)}
 .maerke.gul{background:var(--ochre-soft);color:var(--ochre)}
-.detaljer{grid-column:1/-1;margin:6px 0 2px;padding:10px 12px;border-radius:9px;background:var(--surface-2);font-size:13px;display:grid;grid-template-columns:max-content 1fr;gap:3px 14px;cursor:auto}
+.detaljer{grid-column:1/-1;margin:3px 0 3px;padding:6px 10px;border-radius:6px;background:var(--surface-2);font-size:12.5px;display:grid;grid-template-columns:max-content 1fr;gap:1px 12px;cursor:auto}
 .detaljer dt{color:var(--muted)}
 .detaljer dd{margin:0;min-width:0;overflow-wrap:anywhere}
-.flere{display:block;width:calc(100% - 32px);margin:8px 16px 4px;padding:8px;border:1px dashed var(--line-strong);border-radius:9px;background:transparent;color:var(--accent);cursor:pointer;font-size:13.5px}
+.flere{display:block;width:100%;padding:5px;border:0;background:var(--surface);color:var(--accent);cursor:pointer;font-size:12.5px}
 @media (max-width:640px){
-  .post{grid-template-columns:minmax(0,1fr) auto;padding:9px 12px}
-  .post .d{grid-column:1/-1;order:0;font-size:12px;padding:0;margin-bottom:-3px}
+  .post{grid-template-columns:34px minmax(0,1fr) auto;gap:1px 8px;padding:4px 8px 4px calc(8px + var(--d,1) * 12px);font-size:12.5px}
+  .post .d{font-size:11px}
+  .post .a{font-size:12px}
   .detaljer{grid-template-columns:1fr}
-  .detaljer dt{margin-top:4px}
+  .detaljer dt{margin-top:3px}
 }
 
 /* ---------------------------------------------------------------- fod */
-footer{margin:34px 0 60px;color:var(--muted);font-size:13px;line-height:1.7}
+footer{margin:18px 0 40px;color:var(--muted);font-size:12px;line-height:1.6}
 footer a{color:var(--accent)}
 .kontrol-ok{color:var(--green)}
 .laeser{display:flex;align-items:center;justify-content:center;min-height:60vh;color:var(--muted)}
 @media (prefers-reduced-motion:reduce){.pil{transition:none}}
-@media print{.top,.navlinje,footer,.bannere{display:none}.knude{box-shadow:none}}
+@media print{.top,.navlinje,footer,.bannere{display:none}}
 </style>
 </head>
 <body>
@@ -353,7 +362,7 @@ footer a{color:var(--accent)}
         <h1 id="overskrift">Budget</h1>
       </div>
       <div class="spacer"></div>
-      <div class="seg" role="group" aria-label="Hvilke posteringer">
+      <div class="seg" id="filterseg" role="group" aria-label="Hvilke posteringer">
         <button type="button" data-filter="Ja" aria-pressed="true" id="filter-ja">Kun sæsonen</button>
         <button type="button" data-filter="Alle" aria-pressed="false">Alt bogført</button>
       </div>
@@ -372,6 +381,7 @@ footer a{color:var(--accent)}
         <button type="button" role="tab" data-fane="hold" aria-selected="false">Hold</button>
         <button type="button" role="tab" data-fane="arrangementer" aria-selected="false">Arrangementer</button>
         <button type="button" role="tab" data-fane="konti" aria-selected="false">Konti</button>
+        <button type="button" role="tab" data-fane="afvigelser" aria-selected="false">Afvigelser</button>
       </nav>
       <div class="soeg"><input type="search" id="soeg" placeholder="Søg i alle posteringer …" aria-label="Søg i alle posteringer" autocomplete="off"></div>
     </div>
@@ -571,7 +581,8 @@ const S = {
   kode: null, svar: null, D: null, hentetMs: 0,
   filter: laes(localStorage, NOEGLE.filter) || null,
   fane: laes(localStorage, NOEGLE.fane) || "budget",
-  soeg: "", aabne: new Set(), detaljer: new Set(), visAlle: new Set(), henter: false
+  soeg: "", aabne: new Set(), detaljer: new Set(), visAlle: new Set(), henter: false,
+  afvNiveau: "linje"
 };
 
 /* ============================================================ adressen på scriptet */
@@ -946,17 +957,19 @@ function kontroller(D) {
 }
 
 /* ============================================================ visning: byggeklodser */
+/* En række, der kan foldes ud. dybde = hvor langt den er rykket ind (0 = øverst). */
 function knude(id, celler, byg, opt) {
   opt = opt || {};
+  const d = opt.dybde || 0;
   const aaben = S.aabne.has(id);
   const el = h("div", { class: "knude" + (aaben ? " aaben" : "") });
-  const knap = h("button", { type: "button", class: "raekke " + (opt.kol || "k-linje"), "aria-expanded": String(aaben) });
-  const navn = h("span", { class: "navn" }, h("i", { class: "pil", "aria-hidden": "true" }),
-    h("span", { class: "tx" }, h("span", null, h("b", null, celler[0])), opt.under ? h("small", null, opt.under) : null, opt.spor || null));
-  knap.append(navn, ...celler.slice(1).map(c => c instanceof Node ? c : h("span", { class: "v num" }, c)));
-  const boern = h("div", { class: "boern" });
+  const knap = h("button", { type: "button", class: "raekke " + (opt.kol || "k-linje"), "aria-expanded": String(aaben), style: "--d:" + d });
+  knap.append(h("span", { class: "navn" }, h("i", { class: "pil", "aria-hidden": "true" }),
+    h("span", { class: "tx" }, h("b", null, celler[0]), opt.under ? h("small", null, opt.under) : null)),
+    ...celler.slice(1).map(c => c instanceof Node ? c : h("span", { class: "v num" }, c)));
+  const boern = h("div", { class: "boern", style: "--d:" + (d + 1) });
   let bygget = false;
-  const sikr = () => { if (!bygget) { byg(boern); bygget = true; } };
+  const sikr = () => { if (!bygget) { byg(boern, d + 1); bygget = true; } };
   if (aaben) sikr();
   knap.addEventListener("click", () => {
     const nu = el.classList.toggle("aaben");
@@ -966,14 +979,18 @@ function knude(id, celler, byg, opt) {
   el.append(knap, boern);
   return el;
 }
-function v(tal1, smaa, klasse) {
-  return h("span", { class: "v num" + (klasse ? " " + klasse : "") }, h("span", null, tal1), smaa != null ? h("small", null, smaa) : null);
+/* En talcelle. */
+function vc(tekst1, klasse, attrs) {
+  return h("span", Object.assign({ class: "v num" + (klasse ? " " + klasse : "") }, attrs || {}), tekst1);
 }
-function spor(real, budget, udgift) {
-  const p = andel(Math.abs(real), Math.abs(budget));
+/* Realiseret med en svag søjle bagved: hvor stor en del af budgettet der er brugt eller kommet ind. */
+function vBar(real, budget, udgift, klasse) {
   const over = udgift && real > budget + 0.5;
-  return h("div", { class: "minispor", "aria-hidden": "true" }, h("i", { class: over ? "over" : "", style: "width:" + (budget ? p : (real ? 100 : 0)) + "%" }));
+  const p = budget > 0.5 ? Math.max(0, Math.min(100, real / budget * 100)) : (real > 0.5 ? 100 : 0);
+  return h("span", { class: "v num db" + (over ? " over neg" : "") + (klasse ? " " + klasse : ""), style: "--p:" + p.toFixed(1) + "%",
+    title: budget > 0.5 ? Math.round(real / budget * 100) + " % af budgettet" : "" }, kr(real));
 }
+const antalTekst = n => n ? n + " post." : "";
 function maerker(p, opt) {
   const m = [];
   if (opt && opt.linje) m.push(h("span", { class: "maerke graa" }, opt.linje));
@@ -1010,7 +1027,8 @@ function posteringEl(p, opt) {
     if (gl) gl.remove();
     if (!S.detaljer.has(id)) return;
     const kat = [p.over, p.under, p.under2].filter(Boolean).join(" › ") || "–";
-    const hold = p.holdA ? (p.holdA + (p.holdB ? " og " + p.holdB + " (" + Math.round((p.andel == null ? 1 : p.andel) * 100) + " % / " + Math.round((1 - (p.andel == null ? 1 : p.andel)) * 100) + " %)" : "")) : "Intet hold";
+    const a = p.andel == null ? 1 : p.andel;
+    const hold = p.holdA ? (p.holdA + (p.holdB ? " og " + p.holdB + " (" + Math.round(a * 100) + " % / " + Math.round((1 - a) * 100) + " %)" : "")) : "Intet hold";
     const dl = h("dl", { class: "detaljer" },
       h("dt", null, "Dato"), h("dd", null, dmy(p.dato)),
       h("dt", null, "Beløb"), h("dd", { class: "num" }, kr(p.beloeb, true, true)),
@@ -1042,199 +1060,279 @@ function budgetpostEl(b, opt) {
     h("span", { class: "a num" }, kr(b.beloeb, true)));
 }
 /* Liste af posteringer med "Vis alle", når den er lang. */
-function posteringsliste(vaert, id, emner, lav1) {
+function posteringsliste(vaert, id, emner, lav1, foerst) {
+  const n = foerst || VIS_FOERST;
   const alle = S.visAlle.has(id);
-  const vis = alle ? emner : emner.slice(0, VIS_FOERST);
+  const vis = alle ? emner : emner.slice(0, n);
   vis.forEach(x => vaert.append(lav1(x)));
   if (emner.length > vis.length) {
-    const k = h("button", { type: "button", class: "flere" }, "Vis alle " + emner.length + " posteringer");
+    const k = h("button", { type: "button", class: "flere" }, "Vis alle " + emner.length);
     k.addEventListener("click", () => { S.visAlle.add(id); k.remove(); emner.slice(vis.length).forEach(x => vaert.append(lav1(x))); });
     vaert.append(k);
   }
 }
-function kolhoved(kol, ...navne) {
-  return h("div", { class: "kolhoved " + kol }, h("span"), ...navne.map(n => typeof n === "string" ? h("span", null, n) : n));
+function afsnit(kol, ...navne) {
+  return h("div", { class: "afsnit " + kol }, ...navne.map(n => n instanceof Node ? n : h("span", null, n)));
 }
 
-/* ============================================================ fane: Budget */
+/* ============================================================ grupper */
 function prefiks(s) { const i = s.indexOf(" - "); return i > 0 ? s.slice(0, i) : s; }
-/* Deler en budgetlinjes posteringer op efter Underkategori 2 (eller hold) og sætter
-   budgetposterne på den gruppe, de hører til. */
-function undergrupper(l) {
+const kompakt = s => lav(s).replace(/[^a-z0-9æøå]/g, "");
+/* Passer budgetposten til gruppen? «Transfer D1 (4 x 1.000)» → Transfer, «Kontingent SIFA» → SIFA */
+function passer(post, label) {
+  const p = kompakt(post), l = kompakt(label);
+  return !!l && (p.startsWith(l) || (l.length >= 4 && p.includes(l)));
+}
+/* Deler posteringer op efter Underkategori 2 og sætter budgetposterne på den gruppe, de hører til.
+   emner: [{p, w}]. holdNiveau (fanen Budget): posteringer uden Underkategori 2 samles pr. hold.
+   Ellers (fanen Hold) samles de i én gruppe, der hedder restNavn. */
+function undergrupper(emner, bposter, indtaegt, holdNiveau, restNavn) {
   const g = new Map();
-  const faa = (key, label, art) => { if (!g.has(key)) g.set(key, { key, label, art, poster: [], bposter: [] }); return g.get(key); };
-  l.poster.forEach(p => {
-    if (p.under2) faa("u:" + lav(p.under2), p.under2, "u").poster.push(p);
-    else faa("h:" + lav(p.holdA || "Uden hold"), p.holdA || "Uden hold", "h").poster.push(p);
+  const faa = (key, label, art) => { if (!g.has(key)) g.set(key, { key, label, art, emner: [], bposter: [] }); return g.get(key); };
+  emner.forEach(x => {
+    const p = x.p;
+    if (p.under2) faa("u:" + lav(p.under2), p.under2, "u").emner.push(x);
+    else if (holdNiveau) faa("h:" + lav(p.holdA || "Uden hold"), p.holdA || "Uden hold", "h").emner.push(x);
+    else faa("r:", restNavn || "Øvrige", "r").emner.push(x);
   });
   const uGr = [...g.values()].filter(x => x.art === "u").sort((a, b) => b.label.length - a.label.length);
-  const holdBaseret = [...g.values()].filter(x => x.art === "h").length > uGr.length;
-  l.bposter.forEach(b => {
-    const pl = lav(b.post);
-    let hit = uGr.find(x => pl.startsWith(lav(x.label)));
-    if (!hit && b.hold && (g.has("h:" + lav(b.hold)) || holdBaseret)) hit = faa("h:" + lav(b.hold), b.hold, "h");
+  const holdBaseret = holdNiveau && [...g.values()].filter(x => x.art === "h").length > uGr.length;
+  bposter.forEach(b => {
+    let hit = uGr.find(x => passer(b.post, x.label));
+    if (!hit && holdNiveau && b.hold && (g.has("h:" + lav(b.hold)) || holdBaseret)) hit = faa("h:" + lav(b.hold), b.hold, "h");
+    if (!hit && !holdNiveau && g.has("r:")) hit = g.get("r:");
     if (!hit) { const pf = prefiks(b.post) || "(uden navn)"; hit = faa("b:" + lav(pf), pf, "b"); }
     hit.bposter.push(b);
   });
+  // «Frivilligarrangement - Region Nordjylland» samles under budgetgruppen «Frivilligarrangement»
   [...g.values()].forEach(x => {
     if (x.art !== "u") return;
     const pf = prefiks(x.label);
     const maal = pf !== x.label && g.get("b:" + lav(pf));
-    if (maal) { maal.poster.push(...x.poster); g.delete(x.key); }
+    if (maal) { maal.emner.push(...x.emner); g.delete(x.key); }
   });
   const ud = [...g.values()].map(x => {
-    const s = sum(x.poster, p => p.beloeb);
-    x.poster.sort((a, b) => a.dato - b.dato || a.raekke - b.raekke);
-    return { ...x, budget: sum(x.bposter, b => b.beloeb), real: erIndtaegt(l) ? s : -s };
-  }).filter(x => x.poster.length || Math.abs(x.budget) > 0.005);
-  ud.sort((a, b) => (a.label === "Uden hold") - (b.label === "Uden hold") || Math.max(Math.abs(b.budget), Math.abs(b.real)) - Math.max(Math.abs(a.budget), Math.abs(a.real)));
+    const s = sum(x.emner, e => e.w * e.p.beloeb);
+    x.emner.sort((a, b) => a.p.dato - b.p.dato || a.p.raekke - b.p.raekke);
+    return { ...x, budget: sum(x.bposter, b => b.beloeb), real: indtaegt ? s : -s };
+  }).filter(x => x.emner.length || Math.abs(x.budget) > 0.005);
+  ud.sort((a, b) => (a.label === "Uden hold") - (b.label === "Uden hold") ||
+    Math.max(Math.abs(b.budget), Math.abs(b.real)) - Math.max(Math.abs(a.budget), Math.abs(a.real)));
   return ud;
 }
-function linjeIndhold(vaert, l, id) {
+/* Budgetposter og posteringer i én gruppe. Én budgetpost med samme navn som gruppen står allerede i rækken ovenover. */
+function fyldGruppe(vaert, id, x, opt) {
+  opt = opt || {};
+  x.bposter.forEach(b => {
+    if (x.bposter.length === 1 && lav(b.post) === lav(x.label) && !b.bem) return;
+    vaert.append(budgetpostEl(b, { skjulHold: opt.skjulHold }));
+  });
+  if (!x.emner.length && !opt.stille) vaert.append(h("p", { class: "tom" }, "Ingen posteringer endnu."));
+  posteringsliste(vaert, id + "|" + x.key, x.emner, e => posteringEl(e.p, { w: e.w, skjulHold: opt.skjulHold && !e.p.holdB }));
+}
+
+/* ============================================================ fane: Budget */
+function linjeIndhold(vaert, l, id, d) {
   if (l.gammel != null && Math.abs(l.budget - l.gammel) > 0.5) {
     vaert.append(h("p", { class: "note" }, "Oprindeligt budget (Budget/ny): " + kr(l.gammel) + " kr. · ændret med " + kr(l.budget - l.gammel, false, true) + " kr."));
   }
-  const grupper = undergrupper(l);
+  const grupper = undergrupper(l.poster.map(p => ({ p, w: 1 })), l.bposter, erIndtaegt(l), true);
   if (!grupper.length) { vaert.append(h("p", { class: "tom" }, "Ingen budget og ingen posteringer.")); return; }
-  const fyld = (v2, x) => {
-    const holdGruppe = x.art === "h";
-    x.bposter.forEach(b => {
-      // én budgetpost med samme navn som gruppen står allerede i rækken ovenover
-      if (x.bposter.length === 1 && lav(b.post) === lav(x.label) && !b.bem) return;
-      v2.append(budgetpostEl(b, { skjulHold: holdGruppe }));
-    });
-    if (!x.poster.length) v2.append(h("p", { class: "tom" }, "Ingen posteringer endnu."));
-    posteringsliste(v2, id + "|" + x.key, x.poster, p => posteringEl(p, { skjulHold: holdGruppe && !p.holdB }));
-  };
-  if (grupper.length === 1) { fyld(vaert, grupper[0]); return; }
+  if (grupper.length === 1) { fyldGruppe(vaert, id, grupper[0], { skjulHold: grupper[0].art === "h" }); return; }
   grupper.forEach(x => {
-    vaert.append(knude(id + "|" + x.key, [x.label, kr(x.budget), v(kr(x.real), x.poster.length ? x.poster.length + (x.poster.length === 1 ? " postering" : " posteringer") : null)],
-      v2 => fyld(v2, x), { kol: "k-linje" }));
+    vaert.append(knude(id + "|" + x.key, [x.label, vc(kr(x.budget)), vBar(x.real, x.budget, !erIndtaegt(l))],
+      v2 => fyldGruppe(v2, id, x, { skjulHold: x.art === "h" }), { kol: "k-linje", dybde: d, under: antalTekst(x.emner.length) }));
   });
 }
 function visBudget(vaert, D) {
   const m = beregnBudget(D, S.filter);
   const blok = (titel, linjer, b, r, indtaegt) => {
-    const g = h("section", { class: "gruppe" }, h("h2", null, h("span", null, titel)), kolhoved("k-linje", "Budget", "Realiseret"));
+    const liste = h("div", { class: "liste" });
     let sidsteOver = null;
     linjer.forEach(l => {
-      if (!indtaegt && l.over !== sidsteOver) { g.append(h("div", { class: "overkat" }, l.over)); sidsteOver = l.over; }
-      const over = !indtaegt && l.real > l.budget + 0.5;
+      if (!indtaegt && l.over !== sidsteOver) { liste.append(h("div", { class: "overkat" }, l.over)); sidsteOver = l.over; }
       const id = "b|" + l.linje;
-      g.append(knude(id, [l.linje, kr(l.budget), v(kr(l.real), l.poster.length ? l.poster.length + " post." : null, over ? "neg" : "")],
-        vaert2 => linjeIndhold(vaert2, l, id), { kol: "k-linje", spor: spor(l.real, l.budget, !indtaegt) }));
+      liste.append(knude(id, [l.linje, vc(kr(l.budget)), vBar(l.real, l.budget, !indtaegt)],
+        (v2, d) => linjeIndhold(v2, l, id, d), { kol: "k-linje", under: antalTekst(l.poster.length) }));
     });
-    g.append(h("div", { class: "total k-linje" }, h("span", null, titel + " i alt"), h("span", { class: "v num" }, kr(b)), h("span", { class: "v num" }, kr(r))));
-    vaert.append(g);
+    liste.append(h("div", { class: "total k-linje" }, h("span", null, titel + " i alt"), vc(kr(b)), vc(kr(r))));
+    vaert.append(h("section", { class: "gruppe" }, afsnit("k-linje", titel, "Budget", "Realiseret"), liste));
   };
   blok("Indtægter", m.linjer.filter(erIndtaegt), m.bInd, m.rInd, true);
   blok("Udgifter", m.linjer.filter(l => !erIndtaegt(l)), m.bUd, m.rUd, false);
   const res = m.rInd - m.rUd, bres = m.bInd - m.bUd;
-  vaert.append(h("div", { class: "resultat total k-linje", style: "border-top:1px solid var(--line)" },
-    h("span", null, "Resultat"), h("span", { class: "v num" + (bres < 0 ? " neg" : "") }, kr(bres)), h("span", { class: "v num" + (res < 0 ? " neg" : "") }, kr(res))));
+  vaert.append(h("div", { class: "liste", style: "margin-top:8px" }, h("div", { class: "total k-linje" },
+    h("span", null, "Resultat"), vc(kr(bres), bres < 0 ? "neg" : ""), vc(kr(res), res < 0 ? "neg" : ""))));
 
-  const g2 = h("section", { class: "gruppe" }, h("h2", null, h("span", null, "Uden for budgettet")));
-  g2.append(h("p", { class: "stille", style: "margin:0 2px 8px;font-size:13.5px" },
-    "Lån, interne overførsler og posteringer uden kategori. De flytter penge, men er ikke drift – derfor står de hverken i budgettet eller på holdene."));
+  const liste = h("div", { class: "liste" });
   const grp = new Map();
   m.uden.forEach(p => { const k = p.under || "Uden kategori"; if (!grp.has(k)) grp.set(k, []); grp.get(k).push(p); });
   [...grp.entries()].sort((a, b) => a[0].localeCompare(b[0], "da")).forEach(([k, ps]) => {
     ps.sort((a, b) => a.dato - b.dato || a.raekke - b.raekke);
     const s = sum(ps, p => p.beloeb);
-    g2.append(knude("u|" + k, [k, v(kr(s, false, true), ps.length + (ps.length === 1 ? " postering" : " posteringer"), s > 0 ? "pos" : "")],
-      v2 => posteringsliste(v2, "u|" + k, ps, p => posteringEl(p)), { kol: "k-et" }));
+    liste.append(knude("u|" + k, [k, vc(kr(s, false, true), s > 0 ? "pos" : "")],
+      v2 => posteringsliste(v2, "u|" + k, ps, p => posteringEl(p)), { kol: "k-et", under: antalTekst(ps.length) }));
   });
   const ip = m.interne.slice().sort((a, b) => a.dato - b.dato || a.raekke - b.raekke);
   if (ip.length) {
-    g2.append(knude("i|interne", ["Interne overførsler", v(kr(m.interneSum, false, true), Math.abs(m.interneSum) < 0.5 ? "går op i 0 ✓" : "skal give 0", Math.abs(m.interneSum) < 0.5 ? "" : "neg")],
-      v2 => posteringsliste(v2, "i|interne", ip, p => posteringEl(p)), { kol: "k-et", under: "Mellem driftskontoen og kontingentkontoen" }));
+    const nul = Math.abs(m.interneSum) < 0.5;
+    liste.append(knude("i|interne", ["Interne overførsler", vc(nul ? "0 ✓" : kr(m.interneSum, false, true), nul ? "pos" : "neg")],
+      v2 => posteringsliste(v2, "i|interne", ip, p => posteringEl(p)), { kol: "k-et", under: antalTekst(ip.length) }));
   }
-  if (!m.uden.length && !ip.length) g2.append(h("p", { class: "tom" }, "Ingen."));
-  vaert.append(g2);
+  if (!m.uden.length && !ip.length) liste.append(h("p", { class: "tom" }, "Ingen."));
+  vaert.append(h("section", { class: "gruppe" }, afsnit("k-et", "Uden for budgettet", "Bevægelse"), liste,
+    h("p", { class: "forklaring" }, "Lån, interne overførsler og posteringer uden kategori flytter penge, men er ikke drift – derfor står de hverken i budgettet eller på holdene.")));
 }
 
 /* ============================================================ fane: Hold */
+/* Holdets posteringer og budgetposter delt i Ind og Ud og derunder i budgetlinjer. */
+function holdLinjer(D, x) {
+  const linjeFor = new Map();
+  D.linjer.forEach(l => aliasFor(D, l).forEach(a => { if (!linjeFor.has(a)) linjeFor.set(a, l); }));
+  const del = (emner, bposter, indtaegt) => {
+    const g = new Map();
+    const faa = navn => { const k = lav(navn); if (!g.has(k)) g.set(k, { navn, emner: [], bposter: [] }); return g.get(k); };
+    emner.forEach(e => { const l = linjeFor.get(lav(e.p.under)); faa(l ? l.linje : (e.p.under || "Uden kategori")).emner.push(e); });
+    bposter.forEach(b => { const l = D.linjer.find(l => lav(l.linje) === lav(b.linje)); faa(l ? l.linje : b.linje).bposter.push(b); });
+    return [...g.values()].map(y => {
+      const s = sum(y.emner, e => e.b);
+      return { ...y, indtaegt, budget: sum(y.bposter, b => b.beloeb), real: indtaegt ? s : -s };
+    }).sort((a, b) => Math.max(Math.abs(b.budget), Math.abs(b.real)) - Math.max(Math.abs(a.budget), Math.abs(a.real)));
+  };
+  return {
+    ind: del(x.ind, x.bp.filter(b => lav(b.type) === "indtægt"), true),
+    ud: del(x.ud, x.bp.filter(b => lav(b.type) === "udgift"), false)
+  };
+}
+/* Indholdet af én budgetlinje på et hold: underoverskrifter (fx Liga - D1, Transfer), når der er flere. */
+function holdGruppeIndhold(vaert, grp, id, d) {
+  const under = undergrupper(grp.emner, grp.bposter, grp.indtaegt, false, grp.navn);
+  if (!under.length) { vaert.append(h("p", { class: "tom" }, "Ingen posteringer endnu.")); return; }
+  if (under.length === 1) { fyldGruppe(vaert, id, under[0], { skjulHold: true }); return; }
+  under.forEach(x => {
+    vaert.append(h("div", { class: "mellem ny k-linje" }, h("span", null, h("b", null, x.label), x.emner.length ? h("span", { class: "daemp" }, "  · " + antalTekst(x.emner.length)) : null),
+      vc(kr(x.budget)), vc(kr(x.real))));
+    fyldGruppe(vaert, id, x, { skjulHold: true, stille: true });
+  });
+}
+function holdIndhold(vaert, x, id, d) {
+  const L = holdLinjer(S.D, x);
+  vaert.append(h("div", { class: "mellem k-linje" }, h("span"), h("span", { class: "v" }, "Budget"), h("span", { class: "v" }, "Realiseret")));
+  const del = (titel, grupper, real, budget, key) => {
+    vaert.append(h("div", { class: "mellem k-linje" }, h("span", null, titel), vc(kr(budget)), vc(kr(real))));
+    if (!grupper.length) { vaert.append(h("p", { class: "tom" }, key === "ind" ? "Ingen indtægter." : "Ingen udgifter.")); return; }
+    grupper.forEach(grp => {
+      const gid = id + "|" + key + "|" + grp.navn;
+      vaert.append(knude(gid, [grp.navn, vc(kr(grp.budget)), vBar(grp.real, grp.budget, !grp.indtaegt)],
+        (v2, d2) => holdGruppeIndhold(v2, grp, gid, d2), { kol: "k-linje", dybde: d, under: antalTekst(grp.emner.length) }));
+    });
+  };
+  del("Ind", L.ind, x.rInd, x.bInd, "ind");
+  del("Ud", L.ud, x.rUd, x.bUd, "ud");
+}
 function visHold(vaert, D) {
   D.holdGrupper.forEach(g => {
-    const sek = h("section", { class: "gruppe" }, h("h2", null, h("span", null, g.navn)),
-      kolhoved("k-hold", h("span", { class: "ind" }, "Ind"), h("span", { class: "ud" }, "Ud"), "Netto"));
-    const tot = { bInd: 0, bUd: 0, rInd: 0, rUd: 0 };
+    const liste = h("div", { class: "liste" });
+    const tot = { bNetto: 0, rInd: 0, rUd: 0 };
     g.hold.forEach(t => {
       const x = beregnHold(D, t, S.filter);
-      tot.bInd += x.bInd; tot.bUd += x.bUd; tot.rInd += x.rInd; tot.rUd += x.rUd;
+      tot.bNetto += x.bNetto; tot.rInd += x.rInd; tot.rUd += x.rUd;
       const id = "h|" + t;
-      const antal = x.ind.length + x.ud.length;
-      sek.append(knude(id, [t,
-        v(kr(x.rInd), "af " + kr(x.bInd), "ind"),
-        v(kr(x.rUd), "af " + kr(x.bUd), "ud" + (x.rUd > x.bUd + 0.5 ? " neg" : "")),
-        v(kr(x.rNetto), "budget " + kr(x.bNetto), x.rNetto < -0.5 ? "neg" : "")],
-        v2 => holdIndhold(v2, x, id), { kol: "k-hold", under: antal ? antal + (antal === 1 ? " postering" : " posteringer") : "Ingen posteringer endnu" }));
+      liste.append(knude(id, [t, vc(kr(x.rInd), "ind"), vc(kr(x.rUd), "ud" + (x.rUd > x.bUd + 0.5 ? " neg" : "")),
+        vc(kr(x.rNetto), x.rNetto < -0.5 ? "neg" : ""), vc(kr(x.bNetto), "daemp")],
+        (v2, d) => holdIndhold(v2, x, id, d), { kol: "k-hold", under: antalTekst(x.ind.length + x.ud.length) }));
     });
-    sek.append(h("div", { class: "total k-hold" }, h("span", null, g.navn + " i alt"),
-      h("span", { class: "v num ind" }, kr(tot.rInd)), h("span", { class: "v num ud" }, kr(tot.rUd)),
-      h("span", { class: "v num" + (tot.rInd - tot.rUd < -0.5 ? " neg" : "") }, kr(tot.rInd - tot.rUd))));
-    vaert.append(sek);
+    const rN = tot.rInd - tot.rUd;
+    liste.append(h("div", { class: "total k-hold" }, h("span", null, g.navn + " i alt"),
+      vc(kr(tot.rInd), "ind"), vc(kr(tot.rUd), "ud"), vc(kr(rN), rN < -0.5 ? "neg" : ""), vc(kr(tot.bNetto), "daemp")));
+    vaert.append(h("section", { class: "gruppe" },
+      afsnit("k-hold", g.navn, h("span", { class: "ind" }, "Ind"), h("span", { class: "ud" }, "Ud"), "Netto", "Budget"), liste));
   });
-  vaert.append(h("p", { class: "stille", style: "font-size:13px;margin:14px 2px 0" },
-    "Ind er alt bogført under Nettoomsætning på holdet. Ud er resten af holdets posteringer – som på fanen Hold - status. Deles en postering mellem to hold, står holdets andel her."));
-}
-function holdIndhold(vaert, x, id) {
-  const del = (titel, rs, real, budget, tomTekst, key) => {
-    vaert.append(h("div", { class: "underoverskrift" }, h("span", null, titel),
-      h("span", { class: "num" }, kr(real) + " af " + kr(budget) + " budgetteret")));
-    if (!rs.length) { vaert.append(h("p", { class: "tom" }, tomTekst)); return; }
-    const liste = h("div");
-    rs.slice().sort((a, b) => a.p.dato - b.p.dato || a.p.raekke - b.p.raekke);
-    posteringsliste(liste, id + "|" + key, rs.slice().sort((a, b) => a.p.dato - b.p.dato || a.p.raekke - b.p.raekke),
-      r => posteringEl(r.p, { w: r.w, linje: true, skjulHold: !r.p.holdB }));
-    vaert.append(liste);
-  };
-  del("Ind", x.ind, x.rInd, x.bInd, "Ingen indtægter endnu.", "ind");
-  del("Ud", x.ud, x.rUd, x.bUd, "Ingen udgifter endnu.", "ud");
-  if (x.bp.length) {
-    vaert.append(knude(id + "|budget", ["Holdets budget", v(kr(x.bNetto, false, true), "netto")],
-      v2 => x.bp.slice().sort((a, b) => (lav(a.type) === "udgift") - (lav(b.type) === "udgift") || b.beloeb - a.beloeb)
-        .forEach(b => v2.append(budgetpostEl(b, { visLinje: true, skjulHold: true }))),
-      { kol: "k-et", under: x.bp.length + " budgetposter" }));
-  }
+  vaert.append(h("p", { class: "forklaring" }, "Ind og Ud er realiseret; Budget er holdets budget netto. Fold et hold ud for at se budgetlinjerne og derunder posteringerne. " +
+    "Ind er alt bogført under Nettoomsætning på holdet, Ud er resten – som på fanen Hold - status. Deles en postering mellem to hold, står holdets andel."));
 }
 
 /* ============================================================ fane: Arrangementer */
 function visArrangementer(vaert, D) {
-  if (!D.eventGrupper.length) { vaert.append(h("p", { class: "tom" }, "Arket har ingen fane «Event» med arrangementer.")); return; }
-  vaert.append(h("p", { class: "stille", style: "font-size:13.5px;margin:16px 2px 0" },
-    "Som fanen Event: et arrangement samler alt, hvor Underkategori 2 eller budgetposten begynder med dets navn – uden sæsonfilter."));
+  if (!D.eventGrupper.length) { vaert.append(h("p", { class: "forklaring" }, "Arket har ingen fane «Event» med arrangementer.")); return; }
   D.eventGrupper.forEach(g => {
-    const sek = h("section", { class: "gruppe" }, h("h2", null, h("span", null, g.navn)), kolhoved("k-to", "Budget netto", "Faktisk netto"));
+    const liste = h("div", { class: "liste" });
     g.events.forEach(e => {
       const x = beregnEvent(D, e), id = "e|" + e;
-      sek.append(knude(id, [e, v(kr(x.bNetto, false, true)),
-        v(kr(x.fNetto, false, true), null, x.fNetto < -0.5 ? "neg" : "")], v2 => {
-        v2.append(h("div", { class: "opsummering" },
-          h("span", null, "Budget: ind ", h("b", { class: "num" }, kr(x.bInd)), " · ud ", h("b", { class: "num" }, kr(x.bUd))),
-          h("span", null, "Faktisk: ind ", h("b", { class: "num" }, kr(x.fInd)), " · ud ", h("b", { class: "num" }, kr(x.fUd)))));
+      liste.append(knude(id, [e, vc(kr(x.bNetto, false, true)), vc(kr(x.fNetto, false, true), x.fNetto < -0.5 ? "neg" : "")], v2 => {
+        v2.append(h("p", { class: "note" }, "Budget: ind " + kr(x.bInd) + " · ud " + kr(x.bUd) + "   —   Faktisk: ind " + kr(x.fInd) + " · ud " + kr(x.fUd)));
         x.bp.forEach(b => v2.append(budgetpostEl(b, { visLinje: true })));
         const ps = x.poster.slice().sort((a, b) => a.dato - b.dato || a.raekke - b.raekke);
         if (!ps.length) v2.append(h("p", { class: "tom" }, "Ingen posteringer endnu."));
         posteringsliste(v2, id, ps, p => posteringEl(p, { linje: true }));
-      }, { kol: "k-to", under: x.poster.length ? x.poster.length + (x.poster.length === 1 ? " postering" : " posteringer") : null }));
+      }, { kol: "k-to", under: antalTekst(x.poster.length) }));
     });
-    vaert.append(sek);
+    vaert.append(h("section", { class: "gruppe" }, afsnit("k-to", g.navn, "Budget netto", "Faktisk netto"), liste));
   });
+  vaert.append(h("p", { class: "forklaring" }, "Som fanen Event: et arrangement samler alt, hvor Underkategori 2 eller budgetposten begynder med dets navn – uden sæsonfilter."));
 }
 
 /* ============================================================ fane: Konti */
 function visKonti(vaert, D) {
-  const sek = h("section", { class: "gruppe" }, h("h2", null, h("span", null, "Bankkonti")), kolhoved("k-et", "Saldo"));
+  const liste = h("div", { class: "liste" });
   D.konti.forEach(k0 => {
     const k = beregnKonto(k0), id = "k|" + k.navn;
-    sek.append(knude(id, [k.titel, v(kr(k.saldo, true), "primo " + kr(k.primo))], v2 => {
+    liste.append(knude(id, [k.titel, vc(kr(k.saldo, true))], v2 => {
       v2.append(h("p", { class: "note" }, k.primoTekst + ": " + kr(k.primo, true) + " kr. · bevægelser " + kr(k.bevaegelser, true, true) + " kr. · nyeste øverst"));
       posteringsliste(v2, id, k.medSaldo.slice().reverse(), x => posteringEl(x.p, { linje: true, saldo: x.saldo }));
-    }, { kol: "k-et", under: k.poster.length + " posteringer" }));
+    }, { kol: "k-et", under: k.poster.length + " post." }));
   });
-  vaert.append(sek);
-  vaert.append(h("p", { class: "stille", style: "font-size:13px;margin:12px 2px 0" }, "Alle posteringer på kontoen – uanset sæsonfilter – med saldoen efter hver postering."));
+  vaert.append(h("section", { class: "gruppe" }, afsnit("k-et", "Bankkonti", "Saldo"), liste,
+    h("p", { class: "forklaring" }, "Alle posteringer på kontoen – uanset sæsonfilter – med saldoen efter hver postering.")));
+}
+
+/* ============================================================ fane: Afvigelser */
+/* Afvigelse = realiseret − budget, pr. budgetlinje eller pr. hold og budgetlinje. */
+function afvigelser(D, f, niveau) {
+  const rk = [];
+  if (niveau === "hold") {
+    D.holdGrupper.forEach(g => g.hold.forEach(t => {
+      const L = holdLinjer(D, beregnHold(D, t, f));
+      L.ind.concat(L.ud).forEach(grp => rk.push({ id: "a|h|" + t + "|" + (grp.indtaegt ? "i" : "u") + "|" + grp.navn, navn: t + " · " + grp.navn,
+        indtaegt: grp.indtaegt, budget: grp.budget, real: grp.real, antal: grp.emner.length, grp }));
+    }));
+  } else {
+    beregnBudget(D, f).linjer.forEach(l => rk.push({ id: "a|l|" + l.linje, navn: l.linje, indtaegt: erIndtaegt(l),
+      budget: l.budget, real: l.real, antal: l.poster.length, linje: l }));
+  }
+  rk.forEach(r => { r.afv = r.real - r.budget; r.over = !r.indtaegt && r.afv > 0.5; });
+  return rk.filter(r => Math.abs(r.afv) > 0.5).sort((a, b) => Math.abs(b.afv) - Math.abs(a.afv));
+}
+function segKnapper(navn, valg, aktiv, skift) {
+  return h("div", { class: "seg", role: "group", "aria-label": navn }, valg.map(([v, t]) =>
+    h("button", { type: "button", "aria-pressed": String(v === aktiv), onclick: () => { skift(v); tegn(); } }, t)));
+}
+function visAfvigelser(vaert, D) {
+  vaert.append(h("div", { class: "styr" },
+    segKnapper("Niveau", [["linje", "Pr. budgetlinje"], ["hold", "Pr. hold"]], S.afvNiveau, v => { S.afvNiveau = v; })));
+  const alle = afvigelser(D, S.filter, S.afvNiveau);
+  const over = alle.filter(r => r.over);
+  const resten = alle.filter(r => !r.over);
+  const raekke = r => {
+    const kl = r.over ? "neg" : (r.indtaegt && r.afv > 0.5 ? "pos" : "daemp");
+    return knude(r.id, [r.navn, vc(kr(r.budget), "bud"), vBar(r.real, r.budget, !r.indtaegt), vc(kr(r.afv, false, true), kl)],
+      (v2, d) => r.linje ? linjeIndhold(v2, r.linje, r.id, d) : holdGruppeIndhold(v2, r.grp, r.id, d),
+      { kol: "k-afv", under: (r.indtaegt ? "indtægt" : "udgift") + (r.antal ? " · " + antalTekst(r.antal) : "") });
+  };
+  if (over.length) {
+    const l1 = h("div", { class: "liste" });
+    over.forEach(r => l1.append(raekke(r)));
+    vaert.append(h("section", { class: "gruppe" },
+      afsnit("k-afv", h("span", { class: "neg" }, "Over budget · " + kr(sum(over, r => r.afv)) + " kr."), h("span", { class: "bud" }, "Budget"), "Realiseret", "Afvigelse"), l1));
+  } else {
+    vaert.append(h("p", { class: "forklaring" }, h("span", { class: "kontrol-ok" }, "✓ Ingen udgifter er over budget.")));
+  }
+  const l2 = h("div", { class: "liste" });
+  if (!resten.length) l2.append(h("p", { class: "tom" }, "Ingen andre afvigelser."));
+  posteringsliste(l2, "afv|" + S.afvNiveau + "|" + S.filter, resten, raekke, 25);
+  vaert.append(h("section", { class: "gruppe" }, afsnit("k-afv", over.length ? "Største afvigelser i øvrigt" : "Største afvigelser", h("span", { class: "bud" }, "Budget"), "Realiseret", "Afvigelse"), l2,
+    h("p", { class: "forklaring" }, "Afvigelse = realiseret − budget, sorteret efter størrelse. Rød: brugt mere end budgetteret. Grøn: mere indtægt end budgetteret. " +
+      "Grå: penge, der ikke er brugt eller kommet ind endnu – midt i sæsonen er det oftest bare et spørgsmål om tid. Fold en række ud for at se posteringerne.")));
 }
 
 /* ============================================================ søgning */
@@ -1252,14 +1350,13 @@ function visSoeg(vaert, D) {
     return tal1.every(w => b.includes(w) || t.includes(w));
   }).sort((a, b) => b.dato - a.dato || b.raekke - a.raekke);
   const s = sum(fund, p => p.beloeb);
-  const sek = h("section", { class: "gruppe" }, h("h2", { class: "soegtitel" }, h("span", null, fund.length + (fund.length === 1 ? " postering" : " posteringer") + " matcher «" + S.soeg.trim() + "»"),
-    fund.length ? h("span", { class: "num" }, "i alt " + kr(s, true, true)) : null));
-  const kasse = h("div", { class: "knude" });
-  if (!fund.length) kasse.append(h("p", { class: "tom" }, "Ingen posteringer. Søg fx på et navn, et hold, en kategori eller et beløb."));
-  posteringsliste(kasse, "s|" + S.soeg, fund, p => posteringEl(p, { linje: true }));
-  sek.append(kasse);
-  sek.append(h("p", { class: "stille", style: "font-size:13px;margin:10px 2px 0" }, "Søgningen ser på alle posteringer på begge konti, også dem fra sidste sæson."));
-  vaert.append(sek);
+  const liste = h("div", { class: "liste", style: "--d:0" });
+  if (!fund.length) liste.append(h("p", { class: "tom" }, "Ingen posteringer. Søg fx på et navn, et hold, en kategori eller et beløb."));
+  posteringsliste(liste, "s|" + S.soeg, fund, p => posteringEl(p, { linje: true }));
+  vaert.append(h("section", { class: "gruppe" },
+    afsnit("k-et", h("span", { class: "lang" }, fund.length + (fund.length === 1 ? " postering" : " posteringer") + " matcher «" + S.soeg.trim() + "»"),
+      fund.length ? "i alt " + kr(s, true, true) : ""),
+    liste, h("p", { class: "forklaring" }, "Søgningen ser på alle posteringer på begge konti, også dem fra sidste sæson.")));
 }
 
 /* ============================================================ top, bannere og fod */
@@ -1299,12 +1396,11 @@ function visBannere(D) {
 }
 function visFod(D) {
   const k = S.kontrol;
-  const fod = $("#fod");
-  fod.replaceChildren(
-    h("div", null, "Hentet kl. " + klok(D.hentet) + " fra arket «" + D.arkNavn + "». ",
-      k && !k.afvig.length ? h("span", { class: "kontrol-ok" }, "✓ Alle " + k.n + " kontroltal stemmer med arket. ") : null,
-      "Siden henter igen, når du kommer tilbage til den."),
-    h("div", null, "Navnet på en postering er kolonnen Reference i arket – ret den dér, så skifter navnet her. Tryk på en postering for at se alt om den."),
+  $("#fod").replaceChildren(
+    h("div", null, "Hentet kl. " + klok(D.hentet) + " fra arket «" + D.arkNavn + "»",
+      k && !k.afvig.length ? [" · ", h("span", { class: "kontrol-ok" }, "✓ " + k.n + " kontroltal stemmer med arket")] : null,
+      " · henter igen, når du vender tilbage."),
+    h("div", null, "Navnet på en postering er kolonnen Reference i arket. Tryk på en postering for at se alt om den."),
     h("div", null, h("a", { href: "#opsaetning", onclick: e => { e.preventDefault(); visOpsaetning(); } }, "Opsætning"), " · ",
       h("a", { href: "https://github.com/" + REPO + "/blob/main/" + MAPPE + "/index.html", target: "_blank", rel: "noopener" }, "Koden på GitHub"), " · ",
       h("a", { href: "../" }, "Klubbens værktøjer")));
@@ -1314,7 +1410,7 @@ function tegn() {
   if (!D) return;
   $("#overskrift").textContent = "Budget " + (D.saeson || "");
   $("#filter-ja").textContent = D.saeson ? "Kun " + D.saeson : "Kun sæsonen";
-  document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.filter === S.filter)));
+  document.querySelectorAll("#filterseg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.filter === S.filter)));
   document.querySelectorAll(".faner button").forEach(b => b.setAttribute("aria-selected", String(!S.soeg.trim() && b.dataset.fane === S.fane)));
   visNoegletal(D);
   visBannere(D);
@@ -1325,6 +1421,7 @@ function tegn() {
   else if (S.fane === "hold") visHold(vaert, D);
   else if (S.fane === "arrangementer") visArrangementer(vaert, D);
   else if (S.fane === "konti") visKonti(vaert, D);
+  else if (S.fane === "afvigelser") visAfvigelser(vaert, D);
   else visBudget(vaert, D);
   visFod(D);
   window.scrollTo(0, y);
@@ -1339,7 +1436,8 @@ function brugSvar(svar) {
   S.svar = svar; S.D = D; S.hentetMs = Date.now();
   if (!S.filter) S.filter = D.ov.filter;
   S.kontrol = kontroller(D);
-  window.__budget = { D, kontrol: S.kontrol, beregnBudget: f => beregnBudget(D, f), beregnHold: (t, f) => beregnHold(D, t, f), beregnEvent: n => beregnEvent(D, n), beregnKonto };
+  window.__budget = { D, kontrol: S.kontrol, beregnBudget: f => beregnBudget(D, f), beregnHold: (t, f) => beregnHold(D, t, f), beregnEvent: n => beregnEvent(D, n), beregnKonto,
+    holdLinjer: (t, f) => holdLinjer(D, beregnHold(D, t, f)), afvigelser: (f, niv) => afvigelser(D, f, niv) };
   vis("#app");
   tegn();
 }
@@ -1470,7 +1568,7 @@ function opsaetning() {
 /* ============================================================ opstart */
 async function start() {
   opsaetning();
-  document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("#filterseg button").forEach(b => b.addEventListener("click", () => {
     S.filter = b.dataset.filter; gem(localStorage, NOEGLE.filter, S.filter); tegn();
   }));
   document.querySelectorAll(".faner button").forEach(b => b.addEventListener("click", () => {
