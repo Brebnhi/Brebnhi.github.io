@@ -60,8 +60,16 @@ videre til de nye.
 
 `/budget/` indeholder ingen tal. Når siden åbnes, spørger den et lille Google-script, der ligger
 i selve budgetarket (Udvidelser → Apps Script), og scriptet svarer kun, når koden er rigtig. Efter
-10 forkerte forsøg holder det lukket i 15 minutter. Adressen på scriptet står i
-`tjans/docs/budget/adresse.txt`.
+10 forkerte forsøg holder det lukket i 15 minutter. Adresserne på scripterne står i
+`tjans/docs/budget/adresse.txt` – én linje pr. sæson, nyeste nederst:
+
+```
+25/26 https://script.google.com/macros/s/…/exec
+26/27 https://script.google.com/macros/s/…/exec
+```
+
+Sæsonen foran adressen kan udelades (siden læser den så i arket). Siden åbner den nyeste sæson,
+og man kan skifte sæson i overskriften og sammenligne to sæsoner på fanen *Sammenlign*.
 
 - **Nye posteringer** står på siden, så snart de er i arket – der er intet at uploade.
 - **Navnet på en postering** er kolonnen *Reference* i Konto 1/Konto 2. Uden reference bruger
@@ -69,8 +77,10 @@ i selve budgetarket (Udvidelser → Apps Script), og scriptet svarer kun, når k
 - **Siden regner som arket.** Hver gang den henter, regner den arkets egne tal efter (Overblik,
   Hold - status, Event og saldi) og siger til, hvis de ikke stemmer – fx hvis arkets opbygning
   er ændret.
-- **Nyt ark (1. juni):** Åbn `/budget/#opsaetning` og følg de fire trin i det nye ark. Til sidst
-  retter du `adresse.txt`; siden kopierer adressen for dig.
+- **Nyt ark (1. juni):** Åbn `/budget/#opsaetning` og følg de fire trin i det nye ark – brug samme
+  kode som sidste sæson. Til sidst **tilføjer du en ny linje nederst** i `adresse.txt`; siden
+  kopierer linjen for dig. **Lad de gamle linjer og det gamle ark blive**, så siden stadig kan
+  vise de tidligere sæsoner og sammenligne med dem.
 - **Skift kode:** Ret linjen `var KODE = "…"` øverst i scriptet, gem, og vælg Implementer →
   Administrer implementeringer → blyanten → Version: Ny version → Implementer.
 
@@ -98,6 +108,6 @@ når det er gjort. Lukker du selv et issue, lader robotten det være.
 | Kontingent | Overskrifter, U17-årgang og budgetboks | `BUDGET_SAESON`, `HOLD` og `BUDGET_IALT` øverst i scriptet i `tjans/docs/kontingent/index.html` (fra fanen *Kontingent status*), og `MOENSTRE`/`ERMIX` ved nye holdnavne | 1. august. Lukker sig selv |
 | Turpris | Sæson, grundspillets udekampe, km og dobbeltweekender (D1: lørdag + søndag på Sjælland). Pokal og slutspil tæller ikke med | `PRISER_SAESON` og priserne (`STANDARD`, `SAESON`) øverst i scriptet i `tjans/docs/turpris/index.html` – og `EKSTRA_UDEKAMPE`, hvis VD's program mangler en udekamp | Når kampprogrammet for den nye sæson er ude. Lukker sig selv |
 | Try-out (Vercel) | – | Væk Supabase og følg [guiden](https://docs.google.com/document/d/19cpzGXU_s858MQe_A-r4YyGGtSu8ppPURRt6Rq8Q1bY/edit) | 1. juni. Luk den selv, når billederne er slettet |
-| Budgetarket | Budgetsidens udregning (den læser arkets faner og formler) | Nyt budget, nyt ark og primosaldi pr. 1. juni – og budgetsidens script i det nye ark, se *Budgetsiden* | 1. juni. Luk den selv |
+| Budgetarket | Budgetsidens udregning (den læser arkets faner og formler) og de tidligere sæsoner | Nyt budget, nyt ark og primosaldi pr. 1. juni – og budgetsidens script i det nye ark plus en ny linje i `adresse.txt`, se *Budgetsiden* | 1. juni. Luk den selv |
 
 Prøv påmindelserne uden at røre GitHub: `python tjans/scripts/vedligehold.py --test --nu 2027-08-15`.

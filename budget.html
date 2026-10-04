@@ -1,0 +1,2140 @@
+<!doctype html>
+<!-- sti: tjans/docs/budget/index.html -->
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="referrer" content="no-referrer">
+<title>Budget · Aalborg Volley</title>
+<!--
+  Budgetsiden for https://brebnhi.github.io/budget/ (repoet Brebnhi.github.io).
+  Filen er statisk og bygges IKKE af robotten. Den indeholder ingen tal.
+
+  Tallene hentes direkte fra budgetarket «Overblik», hver gang siden åbnes, gennem et
+  lille Google-script, der ligger i selve arket (Udvidelser → Apps Script). Scriptet svarer
+  kun, når koden er rigtig, så arket forbliver privat. Adressen på scriptet står i
+  adresse.txt ved siden af denne fil. Mangler den, viser siden opsætningen.
+
+  Hver sæson har sit eget ark. adresse.txt har én linje pr. sæson, nyeste nederst:
+      25/26 https://script.google.com/macros/s/…/exec
+      26/27 https://script.google.com/macros/s/…/exec
+  Siden åbner den nyeste og henter de andre i baggrunden, så man kan skifte sæson og
+  sammenligne dem.
+
+  Al udregning sker her på siden og følger arkets egne formler (Overblik, Hold - status og
+  Event). Siden regner arkets tal efter, hver gang den henter, og siger til, hvis de ikke
+  stemmer.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#F4F6F8; --surface:#FFFFFF; --surface-2:#EEF2F6; --surface-3:#E6ECF2;
+  --ink:#16202C; --muted:#5B6A7B; --faint:#8595A6;
+  --line:#DCE2E9; --line-strong:#C3CDD8;
+  --accent:#1B4B73; --accent-soft:#D6E3EF; --on-accent:#FFFFFF;
+  --green:#28644F; --green-soft:#DBEBE2;
+  --clay:#9E403C; --clay-soft:#F6E2E0;
+  --ochre:#8F6410; --ochre-soft:#F6E9C9;
+  --bar:#3C7CA8; --bar-track:#E3E9EF; --bar-soft:#DDE9F3;
+  --shadow:0 1px 2px rgba(22,32,44,.05),0 6px 18px -10px rgba(22,32,44,.18);
+  --accent-line:color-mix(in srgb,var(--accent) 55%,transparent);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0E141C; --surface:#151E29; --surface-2:#1A2531; --surface-3:#202D3B;
+    --ink:#E4EAF1; --muted:#96A5B6; --faint:#728496;
+    --line:#25323F; --line-strong:#33434F;
+    --accent:#7FB2DA; --accent-soft:#1E3549; --on-accent:#0E141C;
+    --green:#69B896; --green-soft:#1B3329;
+    --clay:#DE8079; --clay-soft:#3B2320;
+    --ochre:#DCA842; --ochre-soft:#3A2F16;
+    --bar:#5A9BC7; --bar-track:#212E3B; --bar-soft:#1D3346;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px -10px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0E141C; --surface:#151E29; --surface-2:#1A2531; --surface-3:#202D3B;
+  --ink:#E4EAF1; --muted:#96A5B6; --faint:#728496;
+  --line:#25323F; --line-strong:#33434F;
+  --accent:#7FB2DA; --accent-soft:#1E3549; --on-accent:#0E141C;
+  --green:#69B896; --green-soft:#1B3329;
+  --clay:#DE8079; --clay-soft:#3B2320;
+  --ochre:#DCA842; --ochre-soft:#3A2F16;
+  --bar:#5A9BC7; --bar-track:#212E3B; --bar-soft:#1D3346;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px -10px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+html{color-scheme:light dark;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--ground);color:var(--ink);
+  font-family:Archivo,"Helvetica Neue",Arial,sans-serif;font-size:15px;line-height:1.5;
+  -webkit-font-smoothing:antialiased}
+[hidden]{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--accent)}
+.num{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;white-space:nowrap;letter-spacing:-.01em}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:16px}
+.eyebrow{font-size:11.5px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--accent);margin:0 0 6px}
+.stille{color:var(--muted)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ---------------------------------------------------------------- knapper og felter */
+.knap{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:9px;
+  background:var(--accent);color:var(--on-accent);font-weight:600;padding:10px 16px;cursor:pointer;text-decoration:none}
+.knap:disabled{opacity:.55;cursor:default}
+.knap.sekundaer{background:transparent;color:var(--ink);border:1px solid var(--line-strong)}
+.knap.lille{padding:6px 11px;font-size:13.5px;border-radius:8px}
+.felt{display:block;margin:12px 0 0}
+.felt>span{display:block;font-size:13px;font-weight:600;margin-bottom:5px}
+.felt input,.felt textarea{width:100%;padding:10px 12px;border:1px solid var(--line-strong);border-radius:9px;background:var(--surface);font-size:16px}
+.felt input:focus,.felt textarea:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
+.tjek{display:flex;gap:8px;align-items:center;margin-top:12px;font-size:14px;color:var(--muted)}
+.fejl{color:var(--clay);font-size:14px;margin:10px 0 0;min-height:1em}
+.ok{color:var(--green)}
+
+/* ---------------------------------------------------------------- lås */
+.midt{min-height:100vh;min-height:100svh;display:flex;align-items:center;justify-content:center;padding:24px 16px}
+.laaskort{width:100%;max-width:380px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:26px 24px 20px;box-shadow:var(--shadow)}
+.laaskort h1{font-size:28px;letter-spacing:-.02em;margin:0 0 6px}
+.laaskort p{margin:0}
+.laaskort .knap{width:100%;margin-top:16px}
+.laaskort .smaa{margin-top:16px;font-size:13px;color:var(--muted);text-align:center}
+
+/* ---------------------------------------------------------------- opsætning */
+.opsaet{padding-block:36px 64px;max-width:760px}
+.opsaet h1{font-size:clamp(26px,5vw,34px);letter-spacing:-.02em;margin:0 0 8px}
+.opsaet .lead{color:var(--muted);margin:0 0 22px;max-width:62ch}
+.trin{list-style:none;margin:0;padding:0;counter-reset:trin}
+.trinkort{counter-increment:trin;position:relative;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px 18px 62px;margin-bottom:12px}
+.trinkort::before{content:counter(trin);position:absolute;left:18px;top:16px;width:30px;height:30px;border-radius:50%;
+  background:var(--accent-soft);color:var(--accent);font-weight:700;display:flex;align-items:center;justify-content:center}
+.trinkort h2{font-size:17px;margin:3px 0 6px}
+.trinkort p{margin:6px 0;color:var(--muted)}
+.smaatrin{margin:8px 0 0;padding-left:18px}
+.smaatrin li{margin:6px 0}
+.trinkort code{font-family:"IBM Plex Mono",monospace;font-size:13px;background:var(--surface-2);padding:1px 5px;border-radius:5px}
+.trinkort details{margin-top:10px}
+.trinkort summary{cursor:pointer;color:var(--accent);font-size:14px}
+.trinkort textarea{width:100%;height:220px;margin-top:8px;font-family:"IBM Plex Mono",monospace;font-size:12px;
+  border:1px solid var(--line);border-radius:9px;background:var(--surface-2);padding:10px;resize:vertical}
+.besked{margin:12px 0 0;font-size:14.5px}
+.trinkort p.besked.ok{color:var(--green)}
+.trinkort p.besked.advar{color:var(--ochre)}
+.gemboks{margin-top:14px;padding:14px 16px;border-radius:12px;background:var(--green-soft)}
+.gemboks p{color:var(--ink)!important;margin:0 0 10px}
+.gemboks .knapper{display:flex;flex-wrap:wrap;gap:8px}
+.advar{color:var(--ochre)}
+@media (max-width:520px){.trinkort{padding:16px 16px 16px 16px}.trinkort::before{position:static;margin-bottom:8px}}
+
+/* ---------------------------------------------------------------- top */
+.top{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--ground) 94%,transparent);
+  backdrop-filter:saturate(1.4) blur(8px);-webkit-backdrop-filter:saturate(1.4) blur(8px);border-bottom:1px solid var(--line)}
+.topin{display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap;padding-block:6px}
+.topin .eyebrow{margin:0;font-size:9.5px;letter-spacing:.12em}
+.topin h1{font-size:17px;margin:0;letter-spacing:-.01em;line-height:1.15;display:flex;align-items:center;gap:6px}
+/* Sæsonvælgeren ser ud som en del af overskriften */
+.saesonvalg{appearance:none;-webkit-appearance:none;font:inherit;font-weight:700;letter-spacing:inherit;color:var(--accent);cursor:pointer;
+  border:1px solid var(--line-strong);border-radius:7px;padding:0 24px 0 7px;line-height:1.35;background-color:var(--surface);
+  background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);
+  background-position:calc(100% - 13px) 55%,calc(100% - 8px) 55%;background-size:5px 5px;background-repeat:no-repeat}
+.saesonvalg:hover{border-color:var(--accent)}
+.spacer{flex:1}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:7px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:transparent;padding:4px 9px;font-size:12.5px;cursor:pointer;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);font-weight:600}
+.ikonknap{border:1px solid var(--line-strong);background:var(--surface);border-radius:7px;padding:4px 9px;font-size:12.5px;cursor:pointer}
+.ikonknap:hover{border-color:var(--accent)}
+.topknapper{display:flex;gap:6px}
+@media (max-width:640px){
+  .top{position:static;backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--ground)}
+  .topin .titelblok{order:1}
+  .topin .spacer{order:2}
+  .topin .topknapper{order:3}
+  .topin #filterseg{order:4;flex-basis:100%;display:flex}
+  .topin #filterseg button{flex:1;padding:5px 8px}
+}
+
+/* ---------------------------------------------------------------- bannere */
+.bannere{margin-top:8px;display:grid;gap:6px}
+.bannere:empty{display:none}
+.banner{border-radius:8px;padding:7px 10px;font-size:13px;border:1px solid}
+.banner.gul{background:var(--ochre-soft);border-color:color-mix(in srgb,var(--ochre) 40%,transparent);color:var(--ink)}
+.banner.gul strong{color:var(--ochre)}
+.banner.blaa{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 35%,transparent)}
+.banner ul{margin:4px 0 0;padding-left:18px}
+
+/* ---------------------------------------------------------------- nøgletal */
+.kpi{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0 0}
+.kpikort{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px 7px;min-width:0}
+.kpikort .lbl{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.kpikort .stor{font-size:18px;font-weight:600;letter-spacing:-.02em;line-height:1.25}
+.kpikort .smaa{font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spor{height:3px;border-radius:2px;background:var(--bar-track);margin-top:4px;overflow:hidden}
+.spor i{display:block;height:100%;background:var(--bar);border-radius:2px}
+.spor i.over{background:var(--clay)}
+.neg{color:var(--clay)}
+.pos{color:var(--green)}
+.daemp{color:var(--faint)}
+@media (max-width:820px){.kpi{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}}
+@media (max-width:640px){.kpikort{padding:5px 9px 6px}.kpikort .stor{font-size:16px}}
+
+/* ---------------------------------------------------------------- faner og søgning */
+.navlinje{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;margin-top:8px;border-bottom:1px solid var(--line)}
+.faner{display:flex;gap:0;overflow-x:auto;scrollbar-width:none;margin-bottom:-1px}
+.faner::-webkit-scrollbar{display:none}
+.faner button{border:0;background:transparent;border-bottom:2px solid transparent;padding:6px 10px;font-size:13.5px;cursor:pointer;color:var(--muted);white-space:nowrap}
+.faner button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+.soeg{flex:1;min-width:200px;display:flex;justify-content:flex-end;padding-bottom:5px}
+.soeg input{width:100%;max-width:280px;padding:5px 10px;border:1px solid var(--line-strong);border-radius:7px;background:var(--surface);font-size:14px}
+/* Er der flere faner, end der er plads til, toner den sidste ud – så man kan se, at man kan skubbe. */
+.faner.mere{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 36px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 36px),transparent)}
+@media (max-width:640px){.soeg{order:-1;min-width:100%;padding-bottom:2px}.soeg input{max-width:none;font-size:16px;padding:5px 10px}
+  .faner button{padding:6px 6px;font-size:12.5px}}
+
+/* ---------------------------------------------------------------- træet: én ramme pr. afsnit, rækker som en tabel */
+.gruppe{margin-top:12px}
+.afsnit{display:grid;gap:8px;align-items:end;padding:0 10px 3px;font-size:10.5px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.afsnit span:not(:first-child){text-align:right;color:var(--faint)}
+.afsnit .lang{text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)}
+.liste{background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.liste>*+*{border-top:1px solid var(--line)}
+.overkat{padding:4px 10px 1px;font-size:10px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);background:var(--surface)}
+/* Talkolonnerne rykker et trin ind for hvert niveau (højre side), ligesom navnene gør (venstre side). */
+.raekke{display:grid;gap:8px;align-items:center;width:100%;padding:5px calc(10px + var(--d,0) * 18px) 5px calc(10px + var(--d,0) * 16px);border:0;background:transparent;
+  text-align:left;cursor:pointer;font-size:14px;line-height:1.3}
+.raekke:hover{background:var(--surface-2)}
+.raekke .navn{display:flex;align-items:center;gap:7px;min-width:0}
+.raekke .navn .tx{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.raekke .navn b{font-weight:600}
+.raekke .navn small{color:var(--faint);font-size:11.5px;margin-left:6px}
+.raekke .v{text-align:right;font-size:13px}
+.v.db{background:linear-gradient(var(--bar),var(--bar)) left bottom/var(--p,0%) 2px no-repeat,linear-gradient(var(--bar-track),var(--bar-track)) left bottom/100% 2px no-repeat;padding-bottom:2px}
+.v.db.over{background:linear-gradient(var(--clay),var(--clay)) left bottom/100% 2px no-repeat}
+.pil{flex:none;width:6px;height:6px;border-right:1.6px solid var(--faint);border-bottom:1.6px solid var(--faint);transform:rotate(-45deg);transition:transform .15s;margin:0 1px 0 0}
+.knude{position:relative}
+.knude.aaben>.raekke .pil{transform:rotate(45deg);border-color:var(--accent)}
+/* Den åbne overpost: blå baggrund og fede tal. Dens underposter: en blå kant i begge sider, der starter
+   ved overposten og løber ned langs alle underposterne – og mindre, grå tal, der står et trin længere inde. */
+.knude.aaben>.raekke{background:var(--accent-soft)}
+.knude.aaben>.raekke .navn b{color:var(--accent)}
+.knude.aaben>.raekke .v{font-weight:650;color:var(--ink)}
+.knude.aaben::before,.knude.aaben::after{content:"";position:absolute;top:0;bottom:0;width:3px;background:var(--accent-line);pointer-events:none;z-index:1}
+.knude.aaben::before{left:calc(var(--d,0) * 5px)}
+.knude.aaben::after{right:calc(var(--d,0) * 5px)}
+.boern{display:none;background:var(--surface-2);border-top:1px solid var(--line)}
+.boern>*+*{border-top:1px solid var(--line)}
+.knude.aaben>.boern{display:block}
+.knude.aaben+*{border-top-color:var(--line-strong)!important}
+.boern .raekke .navn b{font-weight:500}
+.boern .raekke .v{font-size:12.5px;color:var(--muted)}
+.boern .boern .raekke .v{font-size:12px}
+.boern .knude.aaben>.raekke .v{color:var(--ink)}
+.boern .raekke .v.neg{color:var(--clay)}
+.boern .raekke .v.pos{color:var(--green)}
+.boern .raekke .v.daemp{color:var(--faint)}
+.k-linje{grid-template-columns:minmax(0,1fr) 96px 104px}
+.k-hold{grid-template-columns:minmax(0,1fr) 88px 88px 96px 96px}
+.k-to{grid-template-columns:minmax(0,1fr) 104px 104px}
+.k-et{grid-template-columns:minmax(0,1fr) 140px}
+.k-afv{grid-template-columns:minmax(0,1fr) 92px 100px 104px}
+.k-sml{grid-template-columns:minmax(0,1fr) 92px 96px 92px 96px 96px}
+.k-sml .foer{color:var(--muted)}
+.afsnit.k-sml span.nu{color:var(--ink)}
+.total{display:grid;gap:8px;padding:5px 10px;font-weight:650;font-size:13.5px;background:var(--surface)}
+.liste>.total{border-top:1.5px solid var(--line-strong)}
+.total .v{text-align:right;font-size:13px}
+.mellem{display:grid;gap:8px;align-items:center;padding:5px calc(10px + var(--d,1) * 18px) 3px calc(10px + var(--d,1) * 16px);font-size:11px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--surface-2)}
+.mellem .v{text-align:right;letter-spacing:0;text-transform:none;font-weight:500;font-size:12px}
+.mellem.ny{text-transform:none;letter-spacing:0;font-size:12px;color:var(--ink);background:var(--surface)}
+.tom{padding:4px 10px 5px calc(10px + var(--d,0) * 16px);color:var(--muted);font-size:12.5px;margin:0;background:var(--surface)}
+.note{padding:4px 10px 4px calc(10px + var(--d,0) * 16px);color:var(--muted);font-size:12px;margin:0}
+.forklaring{color:var(--muted);font-size:12.5px;margin:6px 2px 0}
+.styr{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-top:10px}
+.styr .seg button{padding:3px 8px;font-size:12px}
+.lillevalg{border:1px solid var(--line-strong);border-radius:7px;background:var(--surface);padding:3px 6px;font-size:12px;cursor:pointer}
+.statuskort{padding:12px 14px;font-size:14px;margin-top:12px}
+.statuskort p{margin:0 0 8px}
+.statuskort form{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.statuskort input{padding:6px 10px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);font-size:16px;min-width:0;flex:1;max-width:260px}
+.statuskort .fejl{margin:6px 0 0}
+@media (max-width:640px){
+  .raekke{padding:6px calc(8px + var(--d,0) * 10px) 6px calc(8px + var(--d,0) * 12px);font-size:13.5px}
+  .knude.aaben::before{left:calc(var(--d,0) * 3px)}
+  .knude.aaben::after{right:calc(var(--d,0) * 3px)}
+  .k-sml{grid-template-columns:minmax(0,1fr) 70px 70px 74px}
+  .k-sml .bud{display:none}
+  .raekke .v{font-size:12px}
+  .afsnit{padding:0 8px 3px}
+  .k-linje{grid-template-columns:minmax(0,1fr) 74px 84px}
+  .k-hold{grid-template-columns:minmax(0,1fr) 78px 80px}
+  .k-hold .ind,.k-hold .ud{display:none}
+  .k-to{grid-template-columns:minmax(0,1fr) 80px 80px}
+  .k-et{grid-template-columns:minmax(0,1fr) 112px}
+  .k-afv{grid-template-columns:minmax(0,1fr) 76px 80px}
+  .k-afv .bud{display:none}
+  .mellem{padding:5px calc(8px + var(--d,1) * 10px) 3px calc(8px + var(--d,1) * 12px)}
+  .tom,.note{padding-left:calc(8px + var(--d,0) * 12px)}
+  .boern .raekke .navn small{display:none}
+}
+
+/* ---------------------------------------------------------------- posteringer */
+.post{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:1px 10px;padding:3px calc(10px + var(--d,1) * 18px) 3px calc(10px + var(--d,1) * 16px);cursor:pointer;
+  background:var(--surface);font-size:13px;line-height:1.35}
+.post:hover{background:var(--surface-3)}
+.post .d{color:var(--muted);font-size:12px;padding-top:1px}
+.post .t{min-width:0}
+.post .t b{font-weight:600}
+.post .t .det{color:var(--muted)}
+.post .a{text-align:right;font-size:13px}
+.post .a small{display:block;color:var(--faint);font-size:11px;line-height:1.2}
+.post.budgetpost{cursor:default;background:var(--surface-2);grid-template-columns:auto minmax(0,1fr) auto}
+.post.budgetpost .t b{font-weight:500}
+.post.budgetpost .a{color:var(--muted)}
+.maerke{display:inline-block;font-size:10.5px;line-height:1.45;padding:0 5px;border-radius:4px;margin-left:2px;vertical-align:1px;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
+.maerke.graa{background:var(--surface-3);color:var(--muted)}
+.maerke.gul{background:var(--ochre-soft);color:var(--ochre)}
+.detaljer{grid-column:1/-1;margin:3px 0 3px;padding:6px 10px;border-radius:6px;background:var(--surface-2);font-size:12.5px;display:grid;grid-template-columns:max-content 1fr;gap:1px 12px;cursor:auto}
+.detaljer dt{color:var(--muted)}
+.detaljer dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.flere{display:block;width:100%;padding:5px;border:0;background:var(--surface);color:var(--accent);cursor:pointer;font-size:12.5px}
+@media (max-width:640px){
+  .post{grid-template-columns:34px minmax(0,1fr) auto;gap:1px 8px;padding:4px calc(8px + var(--d,1) * 10px) 4px calc(8px + var(--d,1) * 12px);font-size:12.5px}
+  .post .d{font-size:11px}
+  .post .a{font-size:12px}
+  .post.budgetpost{grid-template-columns:auto minmax(0,1fr) auto}
+  .detaljer{grid-template-columns:1fr}
+  .detaljer dt{margin-top:3px}
+}
+
+/* ---------------------------------------------------------------- fod */
+footer{margin:18px 0 40px;color:var(--muted);font-size:12px;line-height:1.6}
+footer a{color:var(--accent)}
+.kontrol-ok{color:var(--green)}
+.laeser{display:flex;align-items:center;justify-content:center;min-height:60vh;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){.pil{transition:none}}
+@media print{.top,.navlinje,footer,.bannere{display:none}}
+</style>
+</head>
+<body>
+
+<div id="laeser" class="laeser" role="status">Henter …</div>
+
+<!-- ============================================================ lås -->
+<div id="laas" class="midt" hidden>
+  <form class="laaskort" id="laasform" autocomplete="on">
+    <p class="eyebrow">Aalborg Volley</p>
+    <h1>Budget</h1>
+    <p class="stille">Tallene kommer direkte fra budgetarket. Skriv koden for at se dem.</p>
+    <input type="text" name="username" value="budget" autocomplete="username" hidden>
+    <label class="felt"><span>Kode</span>
+      <input type="password" id="kode" name="password" autocomplete="current-password" required></label>
+    <label class="tjek"><input type="checkbox" id="husk"> Husk koden på denne enhed</label>
+    <button type="submit" class="knap" id="laasknap">Lås op</button>
+    <p class="fejl" id="laasfejl" role="alert"></p>
+    <p class="smaa"><a href="#opsaetning" id="tilopsaetning">Opsætning</a></p>
+  </form>
+</div>
+
+<!-- ============================================================ opsætning -->
+<section id="opsaetning" class="wrap opsaet" hidden>
+  <p class="eyebrow">Aalborg Volley · budgetsiden</p>
+  <h1>Kobl siden til budgetarket</h1>
+  <p class="lead">Siden henter tallene direkte fra arket <b>Overblik</b> gennem et lille script, som du lægger
+    i selve arket. Arket forbliver privat: scriptet svarer kun, når koden er rigtig. Det tager omkring
+    5 minutter, skal gøres på en computer og kun én gang pr. ark.</p>
+  <p class="banner gul" id="nytark" hidden><strong>Ny sæson?</strong> Hvert nyt budgetark (fx ved sæsonskiftet 1. juni)
+    skal have scriptet. Følg trinene i det nye ark. Til sidst tilføjer du arkets adresse som en <b>ny linje</b> i adresse.txt –
+    de gamle linjer og det gamle ark bliver bare stående, så du stadig kan se de tidligere sæsoner og sammenligne med dem.</p>
+
+  <ol class="trin">
+    <li class="trinkort">
+      <h2>Vælg en kode</h2>
+      <p>Den skal skrives, når siden åbnes på en ny enhed. Brug mindst 8 tegn – gerne et par ord.</p>
+      <p id="sammekode" hidden><b>Brug den samme kode som til de andre sæsoner</b> – så åbner én kode dem alle.</p>
+      <label class="felt"><span>Kode</span><input type="password" id="ny1" autocomplete="new-password"></label>
+      <label class="felt"><span>Gentag koden</span><input type="password" id="ny2" autocomplete="new-password"></label>
+      <p class="fejl" id="nyfejl" role="alert"></p>
+    </li>
+
+    <li class="trinkort">
+      <h2>Læg scriptet i arket</h2>
+      <ol class="smaatrin">
+        <li><button type="button" class="knap lille" id="kopierscript" disabled>Kopiér scriptet</button>
+          <span class="stille" id="kopierbesked">Vælg koden først – den bliver skrevet ind i scriptet.</span></li>
+        <li>Åbn arket <b>Overblik</b> i Google Drev og vælg <b>Udvidelser → Apps Script</b>.</li>
+        <li>Markér alt i <b>Kode.gs</b> (Ctrl+A / ⌘A), indsæt scriptet, og tryk <b>Gem</b> (disketten).</li>
+      </ol>
+      <details><summary>Vis scriptet</summary><textarea id="scripttekst" readonly spellcheck="false"></textarea></details>
+    </li>
+
+    <li class="trinkort">
+      <h2>Implementer som webapp</h2>
+      <ol class="smaatrin">
+        <li>Tryk den blå knap <b>Implementer → Ny implementering</b> øverst til højre. Tryk tandhjulet ved <i>Vælg type</i>, og vælg <b>Webapp</b>.</li>
+        <li><b>Udfør som:</b> Mig. <b>Hvem har adgang:</b> <b>Alle</b> – ikke «Alle med en Google-konto». Koden er det, der beskytter tallene.</li>
+        <li>Tryk <b>Implementer</b> og så <b>Giv adgang</b>, og vælg din konto. Google skriver, at appen ikke er
+          bekræftet – det gør Google ved alle egne scripts. Tryk <b>Avanceret</b> → <b>Gå til … (usikker)</b> → <b>Tillad</b>.</li>
+        <li>Kopiér <b>webappens URL</b>. Den ender på <code>/exec</code>.</li>
+      </ol>
+    </li>
+
+    <li class="trinkort">
+      <h2>Forbind</h2>
+      <label class="felt"><span>Webappens URL</span>
+        <input id="nyadresse" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec"></label>
+      <label class="felt"><span>Kode</span><input type="password" id="forbindkode" autocomplete="off"></label>
+      <button type="button" class="knap" id="forbind" style="margin-top:14px">Forbind</button>
+      <p class="besked" id="forbindbesked" role="status"></p>
+      <div class="gemboks" id="gemboks" hidden>
+        <p id="gemtekst"></p>
+        <div class="knapper">
+          <a class="knap" id="gemgithub" target="_blank" rel="noopener">Gem adressen på GitHub</a>
+          <button type="button" class="knap sekundaer" id="kopierlinje" hidden>Kopiér linjen</button>
+          <button type="button" class="knap sekundaer" id="aabnbudget">Åbn budgettet</button>
+        </div>
+        <p class="stille" id="gemhjaelp" style="margin:10px 0 0;font-size:13px"></p>
+      </div>
+    </li>
+  </ol>
+  <p><a href="./" id="opsaet-tilbage">Tilbage til budgettet</a></p>
+</section>
+
+<!-- ============================================================ selve siden -->
+<div id="app" hidden>
+  <header class="top">
+    <div class="wrap topin">
+      <div class="titelblok">
+        <p class="eyebrow">Aalborg Volley</p>
+        <h1 id="overskrift"><span id="titeltekst">Budget</span><select id="saesonvalg" class="saesonvalg" aria-label="Vælg sæson" hidden></select></h1>
+      </div>
+      <div class="spacer"></div>
+      <div class="seg" id="filterseg" role="group" aria-label="Hvilke posteringer">
+        <button type="button" data-filter="Ja" aria-pressed="true" id="filter-ja">Kun sæsonen</button>
+        <button type="button" data-filter="Alle" aria-pressed="false">Alt bogført</button>
+      </div>
+      <div class="topknapper">
+        <button type="button" class="ikonknap" id="opdater" title="Hent tallene igen">Opdatér</button>
+        <button type="button" class="ikonknap" id="laas-igen" title="Lås siden og glem koden på denne enhed">Lås</button>
+      </div>
+    </div>
+  </header>
+  <main class="wrap">
+    <div class="bannere" id="bannere"></div>
+    <section class="kpi" id="kpi" aria-label="Nøgletal"></section>
+    <div class="navlinje">
+      <nav class="faner" role="tablist" aria-label="Visning">
+        <button type="button" role="tab" data-fane="budget" aria-selected="true">Budget</button>
+        <button type="button" role="tab" data-fane="hold" aria-selected="false">Hold</button>
+        <button type="button" role="tab" data-fane="arrangementer" aria-selected="false">Arrangementer</button>
+        <button type="button" role="tab" data-fane="konti" aria-selected="false">Konti</button>
+        <button type="button" role="tab" data-fane="sammenlign" aria-selected="false">Sammenlign</button>
+        <button type="button" role="tab" data-fane="afvigelser" aria-selected="false">Afvigelser</button>
+      </nav>
+      <div class="soeg"><input type="search" id="soeg" placeholder="Søg i alle posteringer …" aria-label="Søg i alle posteringer" autocomplete="off"></div>
+    </div>
+    <div id="visning"></div>
+    <footer id="fod"></footer>
+  </main>
+</div>
+
+<!-- Scriptet til arket. Siden skriver koden ind i linjen med KODE, når du kopierer det. -->
+<script type="text/plain" id="gs-skabelon">
+/**
+ * Budgetsiden · Aalborg Volley
+ *
+ * Giver https://brebnhi.github.io/budget/ lov til at læse tallene i dette ark.
+ * Arket forbliver privat: scriptet svarer kun, når koden er rigtig, og efter
+ * 10 forkerte forsøg holder det lukket i 15 minutter.
+ *
+ * Al udregning sker på siden. Scriptet sender kun de faner, siden beder om,
+ * så det skal ikke rettes, når siden bliver bedre.
+ *
+ * Skift kode: ret KODE herunder, gem, og vælg Implementer → Administrer
+ * implementeringer → blyanten → Version: Ny version → Implementer.
+ *
+ * @OnlyCurrentDoc
+ */
+var KODE = "__KODE__";
+
+var VERSION = 1;
+var MAKS_FORKERTE = 10;
+var LUKKET_SEKUNDER = 15 * 60;
+
+function doPost(e) {
+  var foresp = {};
+  try {
+    foresp = JSON.parse((e && e.postData && e.postData.contents) || "{}") || {};
+  } catch (fejl) {
+    foresp = {};
+  }
+  return svar_(behandl_(foresp));
+}
+
+function doGet(e) {
+  var p = (e && e.parameter) || {};
+  return svar_(behandl_({
+    kode: p.kode,
+    faner: p.faner ? String(p.faner).split("|") : null,
+    formler: p.formler ? String(p.formler).split("|") : null
+  }));
+}
+
+function behandl_(foresp) {
+  var cache = CacheService.getScriptCache();
+  var forkerte = Number(cache.get("forkerte") || 0);
+  if (forkerte >= MAKS_FORKERTE) return { ok: false, fejl: "lukket" };
+  if (!KODE || KODE === "__KODE__" || String(foresp.kode || "") !== KODE) {
+    cache.put("forkerte", String(forkerte + 1), LUKKET_SEKUNDER);
+    Utilities.sleep(700);
+    return { ok: false, fejl: "kode" };
+  }
+  if (forkerte) cache.remove("forkerte");
+  try {
+    var ark = SpreadsheetApp.getActiveSpreadsheet();
+    var tz = ark.getSpreadsheetTimeZone();
+    var alle = ark.getSheets().map(function (f) { return f.getName(); });
+    var oensket = (foresp.faner && foresp.faner.length) ? foresp.faner : alle;
+    var faner = {};
+    oensket.forEach(function (navn) {
+      var fane = ark.getSheetByName(String(navn));
+      if (!fane) return;
+      faner[navn] = trim_(fane.getDataRange().getValues().map(function (raekke) {
+        return raekke.map(function (v) {
+          return erDato_(v) ? Utilities.formatDate(v, tz, "yyyy-MM-dd") : v;
+        });
+      }));
+    });
+    var formler = {};
+    (foresp.formler || []).forEach(function (navn) {
+      var fane = ark.getSheetByName(String(navn));
+      if (fane) formler[navn] = trim_(fane.getDataRange().getFormulas());
+    });
+    return {
+      ok: true, version: VERSION, ark: ark.getName(), tidszone: tz,
+      hentet: new Date().toISOString(), alleFaner: alle, faner: faner, formler: formler
+    };
+  } catch (fejl) {
+    return { ok: false, fejl: "intern", besked: String((fejl && fejl.message) || fejl) };
+  }
+}
+
+function erDato_(v) {
+  return Object.prototype.toString.call(v) === "[object Date]" && !isNaN(v.getTime());
+}
+
+// Fjerner tomme rækker og kolonner i bunden og til højre.
+function trim_(raekker) {
+  var tom = function (v) { return v === "" || v === null || v === undefined; };
+  var n = raekker.length;
+  while (n > 0 && raekker[n - 1].every(tom)) n--;
+  var m = 0;
+  for (var i = 0; i < n; i++) {
+    for (var j = raekker[i].length - 1; j >= m; j--) {
+      if (!tom(raekker[i][j])) { m = j + 1; break; }
+    }
+  }
+  return raekker.slice(0, n).map(function (r) { return r.slice(0, m); });
+}
+
+function svar_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+</script>
+
+<script>
+(function () {
+"use strict";
+
+/* ============================================================ indstillinger */
+const REPO = "Brebnhi/Brebnhi.github.io";
+const MAPPE = "tjans/docs/budget";
+const ADRESSEFIL = "adresse.txt";
+const FANER = ["Konto 1", "Konto 2", "Budget", "Overblik", "Hold - status", "Event"];
+const FORMLER = ["Overblik"];
+const MIN_SCRIPT_VERSION = 1;
+const NOEGLE = { kode: "aav.budget.kode", koder: "aav.budget.koder", adresse: "aav.budget.adresse", fane: "aav.budget.fane", filter: "aav.budget.filter" };
+const LOKAL_TEST = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+const VIS_FOERST = 60;            // så mange posteringer vises, før der er en "Vis alle"-knap
+
+/* ============================================================ små hjælpere */
+const $ = s => document.querySelector(s);
+function h(tag, attrs, ...born) {
+  const el = document.createElement(tag);
+  if (attrs) for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k.startsWith("on") && typeof v === "function") el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const b of born.flat(9)) if (b != null && b !== false && b !== "") el.append(b instanceof Node ? b : String(b));
+  return el;
+}
+const tekst = s => String(s == null ? "" : s).trim();
+const lav = s => tekst(s).toLowerCase();
+const sum = (arr, f) => arr.reduce((a, x) => a + (f ? f(x) : x), 0);
+function gem(lager, k, v) { try { if (v == null) lager.removeItem(k); else lager.setItem(k, v); } catch (e) { /* privat vindue */ } }
+function laes(lager, k) { try { return lager.getItem(k); } catch (e) { return null; } }
+function forbogstav(s) { s = tekst(s); return s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : s; }
+
+const NF0 = new Intl.NumberFormat("da-DK", { maximumFractionDigits: 0 });
+const NF2 = new Intl.NumberFormat("da-DK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+/* Beløb: dec = med øre, plus = vis + foran positive */
+function kr(n, dec, plus) {
+  if (n == null || !isFinite(n)) return "–";
+  const f = dec ? NF2 : NF0;
+  if (Math.abs(n) < (dec ? 0.005 : 0.5)) return f.format(0);
+  return (n < 0 ? "−" : plus ? "+" : "") + f.format(Math.abs(n));
+}
+function tal(v) {
+  if (typeof v === "number") return isFinite(v) ? v : 0;
+  if (typeof v === "boolean") return v ? 1 : 0;
+  let s = tekst(v);
+  if (!s) return 0;
+  let neg = false;
+  if (/^\(.*\)$/.test(s)) { neg = true; s = s.slice(1, -1); }
+  s = s.replace(/kr\.?|dkk|\s| /gi, "");
+  if (s.endsWith("%")) return tal(s.slice(0, -1)) / 100;
+  if (/^[-−]/.test(s)) { neg = !neg; s = s.slice(1); }
+  if (s.includes(",") && s.includes(".")) s = s.lastIndexOf(",") > s.lastIndexOf(".") ? s.replace(/\./g, "").replace(",", ".") : s.replace(/,/g, "");
+  else if (s.includes(",")) s = s.replace(",", ".");
+  else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, "");
+  const x = parseFloat(s);
+  return isNaN(x) ? 0 : (neg ? -x : x);
+}
+function tilDato(v) {
+  if (v == null || v === "") return null;
+  if (typeof v === "number") {
+    if (v < 20000 || v > 80000) return null;          // regnearkets serienummer
+    const d = new Date(Date.UTC(1899, 11, 30) + Math.round(v) * 864e5);
+    return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  }
+  const s = tekst(v);
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+  m = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/);
+  if (m) { let y = +m[3]; if (y < 100) y += 2000; return new Date(y, +m[2] - 1, +m[1]); }
+  return null;
+}
+const to = n => String(n).padStart(2, "0");
+const dm = d => d ? to(d.getDate()) + "." + to(d.getMonth() + 1) : "";
+const dmy = d => d ? dm(d) + "." + d.getFullYear() : "";
+const klok = d => to(d.getHours()) + "." + to(d.getMinutes());
+function andel(a, b) { return b > 0 ? Math.max(0, Math.min(100, a / b * 100)) : (a > 0 ? 100 : 0); }
+
+/* ============================================================ tilstand */
+/* Hver sæson er sit eget ark med sit eget script: { url, label, kilde, D, kontrol, fejl, kode, henter }.
+   S.valgt er den sæson, siden viser. */
+const S = {
+  saesoner: [], valgt: null, adresseFil: false, kode: null,
+  get D() { return (this.valgt && this.valgt.D) || null; },
+  get kontrol() { return (this.valgt && this.valgt.kontrol) || null; },
+  filter: laes(localStorage, NOEGLE.filter) || null,
+  fane: laes(localStorage, NOEGLE.fane) || "budget",
+  soeg: "", aabne: new Set(), detaljer: new Set(), visAlle: new Set(),
+  afvNiveau: "linje", smlNiveau: "linje", smlTil: "dato", smlMed: null
+};
+let saesonTaeller = 0;
+function nySaeson(x) {
+  return { url: x.url, label: x.label || "", kilde: x.kilde || "github", noegle: "s" + (++saesonTaeller),
+    D: null, kontrol: null, fejl: null, kode: null, henter: null, hentetMs: 0 };
+}
+const nyeste = () => S.saesoner[S.saesoner.length - 1] || null;
+function saesonNavn(s) { return (s && (s.label || (s.D && s.D.saeson))) || "sæson " + (S.saesoner.indexOf(s) + 1); }
+/* «26/27» → 2026 */
+function startAar(s) {
+  const t = saesonNavn(s);
+  let m = t.match(/(\d{2})\s*\/\s*(\d{2})\b/);
+  if (m) return 2000 + Number(m[1]);
+  m = t.match(/\b(20\d{2})\b/);
+  return m ? Number(m[1]) : null;
+}
+/* Ældste først. Kendes årstallet for alle sæsoner, sorteres efter det – ellers står de som i adresse.txt. */
+function sorterSaesoner() {
+  if (S.saesoner.every(s => startAar(s) != null)) S.saesoner.sort((a, b) => startAar(a) - startAar(b));
+}
+
+/* ============================================================ adresserne på scripterne */
+function gyldigAdresse(u) {
+  u = tekst(u);
+  if (/^https:\/\/script\.google\.com\/(a\/macros\/[^/]+|macros)\/s\/[\w-]+\/exec$/.test(u)) return u;
+  if (LOKAL_TEST && /^http:\/\/(localhost|127\.0\.0\.1):\d+\/\S+\/exec$/.test(u)) return u;
+  return null;
+}
+/* Én sæson pr. linje: «26/27 https://script.google.com/…/exec» – eller bare adressen.
+   Står samme adresse eller sæson der to gange, vinder den nederste. */
+function laesAdresseLinjer(txt) {
+  const ud = [];
+  String(txt || "").split(/\r?\n/).forEach(l => {
+    const dele = tekst(l).split(/\s+/);
+    const url = gyldigAdresse(dele.pop());
+    if (!url) return;
+    const label = dele.join(" ").replace(/^[\s#*-]+|[\s:=|;,–—-]+$/g, "");
+    for (let i = ud.length - 1; i >= 0; i--) if (ud[i].url === url || (label && lav(ud[i].label) === lav(label))) ud.splice(i, 1);
+    ud.push({ url, label });
+  });
+  return ud;
+}
+const adresseLinje = x => (x.label ? x.label + " " : "") + x.url;
+async function findAdresser() {
+  let fil = [];
+  S.adresseFil = false;
+  try {
+    const r = await fetch(ADRESSEFIL + "?v=" + Date.now(), { cache: "no-store" });
+    if (r.ok) { S.adresseFil = true; fil = laesAdresseLinjer(await r.text()); }
+  } catch (e) { /* ingen fil */ }
+  const alle = fil.map(x => ({ ...x, kilde: "github" }));
+  // Ark, der er forbundet i denne browser, men endnu ikke står i adresse.txt. En adresse uden sæson er fra den
+  // første udgave af siden – den bruges kun, så længe adresse.txt ikke findes.
+  laesAdresseLinjer([laes(localStorage, NOEGLE.adresse), laes(sessionStorage, NOEGLE.adresse)].join("\n")).forEach(x => {
+    if (S.adresseFil && !x.label) return;
+    if (!alle.some(y => y.url === x.url || (x.label && lav(y.label) === lav(x.label)))) alle.push({ ...x, kilde: "lokal" });
+  });
+  S.saesoner = alle.map(nySaeson);
+  sorterSaesoner();
+}
+function gemLokalAdresse(label, url) {
+  const linjer = laesAdresseLinjer(laes(localStorage, NOEGLE.adresse) || laes(sessionStorage, NOEGLE.adresse))
+    .filter(x => x.url !== url && !(label && lav(x.label) === lav(label)));
+  linjer.push({ url, label });
+  const t = linjer.map(adresseLinje).join("\n");
+  gem(localStorage, NOEGLE.adresse, t);
+  gem(sessionStorage, NOEGLE.adresse, t);
+}
+/* Koder til sæsoner, der har en anden kode end den, man låste op med. */
+function gemKoder() {
+  const k = {};
+  S.saesoner.forEach(s => { if (s.kode) k[s.url] = s.kode; });
+  const t = Object.keys(k).length ? JSON.stringify(k) : null;
+  gem(sessionStorage, NOEGLE.koder, t);
+  if (laes(localStorage, NOEGLE.kode) || !t) gem(localStorage, NOEGLE.koder, t);
+}
+function laesKoder() {
+  let k = {};
+  try { k = Object.assign({}, JSON.parse(laes(localStorage, NOEGLE.koder) || "{}"), JSON.parse(laes(sessionStorage, NOEGLE.koder) || "{}")); }
+  catch (e) { k = {}; }
+  S.saesoner.forEach(s => { if (typeof k[s.url] === "string") s.kode = k[s.url]; });
+}
+
+/* ============================================================ hent fra arket */
+class HentFejl extends Error { constructor(art, besked) { super(besked || art); this.art = art; } }
+async function hentFraArk(adresse, kode) {
+  const krop = JSON.stringify({ kode, faner: FANER, formler: FORMLER });
+  let r;
+  try {
+    r = await fetch(adresse, { method: "POST", body: krop, redirect: "follow", credentials: "omit", cache: "no-store" });
+  } catch (e) {
+    // Nogle netværk afviser POST til Google – prøv samme forespørgsel som GET.
+    const q = "?kode=" + encodeURIComponent(kode) + "&faner=" + encodeURIComponent(FANER.join("|")) + "&formler=" + encodeURIComponent(FORMLER.join("|"));
+    try { r = await fetch(adresse + q, { redirect: "follow", credentials: "omit", cache: "no-store" }); }
+    catch (e2) { throw new HentFejl("net"); }
+  }
+  if (!r.ok) throw new HentFejl("net", "HTTP " + r.status);
+  let svar;
+  try { svar = JSON.parse(await r.text()); } catch (e) { throw new HentFejl("svar"); }
+  if (!svar || svar.ok !== true) throw new HentFejl((svar && svar.fejl) || "svar", svar && svar.besked);
+  return svar;
+}
+function fejltekst(e) {
+  switch (e && e.art) {
+    case "kode": return "Forkert kode.";
+    case "lukket": return "For mange forkerte forsøg. Scriptet i arket holder lukket i 15 minutter.";
+    case "intern": return "Arket svarede med en fejl: " + (e.message || "ukendt") + ".";
+    case "svar": return "Svaret fra Google var ikke tallene. Er det webappens URL (den der ender på /exec), og er scriptet implementeret?";
+    default: return "Kunne ikke få svar fra arket. Tjek forbindelsen – og at scriptet er implementeret som webapp med adgang for «Alle».";
+  }
+}
+
+/* ============================================================ læs fanerne */
+function laesKonto(rows, kontoNavn) {
+  const h0 = rows.findIndex(r => r.some(v => lav(v) === "dato"));
+  const ud = { navn: kontoNavn, titel: kontoNavn, primo: 0, primoTekst: "Primo", saldoArk: null, poster: [] };
+  if (h0 < 0) return ud;
+  const hdr = rows[h0].map(lav);
+  const k = n => hdr.indexOf(n);
+  const C = { dato: k("dato"), tekst: k("tekst"), beloeb: k("beløb"), ref: k("reference"), over: k("overkategori"),
+    under: k("underkategori"), under2: k("underkategori 2"), afd: k("afdeling"), hold: k("hold"),
+    saeson: k("aktuel sæson"), holdA: k("hold a"), holdB: k("hold b"), andel: hdr.findIndex(x => x.startsWith("andel")) };
+  for (let r = 0; r < h0; r++) {
+    const row = rows[r] || [];
+    if (r === 0 && tekst(row[0])) ud.titel = tekst(row[0]);
+    for (let j = 0; j < row.length; j++) {
+      const v = lav(row[j]);
+      if (!v.startsWith("primo") && !v.startsWith("saldo")) continue;
+      let naeste = null;
+      for (let i = j + 1; i < row.length; i++) if (row[i] !== "" && row[i] != null) { naeste = row[i]; break; }
+      if (v.startsWith("primo")) { ud.primo = tal(naeste); ud.primoTekst = tekst(row[j]).replace(/:\s*$/, ""); }
+      else ud.saldoArk = naeste == null ? null : tal(naeste);
+    }
+  }
+  for (let r = h0 + 1; r < rows.length; r++) {
+    const row = rows[r] || [];
+    const dato = tilDato(row[C.dato]);
+    if (!dato) continue;
+    const g = i => (i >= 0 && row[i] != null) ? tekst(row[i]) : "";
+    const a = C.andel >= 0 ? row[C.andel] : "";
+    ud.poster.push({
+      id: kontoNavn.replace(/\s+/g, "") + "-" + (r + 1), konto: kontoNavn, raekke: r + 1, dato,
+      tekst: g(C.tekst), beloeb: tal(row[C.beloeb]), ref: g(C.ref), over: g(C.over), under: g(C.under),
+      under2: g(C.under2), afd: g(C.afd), hold: g(C.hold), saeson: g(C.saeson), holdA: g(C.holdA), holdB: g(C.holdB),
+      andel: (a === "" || a == null) ? null : tal(a)
+    });
+  }
+  return ud;
+}
+
+function laesBudget(rows) {
+  const h0 = rows.findIndex(r => lav(r[0]) === "overkategori" && lav(r[1]) === "budgetlinje");
+  const ud = { saeson: "", linjer: [], poster: [] };
+  for (let r = 0; r < Math.min(rows.length, 4); r++) {
+    const m = tekst(rows[r] && rows[r][0]).match(/\d{2}\/\d{2}/);
+    if (m) { ud.saeson = m[0]; break; }
+  }
+  if (h0 < 0) return ud;
+  for (let r = h0 + 1; r < rows.length; r++) {
+    const a = tekst(rows[r][0]), b = tekst(rows[r][1]);
+    if (!a || !b) break;
+    ud.linjer.push({ over: a, linje: b, type: lav(a) === "nettoomsætning" ? "Indtægt" : "Udgift",
+      budgetArk: tal(rows[r][2]), gammel: rows[r][3] === "" || rows[r][3] == null ? null : tal(rows[r][3]) });
+  }
+  const hdr = rows[h0].map(lav);
+  const pc = hdr.indexOf("post");
+  if (pc < 1) return ud;
+  const find = (n, fra) => { const i = hdr.indexOf(n, fra); return i; };
+  const C = { linje: hdr.lastIndexOf("budgetlinje"), beloeb: find("beløb", pc), hold: find("hold", pc), type: find("type", pc), bem: find("bemærkning", pc) };
+  if (C.linje < 0 || C.linje > pc) C.linje = pc - 1;
+  if (C.beloeb < 0) C.beloeb = pc + 1;
+  if (C.hold < 0) C.hold = pc + 2;
+  if (C.type < 0) C.type = pc + 3;
+  for (let r = h0 + 1; r < rows.length; r++) {
+    const row = rows[r] || [];
+    const linje = tekst(row[C.linje]), post = tekst(row[pc]);
+    if (lav(post) === "i alt" || lav(linje) === "kontingentbudget") break;
+    if (!linje) continue;
+    ud.poster.push({ linje, post, beloeb: tal(row[C.beloeb]), hold: tekst(row[C.hold]), type: tekst(row[C.type]),
+      bem: C.bem >= 0 ? tekst(row[C.bem]) : "", raekke: r + 1 });
+  }
+  return ud;
+}
+
+/* Overblik: hvilke underkategorier hver budgetlinje samler (læst ud af arkets egne
+   formler), sæsonfilteret og arkets egne tal til kontrollen. */
+function laesOverblik(rows, formler) {
+  const ud = { filter: "Ja", alias: {}, linjer: {}, uden: null, interne: null, fundet: rows.length > 0 };
+  for (let r = 0; r < rows.length; r++) {
+    const a = tekst(rows[r][0]), b = tekst(rows[r][1]);
+    if (lav(a) === "sæsonfilter") { ud.filter = lav(b) === "alle" ? "Alle" : "Ja"; continue; }
+    if (lav(a).startsWith("pr. afdeling")) break;
+    if (lav(a) === "uden for budgettet") { ud.uden = tal(rows[r][3]); continue; }
+    if (lav(a) === "interne overførsler") { ud.interne = tal(rows[r][3]); continue; }
+    if (!b) continue;
+    const f = tekst((formler[r] || [])[3]);
+    const navne = [...f.matchAll(/\$F\$\d+:\$F\$\d+\s*=\s*"([^"]+)"/g)].map(m => lav(m[1]));
+    if (navne.length) ud.alias[lav(b)] = [...new Set(navne)];
+    if (rows[r][2] !== "" || rows[r][3] !== "") ud.linjer[lav(b)] = { budget: rows[r][2], real: rows[r][3] };
+  }
+  return ud;
+}
+
+/* Hold - status: holdene i den rækkefølge og de grupper, arket bruger, og arkets tal. */
+function laesHoldStatus(rows) {
+  const ud = { grupper: [], blokke: { ind: {}, ud: {}, netto: {} } };
+  let blok = null;
+  for (let r = 0; r < rows.length; r++) {
+    const a = tekst(rows[r][0]), b = tekst(rows[r][1]), al = lav(a);
+    if (al.startsWith("indtægter pr")) { blok = "ind"; continue; }
+    if (al.startsWith("udgifter pr")) { blok = "ud"; continue; }
+    if (al.startsWith("netto pr")) { blok = "netto"; continue; }
+    if (!blok) continue;
+    if (a && !b) { if (blok === "ind") ud.grupper.push({ navn: forbogstav(a), hold: [] }); continue; }
+    if (!b || / i alt$/i.test(b) || lav(b) === "i alt") continue;
+    ud.blokke[blok][lav(b)] = { budget: rows[r][2], real: rows[r][3] };
+    if (blok === "ind" && ud.grupper.length) ud.grupper[ud.grupper.length - 1].hold.push(b);
+  }
+  return ud;
+}
+
+/* Event: arrangementerne og arkets tal. */
+function laesEvent(rows) {
+  const ud = { grupper: [], kontrol: {} };
+  const h0 = rows.findIndex(r => lav(r[0]) === "arrangement");
+  if (h0 < 0) return ud;
+  for (let r = h0 + 1; r < rows.length; r++) {
+    const row = rows[r] || [], a = tekst(row[0]), al = lav(a);
+    if (!a) continue;
+    if (al.startsWith("alle arrangementer") || al.startsWith("forudsætninger")) break;
+    if (al.startsWith("i alt")) continue;
+    const harTal = row.slice(1, 7).some(v => typeof v === "number");
+    if (!harTal) { ud.grupper.push({ navn: forbogstav(a), events: [] }); continue; }
+    if (!ud.grupper.length) ud.grupper.push({ navn: "Arrangementer", events: [] });
+    ud.grupper[ud.grupper.length - 1].events.push(a);
+    ud.kontrol[al] = { bInd: row[1], bUd: row[2], fInd: row[4], fUd: row[5] };
+  }
+  return ud;
+}
+
+/* Gætter grupper, hvis fanen Hold - status mangler. */
+function gaetHoldGrupper(poster, bposter) {
+  const alle = new Set();
+  poster.forEach(p => { if (p.holdA) alle.add(p.holdA); if (p.holdB) alle.add(p.holdB); });
+  bposter.forEach(b => { if (b.hold) alle.add(b.hold); });
+  const g = { Senior: [], Ungdom: [], Mix: [], Klub: [] };
+  [...alle].sort((a, b) => a.localeCompare(b, "da")).forEach(t => {
+    const l = lav(t);
+    if (/^(herre|dame)/.test(l)) g.Senior.push(t);
+    else if (/mix/.test(l)) g.Mix.push(t);
+    else if (/klub/.test(l)) g.Klub.push(t);
+    else g.Ungdom.push(t);
+  });
+  return Object.entries(g).filter(x => x[1].length).map(([navn, hold]) => ({ navn, hold }));
+}
+
+function bygModel(svar) {
+  const F = svar.faner || {};
+  const mangler = ["Konto 1", "Konto 2", "Budget"].filter(n => !F[n]);
+  if (mangler.length) {
+    const e = new HentFejl("intern", "fanen " + mangler.map(n => "«" + n + "»").join(" og ") + " findes ikke i arket" +
+      (svar.alleFaner ? " (arket har: " + svar.alleFaner.join(", ") + ")" : ""));
+    throw e;
+  }
+  const konti = ["Konto 1", "Konto 2"].map(n => laesKonto(F[n], n));
+  const budget = laesBudget(F["Budget"]);
+  const ov = laesOverblik(F["Overblik"] || [], (svar.formler || {})["Overblik"] || []);
+  const hs = laesHoldStatus(F["Hold - status"] || []);
+  const ev = laesEvent(F["Event"] || []);
+  const poster = konti.flatMap(k => k.poster);
+  poster.forEach(p => { p.navn = navngiv(p); });
+  const D = {
+    arkNavn: svar.ark || "Overblik", hentet: new Date(), saeson: budget.saeson,
+    konti, poster, linjer: budget.linjer, bposter: budget.poster, ov,
+    holdGrupper: hs.grupper.length ? hs.grupper : gaetHoldGrupper(poster, budget.poster),
+    holdArk: hs.blokke, eventGrupper: ev.grupper, eventArk: ev.kontrol, scriptVersion: svar.version || 0
+  };
+  // Hver postering ved, hvilket ark (sæson) den kommer fra – fx når søgningen viser posteringer fra andre sæsoner.
+  poster.forEach(p => Object.defineProperty(p, "_D", { value: D, configurable: true }));
+  // Hold, der står på posteringer eller i budgettet, men ikke i Hold - status, kommer med under "Andre".
+  const kendte = new Set(D.holdGrupper.flatMap(g => g.hold.map(lav)));
+  const andre = new Set();
+  poster.forEach(p => [p.holdA, p.holdB].forEach(t => { if (t && !kendte.has(lav(t))) andre.add(t); }));
+  budget.poster.forEach(b => { if (b.hold && !kendte.has(lav(b.hold))) andre.add(b.hold); });
+  if (andre.size) D.holdGrupper = D.holdGrupper.concat([{ navn: "Andre", hold: [...andre] }]);
+  return D;
+}
+
+/* ============================================================ pæne navne */
+const STOPORD = new Set(["aps", "a/s", "dk", "www", "com", "til", "fra", "og", "af", "med", "for", "den", "det"]);
+function ordI(s) { return lav(s).split(/[^a-z0-9æøåäöüé]+/).filter(w => w.length >= 3 && !STOPORD.has(w) && !/^\d+$/.test(w)); }
+function pynt(s) {
+  return s.toLowerCase().replace(/(^|[\s\-\/(])([a-zæøå])/g, (m, a, b) => a + b.toUpperCase())
+    .replace(/\bAps\b/g, "ApS").replace(/\bA\/s\b/g, "A/S");
+}
+/* Bankens tekst uden numre og koder: «4871992 Petra Gøransson -SE MEDD.» → «Petra Gøransson» */
+function renBank(t) {
+  let s = tekst(t);
+  s = s.replace(/\s*-?\s*SE\s+MEDD\.?\s*$/i, "");
+  s = s.replace(/^(MCD|LS|BS|NETS)\s+\d+\s+/i, "");
+  s = s.replace(/^(Dankort-nota|Visa\/Dankort|Visa-køb|Mastercard-køb)\s+/i, "");
+  s = s.replace(/^\d{5,}\s+/, "");
+  s = s.replace(/(,?\s+\d{3,})+$/, "");
+  s = s.replace(/\s{2,}/g, " ").trim();
+  if (!/[a-zæøå]/i.test(s)) return "";
+  if (!/[a-zæøå]/.test(s) && /\s/.test(s) && /[A-ZÆØÅ]{4}/.test(s)) s = pynt(s);   // «HOLDSPORT.DK APS» → «Holdsport.dk ApS»
+  return s;
+}
+/* Navnet på siden er kolonnen Reference. Bankens tekst kommer under, når den siger noget
+   nyt (fx hvem der har betalt). Uden reference bruges bankens tekst. */
+function navngiv(p) {
+  const ref = tekst(p.ref), bank = renBank(p.tekst);
+  if (ref) {
+    const kendt = new Set(ordI(ref));
+    return { titel: ref, detalje: (bank && ordI(bank).some(w => !kendt.has(w))) ? bank : "" };
+  }
+  if (bank) return { titel: bank, detalje: "" };
+  return { titel: p.beloeb >= 0 ? "Indbetaling uden tekst" : "Betaling uden tekst",
+    detalje: tekst(p.tekst).replace(/\s*-?\s*SE\s+MEDD\.?\s*$/i, ""), ukendt: true };
+}
+
+/* ============================================================ beregninger (som arkets formler) */
+/* til: kun posteringer til og med den dato (bruges, når to sæsoner sammenlignes til samme dato) */
+const iFilter = (p, f, til) => (f === "Alle" || lav(p.saeson) === "ja") && (!til || p.dato <= til);
+const erIndtaegt = l => l.type === "Indtægt";
+function aliasFor(D, l) { return D.ov.alias[lav(l.linje)] || [lav(l.linje)]; }
+
+function beregnBudget(D, f, til) {
+  const linjeFor = new Map();
+  D.linjer.forEach(l => aliasFor(D, l).forEach(a => { if (!linjeFor.has(a)) linjeFor.set(a, l); }));
+  const perLinje = new Map(D.linjer.map(l => [l, []]));
+  const uden = [], interne = [];
+  D.poster.forEach(p => {
+    if (!iFilter(p, f, til)) return;
+    const u = lav(p.under);
+    if (u === "intern overførsel") interne.push(p);
+    else if (linjeFor.has(u)) perLinje.get(linjeFor.get(u)).push(p);
+    else uden.push(p);
+  });
+  const linjer = D.linjer.map(l => {
+    const ps = perLinje.get(l);
+    const bp = D.bposter.filter(b => lav(b.linje) === lav(l.linje));
+    const s = sum(ps, p => p.beloeb);
+    return { ...l, poster: ps, bposter: bp, budget: sum(bp, b => b.beloeb), real: erIndtaegt(l) ? s : -s };
+  });
+  const ind = linjer.filter(erIndtaegt), udg = linjer.filter(l => !erIndtaegt(l));
+  return {
+    linjer, uden, interne,
+    bInd: sum(ind, l => l.budget), rInd: sum(ind, l => l.real),
+    bUd: sum(udg, l => l.budget), rUd: sum(udg, l => l.real),
+    udenSum: sum(uden, p => p.beloeb), interneSum: sum(interne, p => p.beloeb)
+  };
+}
+
+function vaegt(p, hold) {
+  const t = lav(hold), wA = p.andel == null ? 1 : p.andel;
+  let w = 0;
+  if (p.holdA && lav(p.holdA) === t) w += wA;
+  if (p.holdB && lav(p.holdB) === t) w += 1 - wA;
+  return w;
+}
+function beregnHold(D, hold, f, til) {
+  const rs = [];
+  D.poster.forEach(p => {
+    if (!iFilter(p, f, til)) return;
+    const w = vaegt(p, hold);
+    if (Math.abs(w) > 1e-9) rs.push({ p, w, b: w * p.beloeb });
+  });
+  const ind = rs.filter(x => lav(x.p.over) === "nettoomsætning");
+  const ud = rs.filter(x => lav(x.p.over) !== "nettoomsætning");
+  const bp = D.bposter.filter(b => lav(b.hold) === lav(hold));
+  const bInd = sum(bp.filter(b => lav(b.type) === "indtægt"), b => b.beloeb);
+  const bUd = sum(bp.filter(b => lav(b.type) === "udgift"), b => b.beloeb);
+  const rInd = sum(ind, x => x.b), rUd = -sum(ud, x => x.b);
+  return { hold, ind, ud, bp, bInd, bUd, rInd, rUd, bNetto: bInd - bUd, rNetto: rInd - rUd };
+}
+
+function beregnEvent(D, navn) {
+  const n = lav(navn);
+  const ps = D.poster.filter(p => lav(p.under2).startsWith(n));
+  const bp = D.bposter.filter(b => lav(b.post).startsWith(n));
+  const fInd = sum(ps.filter(p => p.beloeb > 0), p => p.beloeb), fUd = -sum(ps.filter(p => p.beloeb < 0), p => p.beloeb);
+  const bInd = sum(bp.filter(b => lav(b.type) === "indtægt"), b => b.beloeb), bUd = sum(bp.filter(b => lav(b.type) === "udgift"), b => b.beloeb);
+  return { navn, poster: ps, bp, fInd, fUd, bInd, bUd, fNetto: fInd - fUd, bNetto: bInd - bUd };
+}
+
+function beregnKonto(k) {
+  const sorteret = k.poster.slice().sort((a, b) => a.dato - b.dato || a.raekke - b.raekke);
+  let saldo = k.primo;
+  const med = sorteret.map(p => ({ p, saldo: (saldo += p.beloeb) }));
+  return { ...k, bevaegelser: sum(k.poster, p => p.beloeb), saldo, medSaldo: med };
+}
+
+/* Siden regner arkets egne tal efter med arkets sæsonfilter. */
+function kontroller(D) {
+  const afvig = [];
+  let n = 0;
+  const tjek = (navn, side, ark) => {
+    if (ark === "" || ark == null || (typeof ark !== "number" && isNaN(tal(ark)))) return;
+    n++;
+    const a = tal(ark);
+    if (Math.abs(side - a) > 0.5) afvig.push({ navn, side, ark: a });
+  };
+  const f = D.ov.filter;
+  const m = beregnBudget(D, f);
+  m.linjer.forEach(l => {
+    const k = D.ov.linjer[lav(l.linje)];
+    if (k) { tjek(l.linje + " (budget)", l.budget, k.budget); tjek(l.linje + " (realiseret)", l.real, k.real); }
+  });
+  const tot = (navn, b, r) => { const k = D.ov.linjer[navn]; if (k) { tjek(forbogstav(navn) + " (budget)", b, k.budget); tjek(forbogstav(navn) + " (realiseret)", r, k.real); } };
+  tot("indtægter i alt", m.bInd, m.rInd);
+  tot("udgifter i alt", m.bUd, m.rUd);
+  tot("resultat", m.bInd - m.bUd, m.rInd - m.rUd);
+  if (D.ov.uden != null) tjek("Uden for budgettet", -m.udenSum, D.ov.uden);
+  if (D.ov.interne != null) tjek("Interne overførsler", m.interneSum, D.ov.interne);
+  D.holdGrupper.forEach(g => g.hold.forEach(t => {
+    const x = beregnHold(D, t, f), k = D.holdArk;
+    const key = lav(t);
+    if (k.ind[key]) { tjek(t + " indtægter (budget)", x.bInd, k.ind[key].budget); tjek(t + " indtægter", x.rInd, k.ind[key].real); }
+    if (k.ud[key]) { tjek(t + " udgifter (budget)", x.bUd, k.ud[key].budget); tjek(t + " udgifter", x.rUd, k.ud[key].real); }
+    if (k.netto[key]) { tjek(t + " netto (budget)", x.bNetto, k.netto[key].budget); tjek(t + " netto", x.rNetto, k.netto[key].real); }
+  }));
+  D.eventGrupper.forEach(g => g.events.forEach(e => {
+    const x = beregnEvent(D, e), k = D.eventArk[lav(e)];
+    if (!k) return;
+    tjek(e + " budget ind", x.bInd, k.bInd); tjek(e + " budget ud", x.bUd, k.bUd);
+    tjek(e + " faktisk ind", x.fInd, k.fInd); tjek(e + " faktisk ud", x.fUd, k.fUd);
+  }));
+  D.konti.forEach(k => { if (k.saldoArk != null) tjek(k.navn + " saldo", beregnKonto(k).saldo, k.saldoArk); });
+  return { n, afvig, filter: f };
+}
+
+/* ============================================================ visning: byggeklodser */
+/* En række, der kan foldes ud. dybde = hvor langt den er rykket ind (0 = øverst). */
+function knude(id, celler, byg, opt) {
+  opt = opt || {};
+  const d = opt.dybde || 0;
+  const aaben = S.aabne.has(id);
+  const el = h("div", { class: "knude" + (aaben ? " aaben" : ""), style: "--d:" + d });
+  const knap = h("button", { type: "button", class: "raekke " + (opt.kol || "k-linje"), "aria-expanded": String(aaben), style: "--d:" + d });
+  knap.append(h("span", { class: "navn" }, h("i", { class: "pil", "aria-hidden": "true" }),
+    h("span", { class: "tx" }, h("b", null, celler[0]), opt.under ? h("small", null, opt.under) : null)),
+    ...celler.slice(1).map(c => c instanceof Node ? c : h("span", { class: "v num" }, c)));
+  const boern = h("div", { class: "boern", style: "--d:" + (d + 1) });
+  let bygget = false;
+  const sikr = () => { if (!bygget) { byg(boern, d + 1); bygget = true; } };
+  if (aaben) sikr();
+  knap.addEventListener("click", () => {
+    const nu = el.classList.toggle("aaben");
+    knap.setAttribute("aria-expanded", String(nu));
+    if (nu) { S.aabne.add(id); sikr(); } else S.aabne.delete(id);
+  });
+  el.append(knap, boern);
+  return el;
+}
+/* En talcelle. */
+function vc(tekst1, klasse, attrs) {
+  return h("span", Object.assign({ class: "v num" + (klasse ? " " + klasse : "") }, attrs || {}), tekst1);
+}
+/* Realiseret med en svag søjle bagved: hvor stor en del af budgettet der er brugt eller kommet ind. */
+function vBar(real, budget, udgift, klasse) {
+  const over = udgift && real > budget + 0.5;
+  const p = budget > 0.5 ? Math.max(0, Math.min(100, real / budget * 100)) : (real > 0.5 ? 100 : 0);
+  return h("span", { class: "v num db" + (over ? " over neg" : "") + (klasse ? " " + klasse : ""), style: "--p:" + p.toFixed(1) + "%",
+    title: budget > 0.5 ? Math.round(real / budget * 100) + " % af budgettet" : "" }, kr(real));
+}
+const antalTekst = n => n ? n + " post." : "";
+function maerker(p, opt) {
+  const m = [];
+  if (opt && opt.linje) m.push(h("span", { class: "maerke graa" }, opt.linje));
+  if (!(opt && opt.skjulHold)) {
+    if (p.holdA) m.push(h("span", { class: "maerke" }, p.holdA + (p.holdB ? " / " + p.holdB : "")));
+  }
+  if (lav(p.saeson) === "nej") m.push(h("span", { class: "maerke gul", title: "Mærket Nej i Aktuel sæson – hører til sidste sæson" }, "sidste sæson"));
+  return m.flatMap(x => [" ", x]);
+}
+function linjeNavnFor(p) {
+  const D = p._D || S.D, u = lav(p.under);
+  if (u === "intern overførsel") return "Intern overførsel";
+  const l = D.linjer.find(l => aliasFor(D, l).includes(u));
+  return l ? l.linje : (p.under || "Ukategoriseret");
+}
+/* Én postering. opt: { w: holdets andel, linje: vis budgetlinje, saldo, skjulHold } */
+function posteringEl(p, opt) {
+  opt = opt || {};
+  const w = opt.w == null ? 1 : opt.w;
+  const beloeb = w * p.beloeb;
+  const nm = p.navn;
+  const id = "p:" + p.id;
+  const d = h("div", { class: "post", tabindex: "0", role: "button", "aria-expanded": String(S.detaljer.has(id)) });
+  const del = (w > 0 && w < 0.9999) ? h("small", null, Math.round(w * 100) + " % af " + kr(p.beloeb, true)) : null;
+  const sal = opt.saldo != null ? h("small", null, "saldo " + kr(opt.saldo, true)) : null;
+  d.append(
+    h("span", { class: "d num" }, dm(p.dato)),
+    h("span", { class: "t" }, h("b", null, nm.titel), nm.detalje ? h("span", { class: "det" }, " · " + nm.detalje) : null,
+      maerker(p, { linje: opt.linje ? linjeNavnFor(p) : null, skjulHold: opt.skjulHold })),
+    h("span", { class: "a num " + (beloeb > 0 ? "pos" : "") }, kr(beloeb, true, true), del, sal)
+  );
+  const vis = () => {
+    const gl = d.querySelector(".detaljer");
+    if (gl) gl.remove();
+    if (!S.detaljer.has(id)) return;
+    const kat = [p.over, p.under, p.under2].filter(Boolean).join(" › ") || "–";
+    const a = p.andel == null ? 1 : p.andel;
+    const hold = p.holdA ? (p.holdA + (p.holdB ? " og " + p.holdB + " (" + Math.round(a * 100) + " % / " + Math.round((1 - a) * 100) + " %)" : "")) : "Intet hold";
+    const dl = h("dl", { class: "detaljer" },
+      h("dt", null, "Dato"), h("dd", null, dmy(p.dato)),
+      h("dt", null, "Beløb"), h("dd", { class: "num" }, kr(p.beloeb, true, true)),
+      h("dt", null, "Bankens tekst"), h("dd", null, p.tekst || "–"),
+      h("dt", null, "Reference"), h("dd", null, p.ref || "– (ingen – navnet er lavet ud fra bankens tekst)"),
+      h("dt", null, "Kategori"), h("dd", null, kat),
+      h("dt", null, "Budgetlinje"), h("dd", null, linjeNavnFor(p)),
+      h("dt", null, "Hold i budgettet"), h("dd", null, hold),
+      h("dt", null, "Afdeling / hold"), h("dd", null, [p.afd, p.hold].filter(Boolean).join(" · ") || "–"),
+      h("dt", null, "Aktuel sæson"), h("dd", null, p.saeson || "–"),
+      h("dt", null, "I arket"), h("dd", null, p.konto + ", række " + p.raekke));
+    dl.addEventListener("click", e => e.stopPropagation());
+    d.append(dl);
+  };
+  const skift = () => { if (S.detaljer.has(id)) S.detaljer.delete(id); else S.detaljer.add(id); d.setAttribute("aria-expanded", String(S.detaljer.has(id))); vis(); };
+  d.addEventListener("click", skift);
+  d.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); skift(); } });
+  vis();
+  return d;
+}
+function budgetpostEl(b, opt) {
+  opt = opt || {};
+  return h("div", { class: "post budgetpost" },
+    h("span", { class: "d" }, h("span", { class: "maerke graa", style: "margin:0" }, "budget")),
+    h("span", { class: "t" }, h("b", null, b.post || "(uden navn)"),
+      opt.visLinje ? [" ", h("span", { class: "maerke graa" }, b.linje)] : null,
+      b.hold && !opt.skjulHold ? [" ", h("span", { class: "maerke" }, b.hold)] : null,
+      b.bem ? h("span", { class: "det" }, " · " + b.bem) : null),
+    h("span", { class: "a num" }, kr(b.beloeb, true)));
+}
+/* Liste af posteringer med "Vis alle", når den er lang. */
+function posteringsliste(vaert, id, emner, lav1, foerst) {
+  const n = foerst || VIS_FOERST;
+  const alle = S.visAlle.has(id);
+  const vis = alle ? emner : emner.slice(0, n);
+  vis.forEach(x => vaert.append(lav1(x)));
+  if (emner.length > vis.length) {
+    const k = h("button", { type: "button", class: "flere" }, "Vis alle " + emner.length);
+    k.addEventListener("click", () => { S.visAlle.add(id); k.remove(); emner.slice(vis.length).forEach(x => vaert.append(lav1(x))); });
+    vaert.append(k);
+  }
+}
+function afsnit(kol, ...navne) {
+  return h("div", { class: "afsnit " + kol }, ...navne.map(n => n instanceof Node ? n : h("span", null, n)));
+}
+
+/* ============================================================ grupper */
+function prefiks(s) { const i = s.indexOf(" - "); return i > 0 ? s.slice(0, i) : s; }
+const kompakt = s => lav(s).replace(/[^a-z0-9æøå]/g, "");
+/* Passer budgetposten til gruppen? «Transfer D1 (4 x 1.000)» → Transfer, «Kontingent SIFA» → SIFA */
+function passer(post, label) {
+  const p = kompakt(post), l = kompakt(label);
+  return !!l && (p.startsWith(l) || (l.length >= 4 && p.includes(l)));
+}
+/* Deler posteringer op efter Underkategori 2 og sætter budgetposterne på den gruppe, de hører til.
+   emner: [{p, w}]. holdNiveau (fanen Budget): posteringer uden Underkategori 2 samles pr. hold.
+   Ellers (fanen Hold) samles de i én gruppe, der hedder restNavn. */
+function undergrupper(emner, bposter, indtaegt, holdNiveau, restNavn) {
+  const g = new Map();
+  const faa = (key, label, art) => { if (!g.has(key)) g.set(key, { key, label, art, emner: [], bposter: [] }); return g.get(key); };
+  emner.forEach(x => {
+    const p = x.p;
+    if (p.under2) faa("u:" + lav(p.under2), p.under2, "u").emner.push(x);
+    else if (holdNiveau) faa("h:" + lav(p.holdA || "Uden hold"), p.holdA || "Uden hold", "h").emner.push(x);
+    else faa("r:", restNavn || "Øvrige", "r").emner.push(x);
+  });
+  const uGr = [...g.values()].filter(x => x.art === "u").sort((a, b) => b.label.length - a.label.length);
+  const holdBaseret = holdNiveau && [...g.values()].filter(x => x.art === "h").length > uGr.length;
+  bposter.forEach(b => {
+    let hit = uGr.find(x => passer(b.post, x.label));
+    if (!hit && holdNiveau && b.hold && (g.has("h:" + lav(b.hold)) || holdBaseret)) hit = faa("h:" + lav(b.hold), b.hold, "h");
+    if (!hit && !holdNiveau && g.has("r:")) hit = g.get("r:");
+    if (!hit) { const pf = prefiks(b.post) || "(uden navn)"; hit = faa("b:" + lav(pf), pf, "b"); }
+    hit.bposter.push(b);
+  });
+  // «Frivilligarrangement - Region Nordjylland» samles under budgetgruppen «Frivilligarrangement»
+  [...g.values()].forEach(x => {
+    if (x.art !== "u") return;
+    const pf = prefiks(x.label);
+    const maal = pf !== x.label && g.get("b:" + lav(pf));
+    if (maal) { maal.emner.push(...x.emner); g.delete(x.key); }
+  });
+  const ud = [...g.values()].map(x => {
+    const s = sum(x.emner, e => e.w * e.p.beloeb);
+    x.emner.sort((a, b) => a.p.dato - b.p.dato || a.p.raekke - b.p.raekke);
+    return { ...x, budget: sum(x.bposter, b => b.beloeb), real: indtaegt ? s : -s };
+  }).filter(x => x.emner.length || Math.abs(x.budget) > 0.005);
+  ud.sort((a, b) => (a.label === "Uden hold") - (b.label === "Uden hold") ||
+    Math.max(Math.abs(b.budget), Math.abs(b.real)) - Math.max(Math.abs(a.budget), Math.abs(a.real)));
+  return ud;
+}
+/* Budgetposter og posteringer i én gruppe. Én budgetpost med samme navn som gruppen står allerede i rækken ovenover. */
+function fyldGruppe(vaert, id, x, opt) {
+  opt = opt || {};
+  x.bposter.forEach(b => {
+    if (x.bposter.length === 1 && lav(b.post) === lav(x.label) && !b.bem) return;
+    vaert.append(budgetpostEl(b, { skjulHold: opt.skjulHold }));
+  });
+  if (!x.emner.length && !opt.stille) vaert.append(h("p", { class: "tom" }, "Ingen posteringer endnu."));
+  posteringsliste(vaert, id + "|" + x.key, x.emner, e => posteringEl(e.p, { w: e.w, skjulHold: opt.skjulHold && !e.p.holdB }));
+}
+
+/* ============================================================ fane: Budget */
+function linjeIndhold(vaert, l, id, d) {
+  if (l.gammel != null && Math.abs(l.budget - l.gammel) > 0.5) {
+    vaert.append(h("p", { class: "note" }, "Oprindeligt budget (Budget/ny): " + kr(l.gammel) + " kr. · ændret med " + kr(l.budget - l.gammel, false, true) + " kr."));
+  }
+  const grupper = undergrupper(l.poster.map(p => ({ p, w: 1 })), l.bposter, erIndtaegt(l), true);
+  if (!grupper.length) { vaert.append(h("p", { class: "tom" }, "Ingen budget og ingen posteringer.")); return; }
+  if (grupper.length === 1) { fyldGruppe(vaert, id, grupper[0], { skjulHold: grupper[0].art === "h" }); return; }
+  grupper.forEach(x => {
+    vaert.append(knude(id + "|" + x.key, [x.label, vc(kr(x.budget)), vBar(x.real, x.budget, !erIndtaegt(l))],
+      v2 => fyldGruppe(v2, id, x, { skjulHold: x.art === "h" }), { kol: "k-linje", dybde: d, under: antalTekst(x.emner.length) }));
+  });
+}
+function visBudget(vaert, D) {
+  const m = beregnBudget(D, S.filter);
+  const blok = (titel, linjer, b, r, indtaegt) => {
+    const liste = h("div", { class: "liste" });
+    let sidsteOver = null;
+    linjer.forEach(l => {
+      if (!indtaegt && l.over !== sidsteOver) { liste.append(h("div", { class: "overkat" }, l.over)); sidsteOver = l.over; }
+      const id = "b|" + l.linje;
+      liste.append(knude(id, [l.linje, vc(kr(l.budget)), vBar(l.real, l.budget, !indtaegt)],
+        (v2, d) => linjeIndhold(v2, l, id, d), { kol: "k-linje", under: antalTekst(l.poster.length) }));
+    });
+    liste.append(h("div", { class: "total k-linje" }, h("span", null, titel + " i alt"), vc(kr(b)), vc(kr(r))));
+    vaert.append(h("section", { class: "gruppe" }, afsnit("k-linje", titel, "Budget", "Realiseret"), liste));
+  };
+  blok("Indtægter", m.linjer.filter(erIndtaegt), m.bInd, m.rInd, true);
+  blok("Udgifter", m.linjer.filter(l => !erIndtaegt(l)), m.bUd, m.rUd, false);
+  const res = m.rInd - m.rUd, bres = m.bInd - m.bUd;
+  vaert.append(h("div", { class: "liste", style: "margin-top:8px" }, h("div", { class: "total k-linje" },
+    h("span", null, "Resultat"), vc(kr(bres), bres < 0 ? "neg" : ""), vc(kr(res), res < 0 ? "neg" : ""))));
+
+  const liste = h("div", { class: "liste" });
+  const grp = new Map();
+  m.uden.forEach(p => { const k = p.under || "Uden kategori"; if (!grp.has(k)) grp.set(k, []); grp.get(k).push(p); });
+  [...grp.entries()].sort((a, b) => a[0].localeCompare(b[0], "da")).forEach(([k, ps]) => {
+    ps.sort((a, b) => a.dato - b.dato || a.raekke - b.raekke);
+    const s = sum(ps, p => p.beloeb);
+    liste.append(knude("u|" + k, [k, vc(kr(s, false, true), s > 0 ? "pos" : "")],
+      v2 => posteringsliste(v2, "u|" + k, ps, p => posteringEl(p)), { kol: "k-et", under: antalTekst(ps.length) }));
+  });
+  const ip = m.interne.slice().sort((a, b) => a.dato - b.dato || a.raekke - b.raekke);
+  if (ip.length) {
+    const nul = Math.abs(m.interneSum) < 0.5;
+    liste.append(knude("i|interne", ["Interne overførsler", vc(nul ? "0 ✓" : kr(m.interneSum, false, true), nul ? "pos" : "neg")],
+      v2 => posteringsliste(v2, "i|interne", ip, p => posteringEl(p)), { kol: "k-et", under: antalTekst(ip.length) }));
+  }
+  if (!m.uden.length && !ip.length) liste.append(h("p", { class: "tom" }, "Ingen."));
+  vaert.append(h("section", { class: "gruppe" }, afsnit("k-et", "Uden for budgettet", "Bevægelse"), liste,
+    h("p", { class: "forklaring" }, "Lån, interne overførsler og posteringer uden kategori flytter penge, men er ikke drift – derfor står de hverken i budgettet eller på holdene.")));
+}
+
+/* ============================================================ fane: Hold */
+/* Holdets posteringer og budgetposter delt i Ind og Ud og derunder i budgetlinjer. */
+function holdLinjer(D, x) {
+  const linjeFor = new Map();
+  D.linjer.forEach(l => aliasFor(D, l).forEach(a => { if (!linjeFor.has(a)) linjeFor.set(a, l); }));
+  const del = (emner, bposter, indtaegt) => {
+    const g = new Map();
+    const faa = navn => { const k = lav(navn); if (!g.has(k)) g.set(k, { navn, emner: [], bposter: [] }); return g.get(k); };
+    emner.forEach(e => { const l = linjeFor.get(lav(e.p.under)); faa(l ? l.linje : (e.p.under || "Uden kategori")).emner.push(e); });
+    bposter.forEach(b => { const l = D.linjer.find(l => lav(l.linje) === lav(b.linje)); faa(l ? l.linje : b.linje).bposter.push(b); });
+    return [...g.values()].map(y => {
+      const s = sum(y.emner, e => e.b);
+      return { ...y, indtaegt, budget: sum(y.bposter, b => b.beloeb), real: indtaegt ? s : -s };
+    }).sort((a, b) => Math.max(Math.abs(b.budget), Math.abs(b.real)) - Math.max(Math.abs(a.budget), Math.abs(a.real)));
+  };
+  return {
+    ind: del(x.ind, x.bp.filter(b => lav(b.type) === "indtægt"), true),
+    ud: del(x.ud, x.bp.filter(b => lav(b.type) === "udgift"), false)
+  };
+}
+/* Indholdet af én budgetlinje på et hold: underoverskrifter (fx Liga - D1, Transfer), når der er flere. */
+function holdGruppeIndhold(vaert, grp, id, d) {
+  const under = undergrupper(grp.emner, grp.bposter, grp.indtaegt, false, grp.navn);
+  if (!under.length) { vaert.append(h("p", { class: "tom" }, "Ingen posteringer endnu.")); return; }
+  if (under.length === 1) { fyldGruppe(vaert, id, under[0], { skjulHold: true }); return; }
+  under.forEach(x => {
+    vaert.append(h("div", { class: "mellem ny k-linje" }, h("span", null, h("b", null, x.label), x.emner.length ? h("span", { class: "daemp" }, "  · " + antalTekst(x.emner.length)) : null),
+      vc(kr(x.budget)), vc(kr(x.real))));
+    fyldGruppe(vaert, id, x, { skjulHold: true, stille: true });
+  });
+}
+function holdIndhold(vaert, x, id, d, D) {
+  const L = holdLinjer(D || S.D, x);
+  vaert.append(h("div", { class: "mellem k-linje" }, h("span"), h("span", { class: "v" }, "Budget"), h("span", { class: "v" }, "Realiseret")));
+  const del = (titel, grupper, real, budget, key) => {
+    vaert.append(h("div", { class: "mellem k-linje" }, h("span", null, titel), vc(kr(budget)), vc(kr(real))));
+    if (!grupper.length) { vaert.append(h("p", { class: "tom" }, key === "ind" ? "Ingen indtægter." : "Ingen udgifter.")); return; }
+    grupper.forEach(grp => {
+      const gid = id + "|" + key + "|" + grp.navn;
+      vaert.append(knude(gid, [grp.navn, vc(kr(grp.budget)), vBar(grp.real, grp.budget, !grp.indtaegt)],
+        (v2, d2) => holdGruppeIndhold(v2, grp, gid, d2), { kol: "k-linje", dybde: d, under: antalTekst(grp.emner.length) }));
+    });
+  };
+  del("Ind", L.ind, x.rInd, x.bInd, "ind");
+  del("Ud", L.ud, x.rUd, x.bUd, "ud");
+}
+function visHold(vaert, D) {
+  D.holdGrupper.forEach(g => {
+    const liste = h("div", { class: "liste" });
+    const tot = { bNetto: 0, rInd: 0, rUd: 0 };
+    g.hold.forEach(t => {
+      const x = beregnHold(D, t, S.filter);
+      tot.bNetto += x.bNetto; tot.rInd += x.rInd; tot.rUd += x.rUd;
+      const id = "h|" + t;
+      liste.append(knude(id, [t, vc(kr(x.rInd), "ind"), vc(kr(x.rUd), "ud" + (x.rUd > x.bUd + 0.5 ? " neg" : "")),
+        vc(kr(x.rNetto), x.rNetto < -0.5 ? "neg" : ""), vc(kr(x.bNetto), "daemp")],
+        (v2, d) => holdIndhold(v2, x, id, d, D), { kol: "k-hold", under: antalTekst(x.ind.length + x.ud.length) }));
+    });
+    const rN = tot.rInd - tot.rUd;
+    liste.append(h("div", { class: "total k-hold" }, h("span", null, g.navn + " i alt"),
+      vc(kr(tot.rInd), "ind"), vc(kr(tot.rUd), "ud"), vc(kr(rN), rN < -0.5 ? "neg" : ""), vc(kr(tot.bNetto), "daemp")));
+    vaert.append(h("section", { class: "gruppe" },
+      afsnit("k-hold", g.navn, h("span", { class: "ind" }, "Ind"), h("span", { class: "ud" }, "Ud"), "Netto", "Budget"), liste));
+  });
+  vaert.append(h("p", { class: "forklaring" }, "Ind og Ud er realiseret; Budget er holdets budget netto. Fold et hold ud for at se budgetlinjerne og derunder posteringerne. " +
+    "Ind er alt bogført under Nettoomsætning på holdet, Ud er resten – som på fanen Hold - status. Deles en postering mellem to hold, står holdets andel."));
+}
+
+/* ============================================================ fane: Arrangementer */
+function visArrangementer(vaert, D) {
+  if (!D.eventGrupper.length) { vaert.append(h("p", { class: "forklaring" }, "Arket har ingen fane «Event» med arrangementer.")); return; }
+  D.eventGrupper.forEach(g => {
+    const liste = h("div", { class: "liste" });
+    g.events.forEach(e => {
+      const x = beregnEvent(D, e), id = "e|" + e;
+      liste.append(knude(id, [e, vc(kr(x.bNetto, false, true)), vc(kr(x.fNetto, false, true), x.fNetto < -0.5 ? "neg" : "")], v2 => {
+        v2.append(h("p", { class: "note" }, "Budget: ind " + kr(x.bInd) + " · ud " + kr(x.bUd) + "   —   Faktisk: ind " + kr(x.fInd) + " · ud " + kr(x.fUd)));
+        x.bp.forEach(b => v2.append(budgetpostEl(b, { visLinje: true })));
+        const ps = x.poster.slice().sort((a, b) => a.dato - b.dato || a.raekke - b.raekke);
+        if (!ps.length) v2.append(h("p", { class: "tom" }, "Ingen posteringer endnu."));
+        posteringsliste(v2, id, ps, p => posteringEl(p, { linje: true }));
+      }, { kol: "k-to", under: antalTekst(x.poster.length) }));
+    });
+    vaert.append(h("section", { class: "gruppe" }, afsnit("k-to", g.navn, "Budget netto", "Faktisk netto"), liste));
+  });
+  vaert.append(h("p", { class: "forklaring" }, "Som fanen Event: et arrangement samler alt, hvor Underkategori 2 eller budgetposten begynder med dets navn – uden sæsonfilter."));
+}
+
+/* ============================================================ fane: Konti */
+function visKonti(vaert, D) {
+  const liste = h("div", { class: "liste" });
+  D.konti.forEach(k0 => {
+    const k = beregnKonto(k0), id = "k|" + k.navn;
+    liste.append(knude(id, [k.titel, vc(kr(k.saldo, true))], v2 => {
+      v2.append(h("p", { class: "note" }, k.primoTekst + ": " + kr(k.primo, true) + " kr. · bevægelser " + kr(k.bevaegelser, true, true) + " kr. · nyeste øverst"));
+      posteringsliste(v2, id, k.medSaldo.slice().reverse(), x => posteringEl(x.p, { linje: true, saldo: x.saldo }));
+    }, { kol: "k-et", under: k.poster.length + " post." }));
+  });
+  vaert.append(h("section", { class: "gruppe" }, afsnit("k-et", "Bankkonti", "Saldo"), liste,
+    h("p", { class: "forklaring" }, "Alle posteringer på kontoen – uanset sæsonfilter – med saldoen efter hver postering.")));
+}
+
+/* ============================================================ fane: Sammenlign */
+/* To sæsoner side om side. Budgetlinjer og hold matches på navnet. «Til samme dato» tager kun posteringer
+   med til og med den sidste dato i sæsonen, man ser – og samme dag og måned i den anden sæson. */
+const efterDato = (a, b) => a.dato - b.dato || a.raekke - b.raekke;
+function sidsteDato(D) { let m = null; D.poster.forEach(p => { if (!m || p.dato > m) m = p.dato; }); return m; }
+function flytAar(d, n) {
+  const x = new Date(d.getFullYear() + n, d.getMonth(), d.getDate());
+  if (x.getDate() !== d.getDate()) x.setDate(0);              // 29. februar → 28. februar
+  return x;
+}
+/* Den sæson, der sammenlignes med: den valgte i fanen – ellers sæsonen før den, man ser. */
+function sammenlignMed() {
+  if (S.smlMed && S.smlMed !== S.valgt && S.saesoner.includes(S.smlMed)) return S.smlMed;
+  const i = S.saesoner.indexOf(S.valgt);
+  return S.saesoner[i - 1] || S.saesoner[i + 1] || null;
+}
+/* Hvor langt en sæson er nået: dens sidste postering (banken bogfører tit et par dage frem).
+   En dato langt ude i fremtiden er nok en tastefejl – så bruges dagen i dag. */
+function naaetTil(D) {
+  const idag = new Date(); idag.setHours(0, 0, 0, 0);
+  const d = sidsteDato(D);
+  return !d || d > new Date(idag.getTime() + 14 * 864e5) ? idag : d;
+}
+/* Begge sæsoner skæres ved den dag, den mindst fremskredne af dem er nået til (flyttet til samme år).
+   nu/foer: skæringsdatoen for hver sæson, eller null når alle sæsonens posteringer kommer med.
+   tilNu/tilFoer: datoen, der står i teksten. */
+function skaeringsdatoer(nu, foer, hele) {
+  if (hele) return { nu: null, foer: null, tilNu: null, tilFoer: null };
+  const a = startAar(nu), b = startAar(foer);
+  const n = (a != null && b != null) ? a - b : S.saesoner.indexOf(nu) - S.saesoner.indexOf(foer);
+  const rNu = naaetTil(nu.D), rFoer = flytAar(naaetTil(foer.D), n);
+  const tilNu = rNu <= rFoer ? rNu : rFoer, tilFoer = flytAar(tilNu, -n);
+  const sNu = sidsteDato(nu.D), sFoer = sidsteDato(foer.D);
+  return { nu: sNu && tilNu < sNu ? tilNu : null, foer: sFoer && tilFoer < sFoer ? tilFoer : null, tilNu, tilFoer };
+}
+function smlRaekke(x, y) {
+  const l = x || y;
+  return { navn: l.linje, over: l.over, indtaegt: erIndtaegt(l), nu: x, foer: y,
+    bNu: x ? x.budget : null, rNu: x ? x.real : null, bFoer: y ? y.budget : null, rFoer: y ? y.real : null };
+}
+/* Budgetlinjerne fra begge sæsoner. En linje, der kun findes i den anden sæson, står under samme overkategori. */
+function sammenlignLinjer(Dnu, Dfoer, f, til) {
+  const a = beregnBudget(Dnu, f, til.nu), b = beregnBudget(Dfoer, f, til.foer);
+  const rest = new Map(b.linjer.map(l => [lav(l.linje), l]));
+  const rk = a.linjer.map(l => { const m = rest.get(lav(l.linje)) || null; rest.delete(lav(l.linje)); return smlRaekke(l, m); });
+  rest.forEach(l => {
+    const r = smlRaekke(null, l);
+    let i = -1;
+    rk.forEach((x, j) => { if (x.indtaegt === r.indtaegt && lav(x.over) === lav(r.over)) i = j; });
+    if (i < 0) rk.forEach((x, j) => { if (x.indtaegt === r.indtaegt) i = j; });
+    rk.splice(i + 1, 0, r);
+  });
+  return { rk, a, b };
+}
+/* Holdene fra begge sæsoner i den sæsons grupper, man ser. */
+function sammenlignHold(nu, foer, f, til) {
+  const navne = D => new Map(D.holdGrupper.flatMap(g => g.hold).map(t => [lav(t), t]));
+  const iNu = navne(nu.D), iFoer = navne(foer.D);
+  const grupper = nu.D.holdGrupper.map(g => ({ navn: g.navn, hold: g.hold.slice() }));
+  let kun = null;
+  foer.D.holdGrupper.forEach(g => g.hold.forEach(t => {
+    if (iNu.has(lav(t))) return;
+    let gg = grupper.find(x => !x.kun && lav(x.navn) === lav(g.navn));
+    if (!gg) { if (!kun) { kun = { navn: "Kun i " + saesonNavn(foer), hold: [], kun: true }; grupper.push(kun); } gg = kun; }
+    gg.hold.push(t);
+  }));
+  return grupper.map(g => ({ navn: g.navn, hold: g.hold.map(t => ({ navn: t,
+    nu: iNu.has(lav(t)) ? beregnHold(nu.D, iNu.get(lav(t)), f, til.nu) : null,
+    foer: iFoer.has(lav(t)) ? beregnHold(foer.D, iFoer.get(lav(t)), f, til.foer) : null })) }));
+}
+function parLinjer(A, B) {
+  const rest = new Map(B.map(y => [lav(y.navn), y]));
+  const ud = A.map(x => { const y = rest.get(lav(x.navn)) || null; rest.delete(lav(x.navn)); return { navn: x.navn, nu: x, foer: y }; });
+  rest.forEach(y => ud.push({ navn: y.navn, nu: null, foer: y }));
+  return ud;
+}
+/* Grøn: flere indtægter eller færre udgifter end før. Rød: det modsatte. */
+function forskelKlasse(f, godOp) { return Math.abs(f) < 0.5 ? "daemp" : ((f > 0) === godOp ? "pos" : "neg"); }
+function smlCeller(bNu, rNu, bFoer, rFoer, godOp) {
+  const v = (x, kl) => vc(x == null ? "–" : kr(x), kl);
+  const f = (rNu || 0) - (rFoer || 0);
+  const pct = rNu != null && rFoer != null && Math.abs(rFoer) > 0.5 ? kr((rNu - rFoer) / Math.abs(rFoer) * 100, false, true) + " % i forhold til før" : "";
+  return [v(bNu, "bud"), v(rNu, "nu"), v(bFoer, "bud foer"), v(rFoer, "foer"), vc(kr(f, false, true), forskelKlasse(f, godOp), pct ? { title: pct } : null)];
+}
+/* Posteringerne bag en række – først den sæson, man ser, så den anden. */
+function smlPosteringer(vaert, id, nu, en, tilNu, foer, ef, tilFoer, skjulHold) {
+  [[nu, en, tilNu, "nu"], [foer, ef, tilFoer, "foer"]].forEach(([s, emner, til, key]) => {
+    const t = [saesonNavn(s), til ? "til " + dmy(til) : "", antalTekst(emner.length)].filter(Boolean).join(" · ");
+    vaert.append(h("div", { class: "mellem ny k-et" }, h("span", null, h("b", null, t)), vc(kr(sum(emner, e => e.w * e.p.beloeb), false, true))));
+    if (!emner.length) { vaert.append(h("p", { class: "tom" }, "Ingen posteringer.")); return; }
+    posteringsliste(vaert, id + "|" + key, emner.slice().sort((a, b) => efterDato(a.p, b.p)),
+      e => posteringEl(e.p, { w: e.w, skjulHold: skjulHold && !e.p.holdB }));
+  });
+}
+/* «ny i 26/27» når man ser den nyeste af de to sæsoner, ellers «kun i …» */
+function kunI(nu, foer) {
+  const ny = S.saesoner.indexOf(nu) > S.saesoner.indexOf(foer);
+  return r => !r.nu ? "kun i " + saesonNavn(foer) : !r.foer ? (ny ? "ny i " : "kun i ") + saesonNavn(nu) : "";
+}
+function smlBudget(vaert, nu, foer, til, hoved) {
+  const { rk, a, b } = sammenlignLinjer(nu.D, foer.D, S.filter, til);
+  const under = kunI(nu, foer);
+  const emner = l => l ? l.poster.map(p => ({ p, w: 1 })) : [];
+  const blok = (titel, raekker, indtaegt, tot) => {
+    const liste = h("div", { class: "liste" });
+    let sidsteOver = null;
+    raekker.forEach(r => {
+      if (!indtaegt && lav(r.over) !== lav(sidsteOver)) { liste.append(h("div", { class: "overkat" }, r.over)); sidsteOver = r.over; }
+      const id = "c|" + r.navn;
+      liste.append(knude(id, [r.navn, ...smlCeller(r.bNu, r.rNu, r.bFoer, r.rFoer, indtaegt)],
+        v2 => smlPosteringer(v2, id, nu, emner(r.nu), til.tilNu, foer, emner(r.foer), til.tilFoer, false),
+        { kol: "k-sml", under: under(r) }));
+    });
+    liste.append(h("div", { class: "total k-sml" }, h("span", null, titel + " i alt"), ...smlCeller(tot[0], tot[1], tot[2], tot[3], indtaegt)));
+    vaert.append(h("section", { class: "gruppe" }, hoved(titel), liste));
+  };
+  blok("Indtægter", rk.filter(r => r.indtaegt), true, [a.bInd, a.rInd, b.bInd, b.rInd]);
+  blok("Udgifter", rk.filter(r => !r.indtaegt), false, [a.bUd, a.rUd, b.bUd, b.rUd]);
+  vaert.append(h("div", { class: "liste", style: "margin-top:8px" }, h("div", { class: "total k-sml" }, h("span", null, "Resultat"),
+    ...smlCeller(a.bInd - a.bUd, a.rInd - a.rUd, b.bInd - b.bUd, b.rInd - b.rUd, true))));
+}
+function smlHoldIndhold(vaert, r, id, d, nu, foer, til) {
+  const x = r.nu, y = r.foer;
+  const LA = x ? holdLinjer(nu.D, x) : { ind: [], ud: [] };
+  const LB = y ? holdLinjer(foer.D, y) : { ind: [], ud: [] };
+  const del = (titel, key, A, B, indtaegt, tot) => {
+    vaert.append(h("div", { class: "mellem k-sml" }, h("span", null, titel), ...smlCeller(tot[0], tot[1], tot[2], tot[3], indtaegt)));
+    const par = parLinjer(A, B);
+    if (!par.length) { vaert.append(h("p", { class: "tom" }, indtaegt ? "Ingen indtægter." : "Ingen udgifter.")); return; }
+    par.forEach(p => {
+      const gid = id + "|" + key + "|" + p.navn;
+      vaert.append(knude(gid, [p.navn, ...smlCeller(p.nu ? p.nu.budget : null, p.nu ? p.nu.real : null, p.foer ? p.foer.budget : null, p.foer ? p.foer.real : null, indtaegt)],
+        v2 => smlPosteringer(v2, gid, nu, p.nu ? p.nu.emner : [], til.tilNu, foer, p.foer ? p.foer.emner : [], til.tilFoer, true),
+        { kol: "k-sml", dybde: d }));
+    });
+  };
+  del("Ind", "ind", LA.ind, LB.ind, true, [x ? x.bInd : null, x ? x.rInd : null, y ? y.bInd : null, y ? y.rInd : null]);
+  del("Ud", "ud", LA.ud, LB.ud, false, [x ? x.bUd : null, x ? x.rUd : null, y ? y.bUd : null, y ? y.rUd : null]);
+}
+function smlHold(vaert, nu, foer, til, hoved) {
+  const under = kunI(nu, foer);
+  sammenlignHold(nu, foer, S.filter, til).forEach(g => {
+    const liste = h("div", { class: "liste" });
+    const t = [0, 0, 0, 0];
+    g.hold.forEach(r => {
+      const x = r.nu, y = r.foer;
+      if (x) { t[0] += x.bNetto; t[1] += x.rNetto; }
+      if (y) { t[2] += y.bNetto; t[3] += y.rNetto; }
+      const id = "ch|" + r.navn;
+      liste.append(knude(id, [r.navn, ...smlCeller(x ? x.bNetto : null, x ? x.rNetto : null, y ? y.bNetto : null, y ? y.rNetto : null, true)],
+        (v2, d) => smlHoldIndhold(v2, r, id, d, nu, foer, til),
+        { kol: "k-sml", under: under(r) }));
+    });
+    liste.append(h("div", { class: "total k-sml" }, h("span", null, g.navn + " i alt"), ...smlCeller(t[0], t[1], t[2], t[3], true)));
+    vaert.append(h("section", { class: "gruppe" }, hoved(g.navn), liste));
+  });
+}
+function visSammenlign(vaert) {
+  if (S.saesoner.length < 2) {
+    vaert.append(h("div", { class: "liste statuskort" },
+      h("p", null, h("b", null, "Her sammenligner du sæsonerne – når siden kender mere end én.")),
+      h("p", null, "Til næste sæson laver du et nyt ark med scriptet og tilføjer dets adresse som en ny linje nederst i adresse.txt. " +
+        "Lad den gamle linje blive stående. Så kan du skifte sæson øverst på siden og se sæsonerne side om side her – pr. budgetlinje og pr. hold, og til samme dato."),
+      h("p", { style: "margin:0" }, h("a", { href: "#opsaetning", onclick: e => { e.preventDefault(); visOpsaetning(); } }, "Sådan sætter du en ny sæson op"))));
+    return;
+  }
+  const nu = S.valgt, foer = sammenlignMed();
+  const styr = h("div", { class: "styr" },
+    segKnapper("Niveau", [["linje", "Pr. budgetlinje"], ["hold", "Pr. hold"]], S.smlNiveau, v => { S.smlNiveau = v; }),
+    segKnapper("Periode", [["dato", "Til samme dato"], ["hele", "Hele sæsonen"]], S.smlTil, v => { S.smlTil = v; }));
+  if (S.saesoner.length > 2) {
+    const sel = h("select", { class: "lillevalg", "aria-label": "Sammenlign med" },
+      S.saesoner.filter(s => s !== nu).reverse().map(s => h("option", { value: s.noegle }, "mod " + saesonNavn(s))));
+    sel.value = foer.noegle;
+    sel.addEventListener("change", () => {
+      const s = S.saesoner.find(x => x.noegle === sel.value);
+      S.smlMed = s || null;
+      if (s && !s.D && !s.henter && !(s.fejl && s.fejl.art === "kode")) { s.fejl = null; hentEn(s); }
+      tegn();
+    });
+    styr.append(h("span", { class: "stille", style: "font-size:12.5px" }, saesonNavn(nu)), sel);
+  } else {
+    styr.append(h("span", { class: "stille", style: "font-size:12.5px" }, saesonNavn(nu) + " mod " + saesonNavn(foer)));
+  }
+  vaert.append(styr);
+  if (!foer.D) {
+    if (!foer.henter && !foer.fejl) hentEn(foer);
+    vaert.append(saesonStatusKort(foer));
+    return;
+  }
+  const til = skaeringsdatoer(nu, foer, S.smlTil === "hele");
+  const nN = saesonNavn(nu), nF = saesonNavn(foer);
+  const hoved = titel => afsnit("k-sml", titel,
+    h("span", { class: "bud" }, "Budget", h("br"), nN), h("span", { class: "nu" }, "Realiseret", h("br"), nN),
+    h("span", { class: "bud" }, "Budget", h("br"), nF), h("span", null, "Realiseret", h("br"), nF), h("span", null, "Forskel"));
+  if (S.smlNiveau === "hold") smlHold(vaert, nu, foer, til, hoved);
+  else smlBudget(vaert, nu, foer, til, hoved);
+  vaert.append(h("p", { class: "forklaring" },
+    (til.tilNu ? "Realiseret til og med " + dmy(til.tilNu) + " i " + nN + " og til og med " + dmy(til.tilFoer) + " i " + nF + ", så sæsonerne sammenlignes lige langt henne. "
+      : "Realiseret i hele sæsonen i begge ark. ") +
+    "Budget er hele sæsonens budget" + (S.smlNiveau === "hold" ? ", og pr. hold er tallene netto (ind − ud)" : "") + ". Forskel = realiseret " + nN + " − realiseret " + nF + ". " +
+    "Grøn: flere indtægter eller færre udgifter end i " + nF + ". Rød: det modsatte. Budgetlinjer og hold matches på navnet. Fold en række ud for at se posteringerne fra begge sæsoner."));
+}
+
+/* ============================================================ fane: Afvigelser */
+/* Afvigelse = realiseret − budget, pr. budgetlinje eller pr. hold og budgetlinje. */
+function afvigelser(D, f, niveau) {
+  const rk = [];
+  if (niveau === "hold") {
+    D.holdGrupper.forEach(g => g.hold.forEach(t => {
+      const L = holdLinjer(D, beregnHold(D, t, f));
+      L.ind.concat(L.ud).forEach(grp => rk.push({ id: "a|h|" + t + "|" + (grp.indtaegt ? "i" : "u") + "|" + grp.navn, navn: t + " · " + grp.navn,
+        indtaegt: grp.indtaegt, budget: grp.budget, real: grp.real, antal: grp.emner.length, grp }));
+    }));
+  } else {
+    beregnBudget(D, f).linjer.forEach(l => rk.push({ id: "a|l|" + l.linje, navn: l.linje, indtaegt: erIndtaegt(l),
+      budget: l.budget, real: l.real, antal: l.poster.length, linje: l }));
+  }
+  rk.forEach(r => { r.afv = r.real - r.budget; r.over = !r.indtaegt && r.afv > 0.5; });
+  return rk.filter(r => Math.abs(r.afv) > 0.5).sort((a, b) => Math.abs(b.afv) - Math.abs(a.afv));
+}
+function segKnapper(navn, valg, aktiv, skift) {
+  return h("div", { class: "seg", role: "group", "aria-label": navn }, valg.map(([v, t]) =>
+    h("button", { type: "button", "aria-pressed": String(v === aktiv), onclick: () => { skift(v); tegn(); } }, t)));
+}
+function visAfvigelser(vaert, D) {
+  vaert.append(h("div", { class: "styr" },
+    segKnapper("Niveau", [["linje", "Pr. budgetlinje"], ["hold", "Pr. hold"]], S.afvNiveau, v => { S.afvNiveau = v; })));
+  const alle = afvigelser(D, S.filter, S.afvNiveau);
+  const over = alle.filter(r => r.over);
+  const resten = alle.filter(r => !r.over);
+  const raekke = r => {
+    const kl = r.over ? "neg" : (r.indtaegt && r.afv > 0.5 ? "pos" : "daemp");
+    return knude(r.id, [r.navn, vc(kr(r.budget), "bud"), vBar(r.real, r.budget, !r.indtaegt), vc(kr(r.afv, false, true), kl)],
+      (v2, d) => r.linje ? linjeIndhold(v2, r.linje, r.id, d) : holdGruppeIndhold(v2, r.grp, r.id, d),
+      { kol: "k-afv", under: (r.indtaegt ? "indtægt" : "udgift") + (r.antal ? " · " + antalTekst(r.antal) : "") });
+  };
+  if (over.length) {
+    const l1 = h("div", { class: "liste" });
+    over.forEach(r => l1.append(raekke(r)));
+    vaert.append(h("section", { class: "gruppe" },
+      afsnit("k-afv", h("span", { class: "neg" }, "Over budget · " + kr(sum(over, r => r.afv)) + " kr."), h("span", { class: "bud" }, "Budget"), "Realiseret", "Afvigelse"), l1));
+  } else {
+    vaert.append(h("p", { class: "forklaring" }, h("span", { class: "kontrol-ok" }, "✓ Ingen udgifter er over budget.")));
+  }
+  const l2 = h("div", { class: "liste" });
+  if (!resten.length) l2.append(h("p", { class: "tom" }, "Ingen andre afvigelser."));
+  posteringsliste(l2, "afv|" + S.afvNiveau + "|" + S.filter, resten, raekke, 25);
+  vaert.append(h("section", { class: "gruppe" }, afsnit("k-afv", over.length ? "Største afvigelser i øvrigt" : "Største afvigelser", h("span", { class: "bud" }, "Budget"), "Realiseret", "Afvigelse"), l2,
+    h("p", { class: "forklaring" }, "Afvigelse = realiseret − budget, sorteret efter størrelse. Rød: brugt mere end budgetteret. Grøn: mere indtægt end budgetteret. " +
+      "Grå: penge, der ikke er brugt eller kommet ind endnu – midt i sæsonen er det oftest bare et spørgsmål om tid. Fold en række ud for at se posteringerne.")));
+}
+
+/* ============================================================ søgning */
+function soegeTekst(p) {
+  return lav([p.navn.titel, p.navn.detalje, p.tekst, p.ref, p.over, p.under, p.under2, p.afd, p.hold, p.holdA, p.holdB, p.konto, dmy(p.dato), linjeNavnFor(p)].join(" "));
+}
+function soegI(D, q) {
+  const ord = lav(q).split(/\s+/).filter(Boolean);
+  const erTal = w => /^[\d.,−-]+$/.test(w) && /\d/.test(w);
+  const tal1 = ord.filter(erTal).map(w => w.replace(/[.\s]/g, "").replace(",", ".").replace(/^[−-]/, ""));
+  const tekst1 = ord.filter(w => !erTal(w));
+  return D.poster.filter(p => {
+    const t = p._s || (p._s = soegeTekst(p));
+    if (!tekst1.every(w => t.includes(w))) return false;
+    const b = Math.abs(p.beloeb).toFixed(2);
+    return tal1.every(w => b.includes(w) || t.includes(w));
+  }).sort((a, b) => b.dato - a.dato || b.raekke - a.raekke);
+}
+function visSoeg(vaert, D) {
+  const fund = soegI(D, S.soeg);
+  const s = sum(fund, p => p.beloeb);
+  const flere = S.saesoner.length > 1;
+  const liste = h("div", { class: "liste", style: "--d:0" });
+  if (!fund.length) liste.append(h("p", { class: "tom" }, "Ingen posteringer. Søg fx på et navn, et hold, en kategori eller et beløb."));
+  posteringsliste(liste, "s|" + S.soeg, fund, p => posteringEl(p, { linje: true }));
+  vaert.append(h("section", { class: "gruppe" },
+    afsnit("k-et", h("span", { class: "lang" }, fund.length + (fund.length === 1 ? " postering" : " posteringer") + " matcher «" + S.soeg.trim() + "»" +
+      (flere ? " i " + saesonNavn(S.valgt) : "")), fund.length ? "i alt " + kr(s, true, true) : ""),
+    liste));
+  // De andre sæsoner, siden har hentet – nyeste først, foldet sammen
+  const andre = S.saesoner.filter(x => x !== S.valgt && x.D).map(x => ({ x, fund: soegI(x.D, S.soeg) })).filter(y => y.fund.length).reverse();
+  if (andre.length) {
+    const l2 = h("div", { class: "liste" });
+    andre.forEach(({ x, fund: f2 }) => {
+      const id = "s2|" + x.noegle + "|" + S.soeg;
+      l2.append(knude(id, [saesonNavn(x), vc(kr(sum(f2, p => p.beloeb), true, true))],
+        v2 => posteringsliste(v2, id, f2, p => posteringEl(p, { linje: true })), { kol: "k-et", under: antalTekst(f2.length) }));
+    });
+    vaert.append(h("section", { class: "gruppe" }, afsnit("k-et", "Også i de andre sæsoner", "I alt"), l2));
+  }
+  vaert.append(h("p", { class: "forklaring" }, "Søgningen ser på alle posteringer på begge konti, også dem fra sidste sæson" +
+    (flere ? " – og i de andre sæsoners ark." : ".")));
+}
+
+/* ============================================================ top, bannere og fod */
+function visNoegletal(D) {
+  const m = beregnBudget(D, S.filter);
+  const konti = D.konti.map(beregnKonto);
+  const saldo = sum(konti, k => k.saldo);
+  const kort = (lbl, stor, smaa, p, klasse, over) => h("div", { class: "kpikort" },
+    h("div", { class: "lbl" }, lbl), h("div", { class: "stor num " + (klasse || "") }, stor), h("div", { class: "smaa" }, smaa),
+    p == null ? null : h("div", { class: "spor" }, h("i", { class: over ? "over" : "", style: "width:" + p + "%" })));
+  const res = m.rInd - m.rUd, bres = m.bInd - m.bUd;
+  const kpi = $("#kpi");
+  kpi.replaceChildren(
+    kort("Indtægter", kr(m.rInd), "af " + kr(m.bInd) + " budgetteret", andel(m.rInd, m.bInd)),
+    kort("Udgifter", kr(m.rUd), "af " + kr(m.bUd) + " budgetteret", andel(m.rUd, m.bUd), "", m.rUd > m.bUd),
+    kort("Resultat", kr(res), "budget " + kr(bres), null, res < 0 ? "neg" : "pos"),
+    kort("På kontoen", kr(saldo), konti.map(k => (lav(k.titel).includes("drift") ? "drift " : lav(k.titel).includes("kontingent") ? "kontingent " : k.navn + " ") + kr(k.saldo)).join(" · "), null));
+}
+function visBannere(D) {
+  const b = $("#bannere");
+  b.replaceChildren();
+  const lokale = S.saesoner.filter(s => s.kilde === "lokal");
+  if (lokale.length) {
+    const hvad = S.saesoner.length === 1 ? "Adressen" : "Adressen til " + lokale.map(saesonNavn).join(" og ");
+    b.append(h("div", { class: "banner blaa" }, h("strong", null, hvad + " er kun gemt i denne browser. "),
+      "Gem den i adresse.txt på GitHub, så siden også virker på dine andre enheder. ",
+      h("a", { href: "#opsaetning", onclick: e => { e.preventDefault(); visOpsaetning(); } }, "Se hvordan")));
+  }
+  const ny = nyeste();
+  if (ny && ny !== S.valgt && !ny.D && ny.fejl) {
+    b.append(h("div", { class: "banner gul" }, h("strong", null, "Den nyeste sæson (" + saesonNavn(ny) + ") kunne ikke hentes. "),
+      ny.fejl.art === "kode" ? "Den har en anden kode – vælg den øverst for at låse den op." : fejltekst(ny.fejl)));
+  }
+  if (D.scriptVersion < MIN_SCRIPT_VERSION) {
+    b.append(h("div", { class: "banner gul" }, h("strong", null, "Scriptet i arket er forældet. "), "Siden virker, men kopiér scriptet igen under Opsætning, når du har tid."));
+  }
+  const k = S.kontrol;
+  if (k && k.afvig.length) {
+    b.append(h("div", { class: "banner gul" }, h("strong", null, "Siden og arket er uenige om " + k.afvig.length + (k.afvig.length === 1 ? " tal" : " tal") + ". "),
+      "Det betyder som regel, at arkets opbygning er ændret, så siden ikke længere regner helt som arket. Tallene her kan være forkerte, indtil det er rettet:",
+      h("ul", null, k.afvig.slice(0, 6).map(a => h("li", null, a.navn + ": siden " + kr(a.side, true) + ", arket " + kr(a.ark, true)))),
+      k.afvig.length > 6 ? h("div", null, "… og " + (k.afvig.length - 6) + " til.") : null));
+  }
+}
+function visFod(D) {
+  const k = S.kontrol;
+  $("#fod").replaceChildren(
+    h("div", null, "Hentet kl. " + klok(D.hentet) + " fra arket «" + D.arkNavn + "»" + (S.saesoner.length > 1 ? " (" + saesonNavn(S.valgt) + ")" : ""),
+      k && !k.afvig.length ? [" · ", h("span", { class: "kontrol-ok" }, "✓ " + k.n + " kontroltal stemmer med arket")] : null,
+      " · henter igen, når du vender tilbage."),
+    h("div", null, "Navnet på en postering er kolonnen Reference i arket. Tryk på en postering for at se alt om den."),
+    h("div", null, h("a", { href: "#opsaetning", onclick: e => { e.preventDefault(); visOpsaetning(); } }, "Opsætning"), " · ",
+      h("a", { href: "https://github.com/" + REPO + "/blob/main/" + MAPPE + "/index.html", target: "_blank", rel: "noopener" }, "Koden på GitHub"), " · ",
+      h("a", { href: "../" }, "Klubbens værktøjer")));
+}
+/* Sæsonvælgeren i overskriften – kun når siden kender mere end én sæson. */
+function opdaterVaelger() {
+  const sel = $("#saesonvalg"), flere = S.saesoner.length > 1;
+  sel.hidden = !flere;
+  $("#titeltekst").textContent = flere ? "Budget" : "Budget " + ((S.D && S.D.saeson) || "");
+  if (!flere) return;
+  const status = s => s.D ? "" : s.henter ? " · henter …" : (s.fejl && s.fejl.art === "kode") ? " · anden kode" : s.fejl ? " · fejl" : "";
+  const valg = S.saesoner.slice().reverse().map(s => [s.noegle, saesonNavn(s) + status(s)]);
+  const sig = valg.map(v => v.join("=")).join("|");
+  if (sel.dataset.sig !== sig) {          // byg kun om, når noget er ændret – ellers lukker listen, mens man vælger
+    sel.replaceChildren(...valg.map(([v, t]) => h("option", { value: v }, t)));
+    sel.dataset.sig = sig;
+  }
+  if (S.valgt) sel.value = S.valgt.noegle;
+}
+/* Kort, der står i stedet for tallene, når en sæson ikke er hentet: henter, anden kode eller fejl. */
+function saesonStatusKort(s) {
+  const kort = h("div", { class: "liste statuskort" });
+  if (!s) return kort;
+  const navn = saesonNavn(s);
+  if (s.fejl && s.fejl.art === "kode" && !s.henter) {
+    const inp = h("input", { type: "password", autocomplete: "off", "aria-label": "Kode til " + navn, placeholder: "Kode til " + navn });
+    const knap = h("button", { type: "submit", class: "knap lille" }, "Lås op");
+    const fejl = h("p", { class: "fejl", role: "alert" });
+    const form = h("form", null, inp, knap);
+    form.addEventListener("submit", async e => {
+      e.preventDefault();
+      if (!inp.value) return;
+      knap.disabled = true; fejl.textContent = "";
+      try {
+        await hentSaeson(s, inp.value);
+        s.kode = inp.value === S.kode ? null : inp.value;
+        gemKoder();
+        efterHentning(s);
+      } catch (err) {
+        fejl.textContent = err.art ? fejltekst(err) : "Noget gik galt: " + err.message;
+        knap.disabled = false;
+      }
+    });
+    kort.append(h("p", null, h("b", null, navn + " har en anden kode. "), "Arket for " + navn + " svarer ikke på den kode, du låste op med. Skriv koden til " + navn + ":"), form, fejl);
+  } else if (s.fejl && !s.henter) {
+    kort.append(h("p", null, h("b", null, navn + " kunne ikke hentes. "), fejltekst(s.fejl)),
+      h("button", { type: "button", class: "knap lille sekundaer", onclick: () => { s.fejl = null; hentEn(s); tegn(); } }, "Prøv igen"));
+  } else {
+    kort.append(h("p", { style: "margin:0" }, "Henter " + navn + " …"));
+  }
+  return kort;
+}
+/* Fanelinjen på en smal skærm: vis den valgte fane, og ton ud i højre side, når der er flere. */
+function fanelinje() {
+  const f = $(".faner"), b = f.querySelector('[aria-selected="true"]');
+  if (b) {
+    const fr = f.getBoundingClientRect(), br = b.getBoundingClientRect();
+    if (br.right > fr.right + 1 || br.left < fr.left - 1) f.scrollLeft = Math.max(0, f.scrollLeft + br.left - fr.left - 24);
+  }
+  f.classList.toggle("mere", f.scrollLeft + f.clientWidth < f.scrollWidth - 4);
+}
+function tegn() {
+  if (!S.valgt) return;
+  opdaterVaelger();
+  document.querySelectorAll(".faner button").forEach(b => b.setAttribute("aria-selected", String(!S.soeg.trim() && b.dataset.fane === S.fane)));
+  fanelinje();
+  const D = S.D;
+  const vaert = $("#visning");
+  if (!D) {                               // den valgte sæson er ikke hentet (endnu)
+    $("#kpi").replaceChildren(); $("#bannere").replaceChildren(); $("#fod").replaceChildren();
+    vaert.replaceChildren(saesonStatusKort(S.valgt));
+    eksponer();
+    return;
+  }
+  $("#filter-ja").textContent = D.saeson ? "Kun " + D.saeson : "Kun sæsonen";
+  document.querySelectorAll("#filterseg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.filter === S.filter)));
+  visNoegletal(D);
+  visBannere(D);
+  const y = window.scrollY;
+  vaert.replaceChildren();
+  if (S.soeg.trim()) visSoeg(vaert, D);
+  else if (S.fane === "hold") visHold(vaert, D);
+  else if (S.fane === "arrangementer") visArrangementer(vaert, D);
+  else if (S.fane === "konti") visKonti(vaert, D);
+  else if (S.fane === "sammenlign") visSammenlign(vaert, D);
+  else if (S.fane === "afvigelser") visAfvigelser(vaert, D);
+  else visBudget(vaert, D);
+  visFod(D);
+  eksponer();
+  window.scrollTo(0, y);
+}
+/* Til test og fejlsøgning i konsollen */
+function eksponer() {
+  const D = S.D;
+  window.__budget = {
+    D, kontrol: S.kontrol,
+    beregnBudget: (f, til) => beregnBudget(D, f, til), beregnHold: (t, f, til) => beregnHold(D, t, f, til), beregnEvent: n => beregnEvent(D, n), beregnKonto,
+    holdLinjer: (t, f) => holdLinjer(D, beregnHold(D, t, f)), afvigelser: (f, niv) => afvigelser(D, f, niv),
+    saesoner: () => S.saesoner.map(s => ({ navn: saesonNavn(s), url: s.url, kilde: s.kilde, hentet: !!s.D, fejl: s.fejl ? s.fejl.art : null,
+      valgt: s === S.valgt, kontrol: s.kontrol ? [s.kontrol.n, s.kontrol.afvig.length] : null })),
+    sammenlign: (f, hele) => {
+      const foer = sammenlignMed();
+      if (!D || !foer || !foer.D) return null;
+      const til = skaeringsdatoer(S.valgt, foer, hele), r = sammenlignLinjer(D, foer.D, f, til);
+      return { med: saesonNavn(foer), til: [til.nu && dmy(til.nu), til.foer && dmy(til.foer)], tekst: [til.tilNu && dmy(til.tilNu), til.tilFoer && dmy(til.tilFoer)],
+        rk: r.rk.map(x => [x.navn, x.bNu, x.rNu, x.bFoer, x.rFoer]), nu: [r.a.bInd, r.a.rInd, r.a.bUd, r.a.rUd], foer: [r.b.bInd, r.b.rInd, r.b.bUd, r.b.rUd] };
+    },
+    sammenlignHold: (f, hele) => {
+      const foer = sammenlignMed();
+      if (!D || !foer || !foer.D) return null;
+      const til = skaeringsdatoer(S.valgt, foer, hele);
+      return sammenlignHold(S.valgt, foer, f, til).map(g => [g.navn, g.hold.map(r => [r.navn,
+        r.nu && [r.nu.bNetto, r.nu.rNetto, r.nu.ind.length + r.nu.ud.length], r.foer && [r.foer.bNetto, r.foer.rNetto, r.foer.ind.length + r.foer.ud.length]])]);
+    }
+  };
+}
+
+/* ============================================================ skærme og hentning */
+function vis(id) {
+  ["#laeser", "#laas", "#opsaetning", "#app"].forEach(s => { $(s).hidden = s !== id; });
+}
+function knyt(s, svar) {
+  const D = bygModel(svar);
+  D.poster.forEach(p => { p.id = s.noegle + "-" + p.id; });
+  s.D = D; s.kontrol = kontroller(D); s.fejl = null; s.hentetMs = Date.now();
+  return D;
+}
+/* Henter én sæson. Kaldes den igen, mens den henter, får man den samme hentning. */
+function hentSaeson(s, kode) {
+  if (s.henter) return s.henter;
+  s.henter = (async () => {
+    try { knyt(s, await hentFraArk(s.url, kode)); return s; }
+    catch (e) { s.fejl = e; throw e; }
+    finally { s.henter = null; }
+  })();
+  return s.henter;
+}
+/* Prøver sæsonens egen kode (hvis den har en anden) og ellers koden, man låste op med. */
+async function hentEn(s) {
+  const koder = [...new Set([s.kode, S.kode].filter(Boolean))];
+  if (!koder.length) { s.fejl = s.fejl || new HentFejl("kode"); return; }
+  for (const k of koder) {
+    try { await hentSaeson(s, k); s.kode = k === S.kode ? null : k; break; }
+    catch (e) { if (e.art !== "kode") break; }
+  }
+  if (s.fejl && s.fejl.art === "kode") s.kode = null;
+  gemKoder();
+  efterHentning(s);
+}
+/* Når en sæson er vist, hentes sæsonen før den i baggrunden, så Sammenlign er klar med det samme.
+   Ældre sæsoner hentes først, når man vælger dem. */
+function hentSammenligning() {
+  const s = sammenlignMed();
+  if (s && !s.D && !s.henter && !s.fejl) hentEn(s);
+}
+function efterHentning(s) {
+  sorterSaesoner();
+  if ($("#app").hidden || !S.valgt) return;
+  if (s === S.valgt || S.soeg.trim() || S.fane === "sammenlign") tegn();
+  else opdaterVaelger();
+}
+/* Lås op: den nyeste sæson først. Svarer den ikke (fx forkert adresse), vises den næstnyeste. */
+async function laasOp(kode, husk) {
+  const raekke = S.saesoner.slice().reverse();
+  let foerste = null, fejl = null;
+  for (const s of raekke) {
+    try { await hentSaeson(s, s === raekke[0] ? kode : (s.kode || kode)); foerste = s; break; }
+    catch (e) {
+      if (e.art === "lukket" || (e.art === "kode" && s === raekke[0])) throw e;
+      fejl = fejl || e;
+    }
+  }
+  if (!foerste) throw fejl;
+  S.kode = kode;
+  gem(sessionStorage, NOEGLE.kode, kode);
+  if (husk) gem(localStorage, NOEGLE.kode, kode);
+  S.valgt = foerste;
+  if (!S.filter) S.filter = foerste.D.ov.filter;
+  vis("#app");
+  tegn();
+  hentSammenligning();
+}
+async function hentIgen(stille) {
+  const s = S.valgt;
+  if (!s || !S.kode || s.henter) return;
+  const knap = $("#opdater");
+  if (!stille) { knap.disabled = true; knap.textContent = "Henter …"; }
+  try { await hentSaeson(s, s.kode || S.kode); efterHentning(s); }
+  catch (e) {
+    if (e.art === "kode" && !s.kode && s === nyeste()) { glemKode(); visLaas("Koden er skiftet. Skriv den nye kode."); }
+    else if (e.art === "kode") { s.D = null; s.kode = null; gemKoder(); tegn(); }
+    else if (!stille) alert(fejltekst(e));
+  } finally {
+    knap.disabled = false; knap.textContent = "Opdatér";
+  }
+}
+function glemKode() {
+  S.kode = null;
+  [sessionStorage, localStorage].forEach(l => { gem(l, NOEGLE.kode, null); gem(l, NOEGLE.koder, null); });
+}
+function visLaas(besked) {
+  vis("#laas");
+  $("#laasfejl").textContent = besked || "";
+  $("#kode").value = "";
+  setTimeout(() => $("#kode").focus(), 30);
+}
+
+/* ============================================================ opsætning */
+function scriptTekst(kode) {
+  const skabelon = $("#gs-skabelon").textContent.replace(/^\s*\n/, "");
+  return skabelon.replace('var KODE = "__KODE__";', "var KODE = " + JSON.stringify(kode) + ";");
+}
+function visOpsaetning() {
+  vis("#opsaetning");
+  history.replaceState(null, "", "#opsaetning");
+  const har = S.saesoner.length > 0;
+  $("#nytark").hidden = !har;
+  $("#sammekode").hidden = !har;
+  $("#opsaet-tilbage").parentElement.hidden = !har;
+  window.scrollTo(0, 0);
+}
+async function kopier(t) {
+  try { await navigator.clipboard.writeText(t); return true; }
+  catch (e) {
+    const ta = $("#scripttekst"); ta.value = t; ta.closest("details").open = true; ta.select();
+    try { return document.execCommand("copy"); } catch (e2) { return false; }
+  }
+}
+function opsaetning() {
+  const ny1 = $("#ny1"), ny2 = $("#ny2"), knap = $("#kopierscript"), besked = $("#kopierbesked");
+  const tjekKode = () => {
+    const a = ny1.value, b = ny2.value;
+    let fejl = "";
+    if (a && a.length < 8) fejl = "Koden skal være mindst 8 tegn.";
+    else if (a && b && a !== b) fejl = "De to koder er ikke ens.";
+    $("#nyfejl").textContent = fejl;
+    const ok = a.length >= 8 && a === b;
+    knap.disabled = !ok;
+    besked.textContent = ok ? "Koden står i scriptet." : "Vælg koden først – den bliver skrevet ind i scriptet.";
+    $("#scripttekst").value = ok ? scriptTekst(a) : scriptTekst("__KODE__").replace('var KODE = "__KODE__";', 'var KODE = "(vælg koden i trin 1)";');
+    if (ok) $("#forbindkode").value = a;
+  };
+  ny1.addEventListener("input", tjekKode); ny2.addEventListener("input", tjekKode);
+  tjekKode();
+  knap.addEventListener("click", async () => {
+    const ok = await kopier(scriptTekst(ny1.value));
+    besked.textContent = ok ? "✓ Kopieret – sæt det ind i Kode.gs." : "Kunne ikke kopiere automatisk. Åbn «Vis scriptet» og kopiér det selv.";
+    besked.className = ok ? "ok" : "advar";
+  });
+  $("#forbind").addEventListener("click", async () => {
+    const msg = $("#forbindbesked");
+    const raa = tekst($("#nyadresse").value);
+    const adresse = gyldigAdresse(raa);
+    const kode = $("#forbindkode").value;
+    $("#gemboks").hidden = true;
+    msg.className = "besked";
+    if (!adresse) {
+      msg.className = "besked advar";
+      msg.textContent = /\/dev$/.test(raa) ? "Det er test-adressen (/dev). Brug webappens URL, der ender på /exec." :
+        "Det ligner ikke webappens URL. Den starter med https://script.google.com/macros/s/ og ender på /exec.";
+      return;
+    }
+    if (!kode) { msg.className = "besked advar"; msg.textContent = "Skriv koden."; return; }
+    msg.textContent = "Spørger arket …";
+    $("#forbind").disabled = true;
+    try {
+      const svar = await hentFraArk(adresse, kode);
+      const D = bygModel(svar);
+      const label = D.saeson || "";
+      const linje = adresseLinje({ label, url: adresse });
+      msg.className = "besked ok";
+      msg.textContent = "✓ Det virker. Arket «" + (svar.ark || "") + "»" + (label ? " (sæson " + label + ")" : "") + " svarede med " + D.poster.length + " posteringer.";
+      gemLokalAdresse(label, adresse);
+      const github = "https://github.com/" + REPO;
+      const iFil = S.saesoner.some(s => s.kilde === "github" && s.url === adresse);
+      const sammeSaeson = !!label && S.saesoner.some(s => s.kilde === "github" && s.url !== adresse && lav(saesonNavn(s)) === lav(label));
+      const gh = $("#gemgithub"), kl = $("#kopierlinje");
+      gh.hidden = false; kl.hidden = true;
+      kl.onclick = async () => { const ok = await kopier(linje); kl.textContent = ok ? "✓ Kopieret" : "Kunne ikke kopiere"; };
+      if (iFil) {
+        $("#gemtekst").textContent = "Arket står allerede i adresse.txt på GitHub, så du er færdig.";
+        gh.hidden = true;
+      } else if (S.adresseFil) {
+        // Ny sæson: en ny linje nederst. De gamle linjer bliver stående, så de tidligere sæsoner stadig kan ses.
+        $("#gemtekst").textContent = sammeSaeson
+          ? "Sidste skridt: Sæson " + label + " står allerede i adresse.txt, men med en anden adresse. Ret den linje på GitHub, så den i stedet lyder som linjen herunder (den er kopieret), og tryk Commit changes."
+          : "Sidste skridt: Tilføj arket som en ny linje nederst i adresse.txt på GitHub. Lad de gamle linjer blive stående – så kan du stadig se de tidligere sæsoner og sammenligne med dem. Linjen er kopieret: sæt den ind nederst, og tryk Commit changes.";
+        gh.textContent = sammeSaeson ? "Ret adresse.txt på GitHub" : "Tilføj linjen på GitHub";
+        gh.href = github + "/edit/main/" + MAPPE + "/" + ADRESSEFIL;
+        kl.hidden = false; kl.textContent = "Kopiér linjen";
+        kopier(linje);
+      } else {
+        $("#gemtekst").textContent = "Sidste skridt: Gem adressen på GitHub, så siden virker på alle dine enheder. Knappen åbner en ny fil, hvor linjen allerede står – tryk bare Commit changes (to gange).";
+        gh.textContent = "Gem adressen på GitHub";
+        gh.href = github + "/new/main/" + MAPPE + "?filename=" + encodeURIComponent(ADRESSEFIL) + "&value=" + encodeURIComponent(linje + "\n");
+      }
+      $("#gemhjaelp").textContent = iFil ? "" : "Linjen er: " + linje + " – filen hedder adresse.txt og ligger i " + MAPPE + ". Indtil den er gemt på GitHub, husker denne browser adressen.";
+      $("#gemboks").hidden = false;
+      $("#aabnbudget").onclick = () => {
+        let s = S.saesoner.find(x => x.url === adresse);
+        if (!s) {
+          if (label) S.saesoner = S.saesoner.filter(x => lav(saesonNavn(x)) !== lav(label));
+          s = nySaeson({ url: adresse, label, kilde: "lokal" });
+          S.saesoner.push(s);
+          sorterSaesoner();
+        }
+        knyt(s, svar);
+        S.kode = kode;
+        gem(sessionStorage, NOEGLE.kode, kode);
+        S.valgt = s;
+        if (!S.filter) S.filter = s.D.ov.filter;
+        history.replaceState(null, "", location.pathname);
+        vis("#app");
+        tegn();
+        hentSammenligning();
+      };
+    } catch (e) {
+      msg.className = "besked advar";
+      msg.textContent = e.art ? fejltekst(e) : "Svaret kunne ikke læses: " + e.message;
+    } finally {
+      $("#forbind").disabled = false;
+    }
+  });
+  $("#opsaet-tilbage").addEventListener("click", e => {
+    e.preventDefault();
+    history.replaceState(null, "", location.pathname);
+    if (S.D) { vis("#app"); tegn(); } else if (S.saesoner.length) visLaas(); else location.reload();
+  });
+}
+
+/* ============================================================ opstart */
+async function start() {
+  opsaetning();
+  document.querySelectorAll("#filterseg button").forEach(b => b.addEventListener("click", () => {
+    S.filter = b.dataset.filter; gem(localStorage, NOEGLE.filter, S.filter); tegn();
+  }));
+  document.querySelectorAll(".faner button").forEach(b => b.addEventListener("click", () => {
+    S.fane = b.dataset.fane; gem(localStorage, NOEGLE.fane, S.fane);
+    if (S.soeg) { S.soeg = ""; $("#soeg").value = ""; }
+    tegn();
+  }));
+  const faner = $(".faner");
+  faner.addEventListener("scroll", () => faner.classList.toggle("mere", faner.scrollLeft + faner.clientWidth < faner.scrollWidth - 4), { passive: true });
+  window.addEventListener("resize", () => { if (!$("#app").hidden) fanelinje(); });
+  let t = null;
+  $("#soeg").addEventListener("input", e => { clearTimeout(t); t = setTimeout(() => { S.soeg = e.target.value; tegn(); }, 120); });
+  document.addEventListener("keydown", e => {
+    if (e.key === "/" && !/input|textarea/i.test(document.activeElement.tagName) && !$("#app").hidden) { e.preventDefault(); $("#soeg").focus(); }
+  });
+  $("#opdater").addEventListener("click", () => hentIgen(false));
+  $("#laas-igen").addEventListener("click", () => {
+    glemKode();
+    S.saesoner.forEach(s => { s.D = null; s.kontrol = null; s.fejl = null; s.kode = null; });
+    S.valgt = null; S.smlMed = null; window.__budget = null;
+    visLaas();
+  });
+  $("#saesonvalg").addEventListener("change", e => {
+    const s = S.saesoner.find(x => x.noegle === e.target.value);
+    if (!s || s === S.valgt) return;
+    S.valgt = s;
+    if (S.smlMed === s) S.smlMed = null;
+    if (!s.D && !s.henter && !(s.fejl && s.fejl.art === "kode")) { s.fejl = null; hentEn(s); }
+    tegn();
+    hentSammenligning();
+  });
+  $("#tilopsaetning").addEventListener("click", e => { e.preventDefault(); visOpsaetning(); });
+  document.addEventListener("visibilitychange", () => {
+    const s = S.valgt;
+    if (document.visibilityState === "visible" && s && s.D && Date.now() - s.hentetMs > 60 * 1000) hentIgen(true);
+  });
+  $("#laasform").addEventListener("submit", async e => {
+    e.preventDefault();
+    const knap = $("#laasknap");
+    knap.disabled = true; knap.textContent = "Henter …"; $("#laasfejl").textContent = "";
+    try { await laasOp($("#kode").value, $("#husk").checked); }
+    catch (err) { $("#laasfejl").textContent = err.art ? fejltekst(err) : "Noget gik galt: " + err.message; }
+    finally { knap.disabled = false; knap.textContent = "Lås op"; }
+  });
+
+  await findAdresser();
+  laesKoder();
+  if (!S.saesoner.length || location.hash === "#opsaetning") { visOpsaetning(); return; }
+  const gemt = laes(sessionStorage, NOEGLE.kode) || laes(localStorage, NOEGLE.kode);
+  if (gemt) {
+    try { await laasOp(gemt, false); return; }
+    catch (e) {
+      if (e.art === "kode") { glemKode(); visLaas("Koden er skiftet. Skriv den nye kode."); return; }
+      visLaas(fejltekst(e)); return;
+    }
+  }
+  visLaas();
+}
+start();
+})();
+</script>
+</body>
+</html>
