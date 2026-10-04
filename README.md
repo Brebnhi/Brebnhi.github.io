@@ -12,6 +12,7 @@ fører videre til det enkelte projekt:
 | Kalender-feeds | `/feeds/*.ics` | Kalenderne til Holdsport | bygges af `tjans/scripts/build.py` |
 | Kørselsudligning | `/koerselsudligning/` | Forventet rejseudligning fra Volleyball Danmark | `koerselsudligning/` – se README dér |
 | Kontingent | `/kontingent/` | Forventet kontingent ud fra en Holdsport-eksport | `tjans/docs/kontingent/index.html` (fast fil) |
+| Budget | `/budget/` | Budget mod realiseret direkte fra budgetarket – alle posteringer pr. budgetpost, hold og arrangement. Kræver kode | `tjans/docs/budget/index.html` (fast fil) og `adresse.txt` ved siden af – se *Budgetsiden* nedenfor |
 | Turpris | `/turpris/` | Sæsonens udeture for alle hold – D1's ture til Sjælland i lejebiler (klubben betaler), alle andre i egne biler (spillerne betaler) – hvad en kørselsgodtgørelse ville koste klubben, og en regner til den enkelte tur | `tjans/docs/turpris/index.html` (fast fil; kampene hentes fra kørselsudligningen) |
 | Gammel adresse | `/Tjanser-i-Holdsport/` | Holdsports importer peger herhen – se nedenfor | bygges af `tjans/scripts/build.py` |
 | Påmindelser | `/paamindelser.json` | Det, der skal gøres til en ny sæson – vises øverst på startsiden | bygges af `tjans/scripts/vedligehold.py` |
@@ -52,6 +53,26 @@ videre til de nye.
   tal, når du selv lægger en Holdsport-eksport ind, og eksporten og fritagelseslisten gemmes
   kun i din egen browser. Det samme gælder turprisens gemte ture.
 - **Flytte `/feeds/` eller den gamle sti.** Holdsport henter derfra.
+- **Bruge «Udgiv på nettet» på budgetarket** eller lægge links til det i repoet. Budgetsiden
+  henter tallene gennem scriptet i arket, så arket kan forblive privat.
+
+## Budgetsiden
+
+`/budget/` indeholder ingen tal. Når siden åbnes, spørger den et lille Google-script, der ligger
+i selve budgetarket (Udvidelser → Apps Script), og scriptet svarer kun, når koden er rigtig. Efter
+10 forkerte forsøg holder det lukket i 15 minutter. Adressen på scriptet står i
+`tjans/docs/budget/adresse.txt`.
+
+- **Nye posteringer** står på siden, så snart de er i arket – der er intet at uploade.
+- **Navnet på en postering** er kolonnen *Reference* i Konto 1/Konto 2. Uden reference bruger
+  siden bankens tekst uden numre og koder.
+- **Siden regner som arket.** Hver gang den henter, regner den arkets egne tal efter (Overblik,
+  Hold - status, Event og saldi) og siger til, hvis de ikke stemmer – fx hvis arkets opbygning
+  er ændret.
+- **Nyt ark (1. juni):** Åbn `/budget/#opsaetning` og følg de fire trin i det nye ark. Til sidst
+  retter du `adresse.txt`; siden kopierer adressen for dig.
+- **Skift kode:** Ret linjen `var KODE = "…"` øverst i scriptet, gem, og vælg Implementer →
+  Administrer implementeringer → blyanten → Version: Ny version → Implementer.
 
 ## Når natkørslen står stille
 
@@ -77,6 +98,6 @@ når det er gjort. Lukker du selv et issue, lader robotten det være.
 | Kontingent | Overskrifter, U17-årgang og budgetboks | `BUDGET_SAESON`, `HOLD` og `BUDGET_IALT` øverst i scriptet i `tjans/docs/kontingent/index.html` (fra fanen *Kontingent status*), og `MOENSTRE`/`ERMIX` ved nye holdnavne | 1. august. Lukker sig selv |
 | Turpris | Sæson, grundspillets udekampe, km og dobbeltweekender (D1: lørdag + søndag på Sjælland). Pokal og slutspil tæller ikke med | `PRISER_SAESON` og priserne (`STANDARD`, `SAESON`) øverst i scriptet i `tjans/docs/turpris/index.html` – og `EKSTRA_UDEKAMPE`, hvis VD's program mangler en udekamp | Når kampprogrammet for den nye sæson er ude. Lukker sig selv |
 | Try-out (Vercel) | – | Væk Supabase og følg [guiden](https://docs.google.com/document/d/19cpzGXU_s858MQe_A-r4YyGGtSu8ppPURRt6Rq8Q1bY/edit) | 1. juni. Luk den selv, når billederne er slettet |
-| Budgetarket | – | Nyt budget, nyt ark og primosaldi pr. 1. juni | 1. juni. Luk den selv |
+| Budgetarket | Budgetsidens udregning (den læser arkets faner og formler) | Nyt budget, nyt ark og primosaldi pr. 1. juni – og budgetsidens script i det nye ark, se *Budgetsiden* | 1. juni. Luk den selv |
 
 Prøv påmindelserne uden at røre GitHub: `python tjans/scripts/vedligehold.py --test --nu 2027-08-15`.
