@@ -10,7 +10,7 @@
   Filen er statisk og bygges IKKE af robotten.
   Den henter selv status fra status.json (tjanser) og koerselsudligning/status.json,
   når den åbnes. Tjansesiden ligger i tjanser/, kørselsudligningen i koerselsudligning/,
-  kontingentsiden i kontingent/ og turprisen i turpris/.
+  kontingentsiden i kontingent/, turprisen i turpris/ og budgetsiden i budget/.
   Bestyrelsens opgaver (/bestyrelse/) ligger i sit eget repo, Brebnhi/bestyrelse. Kortet
   henter antal åbne opgaver direkte fra repoets issues via GitHubs åbne API.
   Boksen "Til den nye sæson" kommer fra paamindelser.json, som robotten skriver hver nat
@@ -76,7 +76,7 @@ footer{margin-top:36px;color:var(--muted);font-size:12.5px;max-width:70ch}
   <header>
     <p class="eyebrow">Aalborg Volley</p>
     <h1>Klubbens værktøjer</h1>
-    <p class="sub">Tjanser, kørselsudligning, turpris, kontingent og bestyrelsens opgaver samlet ét sted.
+    <p class="sub">Tjanser, kørselsudligning, turpris, kontingent, budget og bestyrelsens opgaver samlet ét sted.
       Tjanser og kørselsudligning opdateres af sig selv hver nat.</p>
   </header>
 
@@ -125,6 +125,14 @@ footer{margin-top:36px;color:var(--muted);font-size:12.5px;max-width:70ch}
       <span class="go">Åbn kontingentsiden →</span>
     </a>
 
+    <a class="card" href="budget/">
+      <div class="top"><h2>Budget</h2><span class="pil">Kræver kode</span></div>
+      <p class="linje">Budget mod realiseret direkte fra budgetarket. Fold hver budgetpost, hvert hold og
+        hvert arrangement ud, og se alle posteringer ind og ud.</p>
+      <p class="meta">Tallene bliver i arket – siden viser dem kun med koden.</p>
+      <span class="go">Åbn budgettet →</span>
+    </a>
+
     <a class="card" href="bestyrelse/">
       <div class="top"><h2>Bestyrelsen</h2><span class="pil" id="be-pil">Henter …</span></div>
       <p class="linje" id="be-linje">Opgaver fra bestyrelsesmøderne: hvem har hvad, og hvornår er
@@ -142,7 +150,7 @@ footer{margin-top:36px;color:var(--muted);font-size:12.5px;max-width:70ch}
       <li><a href="https://github.com/Brebnhi/bestyrelse/issues">Bestyrelsens opgaver i GitHub</a>
         <span>her opretter og retter du opgaverne</span></li>
       <li><a href="https://github.com/Brebnhi/Brebnhi.github.io">Koden på GitHub</a>
-        <span>tjanser, kørselsudligning, turpris, kontingent og denne side</span></li>
+        <span>tjanser, kørselsudligning, turpris, kontingent, budget og denne side</span></li>
       <li><a href="https://github.com/Brebnhi/Brebnhi.github.io/actions">Natkørslen</a>
         <span>GitHub Actions · her ser du, om robotten er kørt</span></li>
     </ul>
