@@ -221,7 +221,7 @@ def budget(nu):
 - [ ] **Nyt budgetark** videreført fra {gl}-arket – faner, formler og holdkoblinger følger med
 - [ ] **Primosaldo pr. 01.06.{nu.year % 100:02d}** for Konto 1 og Konto 2 fra kontoudtogene
 - [ ] **Holdlisten og rækkeopstillingen** for {ny}
-- [ ] **Budgetsiden** kobles til det nye ark: åbn {SIDE}budget/#opsaetning og følg de fire trin (scriptet i arket, og til sidst ret `adresse.txt`)
+- [ ] **Budgetsiden** kobles til det nye ark: åbn {SIDE}budget/#opsaetning og følg de fire trin (scriptet i arket med samme kode som sidst, og til sidst en ny linje nederst i `adresse.txt`). Behold det gamle ark og den gamle linje – så kan siden stadig vise {gl} og sammenligne med den
 - [ ] **Kontingentsiden** får de nye satser – der kommer et issue om det fra 1. august
 
 Sig til Claude: «ny sæson i budgettet» – så tager budget-skillen den derfra.
