@@ -478,6 +478,10 @@ def main():
              f"slutspil {h['hold']}: {h['udligning']:.2f} = {fs[h['hold']]:.2f}")
     tjek(naer(st5["total"], st5["grundspil"] + st5["pokal_total"] + st5["slutspil_total"], 0.01),
          "total = grundspil + pokal + slutspil")
+    html5 = open(os.path.join(ud, "index.html"), encoding="utf-8").read()
+    tjek("4 af 16 hold havde ingen kamp med dato (typisk w.o.)" in html5
+         and "kamp med dato endnu" not in html5,
+         "en spillet pokalrunde kalder hold uden dato for w.o., ikke 'endnu'")
     VIS_SLUTSPIL["ja"] = False
 
     print("4) Turneringssystemet er nede — siden viser sidste gode tal")
@@ -507,6 +511,27 @@ def main():
          == "Bispehøjen 2", "første linje uden husnummer springes over")
     tjek(beregn.parse_adresse(["Sandbjerggade 35 2200 København N Danmark"])
          == {"gade": "Sandbjerggade 35", "postnr": "2200", "by": "København N"}, "én linje")
+
+    print("8) Noten om hold uden dato: spillet runde (w.o.) eller runde i gang")
+    import render as rnd
+
+    def runde(navn, antal, i_alt, *datoer):
+        return {"raekke": navn, "status": "beregnet", "antal_hold": antal, "hold_i_runden": i_alt,
+                "uden_dato": [], "gennemsnit": 500, "hold": [],
+                "kampe": [{"dato": d, "hjemme": "A", "ude": "B", "sted": "", "km": 0, "beloeb": 0}
+                          for d in datoer]}
+    side = rnd.render({"opdateret": "06-10-2026 10:27", "saeson": "2026/27", "total": 0,
+                       "pokal": [runde("Pokalturneringen Herrer 2. runde", 26, 28, "27-09-2026"),
+                                 runde("Pokalturneringen Herrer 3. runde", 12, 16, "07-10-2026"),
+                                 runde("Pokalturneringen Kvinder 1. runde", 4, 6, "20-09-2026"),
+                                 runde("Pokalturneringen Kvinder 2. runde", 26, 28, "27-09-2026")]})
+    tjek("2 af 28 hold havde ingen kamp med dato (typisk w.o.)" in side,
+         "herrernes 2. runde er spillet, fordi 3. runde er i gang")
+    tjek("4 af 16 hold har ikke en kamp med dato endnu" in side, "herrernes 3. runde er i gang")
+    tjek("2 af 6 hold havde ingen kamp med dato (typisk w.o.)" in side,
+         "en runde over 14 dage gammel er spillet")
+    tjek("2 af 28 hold har ikke en kamp med dato endnu" in side,
+         "damernes 2. runde (9 dage, ingen 3. runde) kan stadig nå at få datoer")
 
     shutil.rmtree(tmp)
     print("\nALT OK" if not fejl else f"\n{len(fejl)} FEJL")

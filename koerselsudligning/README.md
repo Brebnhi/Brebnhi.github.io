@@ -26,8 +26,11 @@ division, for hver runde i pokalturneringen og for slutspillet i Volleyligaen.
    - kun udeholdet har udgift: 3 biler fra dets registrerede hjemmebane.
    - udligning = holdets udgift − rundens gennemsnit pr. hold. Hjemmeholdet
      betaler altså sin andel, udeholdet får sin tur dækket.
-   - kampe uden dato (fx w.o.) er ikke i kalenderen og tæller ikke med. Spilles
-     en kamp om, tæller kun den sidste. Final4 afregnes efter regning og er ikke med.
+   - kampe uden dato (fx w.o.) er ikke i kalenderen og tæller ikke med, før de
+     får dato. Har en hel pulje ingen kampe med dato endnu (fx en enkelt kamp
+     "på tværs"), regnes resten af runden alligevel, og siden viser, hvor mange
+     af rundens hold der mangler. Spilles en kamp om, tæller kun den sidste.
+     Final4 afregnes efter regning og er ikke med.
 
    **Slutspil i Volleyligaen** (§ 2, pkt. 4 — "øvrige kampe"):
    - alle slutspils- og placeringskampe for kønnet findes via ligaklubbernes
@@ -92,4 +95,5 @@ Glemmer du det, bruges sidste års tal, og siden viser en advarsel.
     python koerselsudligning/test/test_beregn.py
 
 kører hele kæden uden netværk på rigtige puljer, adresser og afstande — plus
-en pokalrunde (med omkamp), et slutspil og kampe med resultat i titlen.
+pokalrunder (med omkamp og med en pulje uden datoer), et slutspil og kampe med
+resultat i titlen.

@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 # sti: koerselsudligning/scripts/render.py
 """Renderer status.json til index.html — siden med den forventede kørselsudligning."""
-import html, json, os, sys
+import html, json, os, re, sys
+from datetime import datetime, timedelta
 
 E = lambda s: html.escape(str(s if s is not None else ""))
+SPILLET_EFTER = timedelta(days=14)   # en pokalrunde regnes for spillet 14 dage efter sidste kamp
+RUNDE_RE = re.compile(r"(kvinder|herrer)\D*?(\d+)\.\s*runde", re.I)
 
 CSS = """
 :root{--bg:#f6f7f9;--card:#fff;--ink:#16181d;--muted:#6b7280;--line:#e3e6eb;
@@ -164,19 +167,41 @@ def render(st):
         return (f"<h3>Alle kampe {hvem}</h3>" + tabel(
             ["Dato", "Hjemme", "Ude", "~Spillested", "~#Km", "#Kørsel"], rows))
 
+    def spillet(r):
+        """Runden er overstået, når næste runde (samme køn) har kampe med dato, eller når
+        seneste kamp ligger SPILLET_EFTER før opdateringen. Hold uden dato i en overstået
+        runde er typisk w.o. — de får ikke dato."""
+        m = RUNDE_RE.search(r.get("raekke") or "")
+        for a in (st.get("pokal") or []) if m else []:
+            n_ = RUNDE_RE.search(a.get("raekke") or "")
+            if (n_ and a.get("status") == "beregnet" and n_.group(1).lower() == m.group(1).lower()
+                    and int(n_.group(2)) > int(m.group(2))):
+                return True
+        try:
+            nu = datetime.strptime((st.get("opdateret") or "")[:10], "%d-%m-%Y")
+            sidste = max(datetime.strptime(k["dato"], "%d-%m-%Y") for k in r.get("kampe") or [])
+        except ValueError:
+            return False
+        return nu - sidste > SPILLET_EFTER
+
     def uden_dato(r):
-        """(tekst til summary, note) — hold hvis kamp endnu ikke har dato, er ikke med i snittet."""
+        """(tekst til summary, note) — hold uden kamp med dato er ikke med i snittet."""
         n, i_alt = r["antal_hold"], r.get("hold_i_runden")
+        forbi = spillet(r)
         if i_alt and i_alt > n:
-            tekst = f"{i_alt - n} af {i_alt} hold har ikke en kamp med dato endnu"
+            tekst = f"{i_alt - n} af {i_alt} hold " + (
+                "havde ingen kamp med dato" if forbi else "har ikke en kamp med dato endnu")
         elif r.get("uden_dato"):
             p = r["uden_dato"]
             tekst = ((f"Puljen {p[0]}" if len(p) == 1 else "Puljerne " + " og ".join(p))
-                     + " har ingen kampe med dato endnu")
+                     + (" havde ingen kampe med dato" if forbi else " har ingen kampe med dato endnu"))
         else:
             return f"{n} hold", ""
-        note = (f'<p class="muted note">{E(tekst)} og er ikke med i rundens snit. Får kampene '
-                'dato, kommer de med af sig selv — så kan snittet flytte sig.</p>')
+        if forbi:
+            note = f'<p class="muted note">{E(tekst)} (typisk w.o.) og er ikke med i rundens snit.</p>'
+        else:
+            note = (f'<p class="muted note">{E(tekst)} og er ikke med i rundens snit. Får kampene '
+                    'dato, kommer de med af sig selv — så kan snittet flytte sig.</p>')
         return (f"{n} af {i_alt} hold" if i_alt and i_alt > n else f"{n} hold"), note
 
     pokal_html = []
