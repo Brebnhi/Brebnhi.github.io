@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# sti: koerselsudligning/scripts/render.py
 """Renderer status.json til index.html — siden med den forventede kørselsudligning."""
 import html, json, os, sys
 
@@ -65,6 +66,7 @@ ul.adv{margin:0;padding-left:20px}
 .hero .big{font-size:34px}}
 footer{margin-top:40px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:16px}
 .nav{margin:0 0 18px;font-size:14px}.nav a{color:var(--accent);text-decoration:none}.nav a:hover{text-decoration:underline}
+details p.note{margin:0 16px 12px;font-size:13.5px}
 """
 
 
@@ -162,6 +164,21 @@ def render(st):
         return (f"<h3>Alle kampe {hvem}</h3>" + tabel(
             ["Dato", "Hjemme", "Ude", "~Spillested", "~#Km", "#Kørsel"], rows))
 
+    def uden_dato(r):
+        """(tekst til summary, note) — hold hvis kamp endnu ikke har dato, er ikke med i snittet."""
+        n, i_alt = r["antal_hold"], r.get("hold_i_runden")
+        if i_alt and i_alt > n:
+            tekst = f"{i_alt - n} af {i_alt} hold har ikke en kamp med dato endnu"
+        elif r.get("uden_dato"):
+            p = r["uden_dato"]
+            tekst = ((f"Puljen {p[0]}" if len(p) == 1 else "Puljerne " + " og ".join(p))
+                     + " har ingen kampe med dato endnu")
+        else:
+            return f"{n} hold", ""
+        note = (f'<p class="muted note">{E(tekst)} og er ikke med i rundens snit. Får kampene '
+                'dato, kommer de med af sig selv — så kan snittet flytte sig.</p>')
+        return (f"{n} af {i_alt} hold" if i_alt and i_alt > n else f"{n} hold"), note
+
     pokal_html = []
     for r in st.get("pokal") or []:
         if r.get("status") != "beregnet":
@@ -170,10 +187,11 @@ def render(st):
             continue
         klub = [h for h in r["hold"] if h["klub"]]
         sum_ = sum(h["udligning"] for h in klub)
+        antal, note = uden_dato(r)
         pokal_html.append(
-            f'<details><summary>{E(r["raekke"])} <span class="meta">— {r["antal_hold"]} hold · '
+            f'<details><summary>{E(r["raekke"])} <span class="meta">— {antal} · '
             f'gennemsnit {kr(r["gennemsnit"], False)} kr pr. hold · klubben '
-            f'<b class="{klasse(sum_)}">{kr(sum_)} kr</b></span></summary>'
+            f'<b class="{klasse(sum_)}">{kr(sum_)} kr</b></span></summary>' + note
             + tabel(["Hold", "Kamp", "~Spillested", "~#Km", "#Udgift", "~#Rundens snit",
                      "#Udligning"], [klubrække(h, r) for h in klub])
             + alle_kampe(r, "i runden") + "</details>")

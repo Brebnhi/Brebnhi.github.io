@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
+# sti: koerselsudligning/test/test_beregn.py
 """Offline-test af hele kæden uden netværk.
 
 fixtures.json indeholder rigtige puljer, spillesteder (DAWA-koordinater) og
 vejafstande (OSRM) for 2024/25, 2025/26 og 2026/27. Testen bygger sider og
-kalenderfeeds i volleyball.dk's format ud fra dem (plus en pokalrunde og et
+kalenderfeeds i volleyball.dk's format ud fra dem (plus pokalrunder og et
 slutspil), kører beregn.py mod en falsk `hent` og tjekker resultatet mod
 håndberegnede tal, en uafhængig genberegning og VD's kreditnotaer.
+Den ene pokalrunde har en pulje, hvor ingen kampe har fået dato endnu, og en
+kamp uden dato i en anden pulje — resten af runden skal regnes alligevel.
 
 Kør:  python koerselsudligning/test/test_beregn.py
 """
@@ -33,6 +36,19 @@ POKAL = {
         ("VK Raptus", "Ikast KFUM.2", "2026-10-25")]}}},
     2393: {"navn": "Pokalturneringen Kvinder 1. runde", "puljer": {4147: {"navn": "Vest",
                                                                             "kampe": []}}},
+    # Som 3. runde 26/27: "På tværs" har kun en kamp uden dato (= tom kalender), og i Vest
+    # mangler én kamp dato. Kampe uden dato er ikke i kalenderen, men holdene står i puljen.
+    2427: {"navn": "Pokalturneringen Kvinder 3. runde", "puljer": {
+        4192: {"navn": "Øst", "kampe": [
+            ("Amager Volley.2", "Team Køge", "2026-10-06"),
+            ("Gentofte Volley.2", "Hvidovre VK", "2026-10-06"),
+            ("VLI.2", "VLI", "2026-10-14")]},
+        4193: {"navn": "Vest", "kampe": [
+            ("ASV Aarhus.2", "Aalborg Volleyball.2", "2026-10-07"),
+            ("IF Lyseng", "Volleyball Esbjerg", "2026-10-08"),
+            ("SIK Viborg", "Bedsted KFUM", "2026-10-11")],
+               "uden_dato": [("Odense Volleyball", "DSIO Odense")]},
+        4194: {"navn": "På tværs", "kampe": [], "uden_dato": [("Ikast KFUM.2", "KSV")]}}},
 }
 SLUTSPIL = {
     2400: {"navn": "Volleyligaen Kvinder Kvartfinaler", "puljer": {4200: {"navn": "Kvart", "kampe": [
@@ -127,7 +143,7 @@ def side_forening(fid):
     for tabel in tabeller:
         for rid, r in tabel.items():
             for pid, p in r["puljer"].items():
-                hold = {x for k in p["kampe"] for x in k[:2]}
+                hold = {x for k in p["kampe"] + p.get("uden_dato", []) for x in k[:2]}
                 if tabel is POKAL and rid == 2393 and fid == 156:
                     hold = {"Aalborg Volleyball.2"}
                 for h in sorted(hold):
@@ -167,7 +183,7 @@ def hold_liste(pid):
     s, r, p = pulje(pid)
     if "hold" in p:
         return list(p["hold"])
-    return sorted({x for k in p["kampe"] for x in k[:2]})
+    return sorted({x for k in p["kampe"] + p.get("uden_dato", []) for x in k[:2]})
 
 
 def side_holdoversigt(pid):
@@ -300,10 +316,12 @@ def rejse(fra, til, takst=2.28, bro=346):
     return 3 * (2 * km(fra, til) * takst + (bro if kryds else 0))
 
 
-def forventet_pokal():
+def forventet_pokal(rid=2390):
+    """Én runde regnet uafhængigt: alle puljer samlet, kun kampe med dato."""
     kampe = {}
-    for h, u, d in POKAL[2390]["puljer"][4154]["kampe"]:
-        kampe[frozenset((h, u))] = (h, u)          # seneste tæller
+    for p in POKAL[rid]["puljer"].values():
+        for h, u, d in p["kampe"]:
+            kampe[frozenset((h, u))] = (h, u)      # seneste tæller
     udgift = {x: 0.0 for k in kampe.values() for x in k}
     for h, u in kampe.values():
         udgift[u] += rejse(hjem_for(u), hjem_for(h))
@@ -409,12 +427,29 @@ def main():
                  f"pokal {h.get('kode') or '–'} {h['hold']}: {h['udligning']:.2f} = {fp[h['hold']]:.2f}")
     tjek(runder.get("Pokalturneringen Kvinder 1. runde", {}).get("status") == "ikke trukket",
          "runde uden kampe vises som 'ikke trukket'")
-    tjek(naer(st["pokal_total"], sum(v for k, v in fp.items() if k.startswith(KLUB)), 0.05),
+    r3 = runder.get("Pokalturneringen Kvinder 3. runde", {})
+    tjek(r3.get("status") == "beregnet" and r3.get("antal_hold") == 12
+         and r3.get("hold_i_runden") == 16 and r3.get("uden_dato") == ["På tværs"],
+         f"3. runde regnes, selv om en pulje mangler dato: {r3.get('status')} · "
+         f"{r3.get('antal_hold')} af {r3.get('hold_i_runden')} hold · uden dato {r3.get('uden_dato')}")
+    tjek(abs(sum(h["udligning"] for h in r3.get("hold", []))) < 0.5, "3. runde går i nul")
+    fp3 = forventet_pokal(2427)
+    d2 = [h for h in r3.get("hold", []) if h["klub"]]
+    tjek(len(d2) == 1 and d2[0].get("kode") == "D2"
+         and naer(d2[0]["udligning"], fp3["Aalborg Volleyball.2"], 0.05),
+         f"pokal 3. runde D2: {[(h.get('kode'), h['udligning']) for h in d2]} = "
+         f"{fp3['Aalborg Volleyball.2']:.2f}")
+    tjek(naer(st["pokal_total"], sum(v for f in (fp, fp3) for k, v in f.items()
+                                     if k.startswith(KLUB)), 0.05),
          f"pokal i alt {st['pokal_total']:.2f}")
     tjek(not st["slutspil"], "intet slutspil i september")
     tjek(naer(st["total"], st["grundspil"] + st["pokal_total"], 0.01), "total = grundspil + pokal")
     html = open(os.path.join(ud, "index.html"), encoding="utf-8").read()
     tjek("Pokalturneringen Herrer 2. runde" in html, "siden viser pokalrunden")
+    tjek('3. runde <span class="meta">— 12 af 16 hold ·' in html
+         and "4 af 16 hold har ikke en kamp med dato endnu" in html,
+         "siden viser, at 4 hold i 3. runde endnu ikke har kamp med dato")
+    tjek('2. runde <span class="meta">— 12 hold ·' in html, "en fuldt datosat runde vises som før")
     tjek("kontrolleret: grundspil + pokal" in html, "sæsontabellen lægger grundspil- og pokalkontrol sammen")
     tjek(not st["advarsler"], f"ingen advarsler ({st['advarsler']})")
 

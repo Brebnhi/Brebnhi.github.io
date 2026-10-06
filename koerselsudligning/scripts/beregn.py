@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# sti: koerselsudligning/scripts/beregn.py
 """
 Forventet kørselsudligning for klubbens hold — Volleyball Danmarks
 rejseudligning, regnet ud fra de officielle kampprogrammer.
@@ -875,11 +876,32 @@ def er_pokal(navn, kfg):
 
 
 def beregn_pokalrunde(rid, navn, ktx, klubnavne, pulje_ids=None):
+    """Én pokalrunde — alle dens puljer (Øst, Vest, På tværs ...) som én udligning.
+
+    Kampe uden dato er ikke i kalenderen. Har en hel pulje endnu ingen kampe med
+    dato (fx en enkelt kamp "på tværs"), regnes resten af runden alligevel, og
+    puljen kommer med, når kampene får dato. Først når ingen af rundens puljer har
+    kampe med dato, er runden "ikke trukket"."""
     p = pokal_kfg(ktx.kfg)
     if pulje_ids is None:
-        puljer = hent_raekke(rid, ktx.cache)
+        alle = puljer_i_raekke(rid)
+        if not alle:
+            raise RuntimeError(f"ingen puljer fundet i række {rid}")
     else:
-        puljer = [(pid, "", kampe_i_pulje(pid, ktx.cache)) for pid in pulje_ids]
+        alle = [(pid, "") for pid in pulje_ids]
+    puljer, uden_dato = [], []
+    for pid, pnavn in alle:
+        try:
+            kampe = kampe_i_pulje(pid, ktx.cache)
+        except IngenKampe:
+            uden_dato.append(pnavn or str(pid))
+            continue
+        if not pnavn and pulje_ids is None:
+            l1 = kampe[0]["linje1"]
+            pnavn = l1.split()[-1] if l1 else str(pid)
+        puljer.append((pid, pnavn, kampe))
+    if not puljer:
+        raise IngenKampe(f"ingen kampe med dato i {navn or rid}")
     navn = navn or re.sub(r"\s+Pokal .*$", "", puljer[0][2][0]["linje1"]) or f"Runde {rid}"
     tabel = ktx.kfg.get("bropris_pokal") or {}
     if not any(str(k).isdigit() and v is not None for k, v in tabel.items()):
@@ -891,6 +913,12 @@ def beregn_pokalrunde(rid, navn, ktx, klubnavne, pulje_ids=None):
     r["raekke_id"] = rid
     r["foerste_dato"] = min((k["start"] for _, _, ks in puljer for k in ks if k["start"]),
                             default=None)
+    r["uden_dato"] = uden_dato
+    if pulje_ids is None:              # hvor mange hold runden har i alt (til siden)
+        try:
+            r["hold_i_runden"] = sum(len(hold_i_pulje(pid)) for pid, _ in alle)
+        except Exception as exc:       # noqa: BLE001 — kun til visning
+            print(f"  holdoversigten for {navn} kunne ikke hentes: {exc}", file=sys.stderr)
     return r
 
 
@@ -1054,6 +1082,10 @@ def main():
             except Exception as exc:      # noqa: BLE001
                 advar(f"{info['navn']} kunne ikke regnes: {exc}")
                 continue
+            if r["status"] == "beregnet":
+                print(f"  {r['raekke']}: {r['antal_hold']} af {r.get('hold_i_runden', '?')} hold "
+                      "har kamp med dato" + (f" · puljer uden dato: {', '.join(r['uden_dato'])}"
+                                             if r["uden_dato"] else ""))
             for h in r["hold"]:
                 if h["klub"]:
                     h["kode"] = kode_for(h["hold"], r["raekke"], klubhold)
