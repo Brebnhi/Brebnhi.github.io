@@ -146,6 +146,24 @@ def render(st):
     def tag(h):
         return f'<span class="tag">{E(h["kode"])}</span> ' if h.get("kode") else ""
 
+    # Talentkampe: VD's talenthold mod 2. divisionsholdene – ikke med i udligningen
+    talent = st.get("talent") or []
+    talent_rows = [
+        f'<tr><td>{tag(t)}{E(t["hold"])}</td><td class="d">{E(t["dato"]) or "uden dato"}</td>'
+        f'<td>{E(t["modstander"])}</td><td class="lav">{E(t["sted"])}</td>'
+        f'<td class="n lav">{t["km"] if t.get("km") is not None else "–"}</td>'
+        f'<td class="n">{kr(t["beloeb"], False) if t.get("beloeb") is not None else "–"}</td></tr>'
+        for t in talent]
+    talent_html = (
+        "<h2>Talentkampe</h2>"
+        "<p class='sub' style='margin-bottom:12px'>VD's talenthold spiller hjemme mod "
+        "2. divisionsholdene i puljen <i>Talent</i>, hvor holdene står med (T) efter navnet. VD "
+        "har ikke meldt ud, om eller hvordan de ture indgår i kørselsudligningen, så de er "
+        "<b>ikke med</b> i tallene ovenfor. Turen er regnet som en almindelig udekamp i rækken "
+        "— til orientering.</p>"
+        + tabel(["Hold", "Dato", "Hos", "~Spillested", "#Km (enkelt)", "#Beløb"], talent_rows)
+        if talent else "")
+
     def klubrække(h, r):
         kamp = ""
         if h.get("ture"):
@@ -273,7 +291,9 @@ def render(st):
         raekke_html.append(
             f'<details><summary>{E(r["raekke"])} <span class="meta">— {r["antal_hold"]} hold i '
             f'{E(", ".join(r["puljer"]))} · gennemsnit {kr(r["gennemsnit"], False)} kr · '
-            f'{r["biler"]} biler</span></summary>'
+            f'{r["biler"]} biler'
+            + (f' · {E(", ".join(r["talent_puljer"]))} er ikke med' if r.get("talent_puljer") else "")
+            + '</span></summary>'
             + tabel(["Hold", "Pulje", "~#Udekampe", "~#Km i alt", "~#Broture", "#Udgift", "#Udligning"],
                     rows) + "</details>")
 
@@ -340,6 +360,9 @@ def render(st):
         "for alle slutspils- og placeringskampe og fordeler efter antal spillede kampe. Hvert "
         "hold bærer halvdelen af gennemsnitsprisen pr. kamp, det har spillet, og får sine "
         "egne udeture dækket. Afregnes efter sæsonen.</p>"
+        "<p><b>Talentkampe</b> (fra 2026/27): kampene mod VD's talenthold i puljen Talent er "
+        "ikke med i rækkens udligning, før VD har meldt ud, hvordan de afregnes. Holdene står "
+        "med (T) efter navnet og har samme kode som i grundspillet.</p>"
         "<p>Plus betyder kreditnota til klubben, minus betyder faktura.</p>"
         "<p class='muted'>Hold, runder og kampe hentes hver nat fra resultater.volleyball.dk "
         "(foreningssider → rækker → puljernes kampprogram). Adresser slås op i DAWA og "
@@ -363,6 +386,7 @@ opdateret {E(st.get('opdateret'))}</p>
 <h2>Pr. hold</h2>
 {tabel(["Hold", "Række · pulje", "~#Udekampe", "~#Km i alt", "~#Broture", "~#Udgift", "~#Rækkens snit", "#Udligning"],
        pr_hold, "Ingen hold i Liga, 1. eller 2. division fundet.")}
+{talent_html}
 
 <h2>Pokalturneringen</h2>
 {"".join(pokal_html) or '<p class="muted">Ingen pokalrunder med klubbens hold endnu.</p>'}

@@ -24,6 +24,12 @@ Tre slags udligning, hver med VD's egen metode:
     * Udligning = holdets udgift − antal spillede kampe × gennemsnitsprisen / 2.
     * Afregnes efter sæsonen.
 
+  Talentkampe (2. division · Talent, fra 2026/27)
+    * VD's regionale talenthold spiller hjemme mod 2. divisionsholdene, der står
+      med "(T)" efter navnet. VD har ikke meldt ud, om eller hvordan de kampe
+      indgår i rejseudligningen, så de er ikke med i rækkens udligning. Turene
+      vises for sig på siden til orientering.
+
   km = vejafstand fra udeholdets hjemmebane til spillestedet.
   Plus = kreditnota (klubben får penge), minus = faktura (klubben betaler).
 
@@ -787,6 +793,49 @@ def klubregex(kfg):
     return re.compile(re.escape(kfg.get("klub", "Aalborg Volleyball")) + r"(\s?\.?\s?\d+)?")
 
 
+# Talenthold (pilot fra 2026/27): VD's regionale talenthold spiller hjemme mod 2. divisions-
+# holdene i en ekstra pulje "Talent" i rækken, og klubbernes hold står dér med "(T)" efter navnet,
+# fx "Aalborg Volleyball.2 (T)". Regnet med i rækken blev de til ekstra hold uden udgifter, som
+# trak gennemsnittet ned og skubbede holdkoderne (H2/H3/D3 blev til H4/H5/D4).
+TALENT_RE = re.compile(r"\s*\(T\)\s*$", re.I)
+
+
+def uden_talent(navn):
+    """'Aalborg Volleyball.2 (T)' → 'Aalborg Volleyball.2'."""
+    return TALENT_RE.sub("", navn or "").strip()
+
+
+def er_talentpulje(pnavn, kampe):
+    return ("talent" in (pnavn or "").lower()
+            or any(TALENT_RE.search(k.get(f) or "") for k in kampe for f in ("hjemme", "ude")))
+
+
+def talentture(puljer, ktx, biler, kfg, hjem):
+    """Klubbens ture til kampene i talentpuljerne – regnet som en almindelig udekamp i rækken
+    fra holdets hjemmebane i rækkens grundspil (hjem). Kun til orientering: ikke med i
+    udligningen."""
+    rx = klubregex(kfg)
+    ture = []
+    for _, _, kampe in puljer:
+        for k in kampe:
+            hold = uden_talent(k["ude"])
+            if not rx.fullmatch(hold):
+                continue
+            t = {"hold": hold, "kampnr": k["kampnr"], "modstander": uden_talent(k["hjemme"]),
+                 "sted": k["sted"], "km": None, "bro": False, "beloeb": None,
+                 "dato": k["start"].astimezone(DK).strftime("%d-%m-%Y") if k["start"] else ""}
+            fra = hjem.get(hold) or ktx.reserve.get(hold)
+            if fra:
+                geo = [geokod(x, ktx.cache, ktx.manuelle) for x in (fra, k)]
+                if all(geo):
+                    sikr_afstande([punkt(g) for g in geo], ktx.cache)
+                r = rejse(ktx, fra, k, biler, ktx.bro)
+                if r:
+                    t["beloeb"], t["km"], t["bro"] = round(r[0], 2), r[1], r[2]
+            ture.append(t)
+    return sorted(ture, key=lambda t: (t["dato"][6:] + t["dato"][3:5] + t["dato"][:2]) or "9")
+
+
 def klub_i(kampe, kfg, kendte=()):
     rx = klubregex(kfg)
     alle = {k[f] for k in kampe for f in ("hjemme", "ude")}
@@ -814,13 +863,21 @@ def beregn_grundspil(raekke_ids, cache, kfg, klubnavne=None, stille=False):
     ktx = Kontekst(cache, kfg, takst, bro)
     ktx.startaar = start
     raekker = []
-    for rid, navn, puljer in sorted(data, key=lambda x: niveau(x[1])):
+    for rid, navn, alle in sorted(data, key=lambda x: niveau(x[1])):
         biler = int(kfg["biler_pr_raekke"][navn])
+        talent = [p for p in alle if er_talentpulje(p[1], p[2])]
+        puljer = [p for p in alle if p not in talent]
+        if not puljer:
+            continue
         navne = klub_i([k for _, _, ks in puljer for k in ks], kfg, (klubnavne or {}).get(navn, ()))
         r = beregn_pulje(navn, puljer, ktx, biler, navne)
         r["raekke_id"] = rid
         r["sidste_kamp"] = max((k["start"] for _, _, ks in puljer for k in ks if k["start"]),
                                default=None)
+        if talent:
+            r["talent_puljer"] = [p[1] for p in talent]
+            r["talent"] = talentture(talent, ktx, biler, kfg,
+                                     hjemmebaner_fra_kampe([k for _, _, ks in puljer for k in ks]))
         raekker.append(r)
     return {"saeson": saeson, "startaar": start, "takst": takst, "bro": bro,
             "raekker": raekker}, ktx
@@ -1054,7 +1111,8 @@ def main():
             navn = raekke_navn(h["raekke"], kfg)
             if navn and norm(navn) == norm(h["raekke"]):   # ikke "kvalifikation" o.l.
                 grund[h["raekke_id"]] = navn
-                klubnavne.setdefault(navn, set()).add(h["hold"])
+                if not TALENT_RE.search(h["hold"] or ""):    # talenthold: se talentture()
+                    klubnavne.setdefault(navn, set()).add(h["hold"])
             elif er_pokal(h["raekke"], kfg):
                 pokal.setdefault(h["raekke_id"], {"navn": h["raekke"], "hold": set()})
                 pokal[h["raekke_id"]]["hold"].add(h["hold"])
@@ -1069,6 +1127,8 @@ def main():
         res, ktx = beregn_grundspil(list(grund), cache, kfg, klubnavne=klubnavne)
         klubhold = klubhold_liste(res, kfg)
         grundspil = round(sum(h["udligning"] for h in klubhold), 2)
+        talent = [{**t, "raekke": r["raekke"], "kode": kode_for(t["hold"], r["raekke"], klubhold)}
+                  for r in res["raekker"] for t in r.get("talent") or []]
 
         # ---- pokal: hver runde for sig
         runder = []
@@ -1136,6 +1196,7 @@ def main():
             "klub": kfg.get("klub"), "total": total, "grundspil": grundspil,
             "pokal_total": pokal_total, "slutspil_total": slutspil_total,
             "klubhold": klubhold,
+            "talent": talent,
             "raekker": [{**let(r), "kampe": []} for r in res["raekker"]],
             "pokal": [let(r) for r in runder],
             "slutspil": [let(s) for s in slutspil],

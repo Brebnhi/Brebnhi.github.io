@@ -21,6 +21,15 @@ import beregn  # noqa: E402
 
 FX = json.load(open(os.path.join(HER, "fixtures.json"), encoding="utf-8"))
 KLUB = "Aalborg Volleyball"
+# Talentpuljer (fra 2026/27): VD's talenthold spiller hjemme i Ikast mod 2. divisionsholdene, der
+# står med "(T)" efter navnet. De må hverken rykke holdkoderne eller rækkernes udligning.
+TALENT = {"2372": (4303, [("Aalborg Volleyball.2 (T)", "2026-12-18"), ("VK Vendsyssel (T)", "2027-01-17"),
+                          ("Aalborg Volleyball.3 (T)", "2027-03-24")]),
+          "2374": (4302, [("Aalborg Volleyball.3 (T)", "2026-11-25"), ("Randers VK (T)", "2027-02-10")])}
+for _rid, (_pid, _kampe) in TALENT.items():
+    FX["saesoner"]["2026/27"]["raekker"][_rid]["puljer"][str(_pid)] = {
+        "navn": "Talent", "hold": {"Talenthold": "Hyldgårdsskolens Hal", **{u: None for u, _ in _kampe}},
+        "kampe": [("Talenthold", u, d) for u, d in _kampe]}
 SID = {navn: 5000 + i for i, navn in enumerate(sorted(FX["steder"]))}   # SpillestedsId
 SID_NAVN = {v: k for k, v in SID.items()}
 
@@ -77,7 +86,7 @@ def hjem_for(hold):
 
 
 def klub_af(hold):
-    return re.sub(r"[ .]?\d+$", "", hold)
+    return re.sub(r"[ .]?\d+$", "", re.sub(r"\s*\(T\)$", "", hold))
 
 
 FID = {}
@@ -452,6 +461,21 @@ def main():
     tjek('2. runde <span class="meta">— 12 hold ·' in html, "en fuldt datosat runde vises som før")
     tjek("kontrolleret: grundspil + pokal" in html, "sæsontabellen lægger grundspil- og pokalkontrol sammen")
     tjek(not st["advarsler"], f"ingen advarsler ({st['advarsler']})")
+    talent = st.get("talent") or []
+    tjek(sorted(t["kode"] for t in talent) == ["D3", "H2", "H3"],
+         f"talentkampe med grundspillets koder: {[(t['kode'], t['hold']) for t in talent]}")
+    t2 = next((t for t in talent if t["kode"] == "H2"), {})
+    tjek(t2.get("sted") == "Hyldgårdsskolens Hal" and t2.get("dato") == "18-12-2026" and t2.get("km")
+         and naer(t2.get("beloeb"), 2 * 2 * t2["km"] * 2.28, 0.05),
+         f"H2's tur til talentholdet: {t2.get('km')} km, {t2.get('beloeb')} kr (2 biler)")
+    r2h = next(r for r in st["raekker"] if r["raekke"] == "2. Division Herrer")
+    tjek("Talent" not in r2h["puljer"] and r2h.get("talent_puljer") == ["Talent"]
+         and r2h["antal_hold"] == 30, f"2. div H: {r2h['antal_hold']} hold i {r2h['puljer']}, "
+         f"talentpuljen {r2h.get('talent_puljer')} er ikke med")
+    tjek(all("(T)" not in h["hold"] and h["hold"] != "Talenthold" for r in st["raekker"] for h in r["hold"]),
+         "ingen talenthold i rækkernes udligning")
+    tjek("<h2>Talentkampe</h2>" in html and "Talent er ikke med" in html,
+         "siden viser talentkampene for sig")
 
     print("2) Anden kørsel — adresser og afstande kommer fra cachen")
     NET["kald"].clear()
