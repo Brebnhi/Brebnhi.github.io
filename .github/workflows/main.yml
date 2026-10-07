@@ -1,8 +1,9 @@
 name: Opdater tjans-kalendere
 
 on:
-  schedule:
-    - cron: "20 3 * * *"        # hver nat kl. 04:20/05:20 dansk tid
+      schedule:
+      - cron: "20 3 * * *"
+      - cron: "50 11,19 * * *"
   workflow_dispatch:            # kan altid startes manuelt
   push:
     branches: [main]
