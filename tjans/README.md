@@ -96,9 +96,10 @@ samme. Robotten husker det i `docs/tjans_holdsport.json` på siden.
 
 Den tjekker også, at tjansen står på **samme tidspunkt** i Holdsport som i kalenderen. Er en
 kamp flyttet, får Holdsport halvandet døgn til at flytte tjansen med (den står imens som
-*venter* på tjansesiden). Står den stadig på det gamle tidspunkt efter det — eller har
-Holdsport lavet en ny og ladet den gamle stå — kommer den med i issuet under *forkert
-tidspunkt i Holdsport*, så du kan rette den i Holdsport og tjekke de tilmeldte.
+*venter* på tjansesiden). Står den stadig på det gamle tidspunkt efter det — eller står den
+på et tidspunkt, robotten aldrig har udgivet, eller har Holdsport lavet en ny og ladet den
+gamle stå — kommer den med i issuet under *forkert tidspunkt i Holdsport*, så du kan rette
+den i Holdsport og tjekke de tilmeldte.
 
 Den husker også, hvilken aktivitet i Holdsport hver tjans ligger i. Laver Holdsport en
 eksisterende tjans om til en ny, når den henter kalenderen (det skete med H3 1/11 → 11/10 i
@@ -150,7 +151,9 @@ Danmark (samme opslag som kørselsudligningen, `forening_id` i
 1. og 2. division og pokalturneringen. Tjansesiden viser, hvad den fandt.
 
 Holdkoderne gives efter samme regel som i kørselsudligningen: D1/H1 er holdet i den
-bedste række, og i samme række holdet med lavest nummer. Passer det ikke, så skriv holdet
+bedste række, og i samme række holdet med lavest nummer. Kun hold, der hedder "Aalborg
+Volleyball" med eller uden nummer, tæller — talentholdene ("Aalborg Volleyball.2 (T)" i
+2. division · Talent) er ikke med i tjanserne og står nederst under kampprogrammerne. Passer det ikke, så skriv holdet
 under `hold_koder` i `koerselsudligning/config.json`, fx
 `"1. Division Kvinder|Aalborg Volleyball.2": "D2"` — det gælder så begge steder.
 

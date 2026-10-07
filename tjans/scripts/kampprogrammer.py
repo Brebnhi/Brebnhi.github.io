@@ -8,7 +8,11 @@ koerselsudligning/config.json) giver hold, række og pulje, og puljens side give
 kalenderen. Så finder robotten selv den nye sæsons kampprogrammer.
 
 Med kommer alle klubbens puljer i Volleyligaen, 1. og 2. division (grundspil, slutspil
-og kvalifikation) og i pokalturneringen. Danmarksserien, ungdom o.l. er ikke med.
+og kvalifikation) og i pokalturneringen. Danmarksserien, ungdom o.l. er ikke med — og
+heller ikke talentholdene ("Aalborg Volleyball.2 (T)" i 2. division · Talent, okt. 2026).
+Kun hold, der hedder "Aalborg Volleyball" med eller uden nummer, tæller, ligesom i
+kørselsudligningen. Ellers rykker holdkoderne: talentholdene fik nummer 1 og skubbede
+H2/H3/D3 ned til H4/H5/D4.
 
 Holdkoderne (D1, H2 …) følger samme regel som i kørselsudligningen: D1/H1 er holdet i
 den bedste række, og i samme række holdet med lavest nummer. Skal et hold have en
@@ -55,8 +59,12 @@ def find():
     kfg = json.load(open(os.path.join(KU, "config.json"), encoding="utf-8"))
     overstyr = {k: v for k, v in (kfg.get("hold_koder") or {}).items() if not k.startswith("_")}
 
-    grund, puljer = set(), {}
+    grund, puljer, udeladt = set(), {}, []
+    klub = b.klubregex(kfg)                       # "Aalborg Volleyball", "… .2" osv.
     for h in b.klubbens_hold(kfg["forening_id"]):
+        if not klub.fullmatch((h["hold"] or "").strip()):
+            udeladt.append(f"{h['hold']} ({h['raekke']} · {h['pulje']})")   # fx talenthold
+            continue
         navn = b.raekke_navn(h["raekke"], kfg)       # fx "2. Division Herrer"
         pokal = b.er_pokal(h["raekke"], kfg)
         if not navn and not pokal:
@@ -95,7 +103,8 @@ def find():
     if not feeds:
         raise RuntimeError("ingen af klubbens puljer har et kampprogram endnu")
     hold.sort(key=lambda h: (h["kode"][0], nummer(h["kode"])))
-    return {"feeds": feeds, "koder": koder, "hold": hold, "puljer": info}
+    return {"feeds": feeds, "koder": koder, "hold": hold, "puljer": info,
+            "udeladt": sorted(set(udeladt))}
 
 
 if __name__ == "__main__":

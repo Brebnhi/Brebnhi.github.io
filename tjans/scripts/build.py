@@ -216,7 +216,8 @@ def load_feeds():
         fundet = kampprogrammer.find()
         feeds.update(fundet["feeds"])
         KODER = fundet["koder"]
-        kp.update(kilde="Volleyball Danmark", hold=fundet["hold"], puljer=fundet["puljer"])
+        kp.update(kilde="Volleyball Danmark", hold=fundet["hold"], puljer=fundet["puljer"],
+                  udeladt=fundet.get("udeladt") or [])
     except Exception as exc:                       # noqa: BLE001 — så bruges reserven
         kp["fejl"] = str(exc)
         print(f"ADVARSEL: kampprogrammerne kunne ikke findes automatisk ({exc}) "
@@ -511,7 +512,10 @@ def main():
         forv = {"tjans": row["tjans"], "kampnr": row["kampnr"],
                 "navn": summary, "start": start.astimezone(DK).isoformat(),
                 "antal": antal, "kamp": f"{hjemme or klub} - {ude}",
-                "aftryk": aftryk(ev)}
+                "aftryk": aftryk(ev),
+                # mødetiden efter tjanselisten – den, Holdsport fik, før kampen blev flyttet
+                "ark": (row["ark_start"] - timedelta(minutes=lead)).astimezone(DK)
+                       .strftime("%Y-%m-%d %H:%M")}
         forv["seq"] = ev["seq"] = sekvens((foer or {}).get(tjans_noegle(forv)), forv["aftryk"], nu)
         buckets.setdefault((row["tjans"], antal), []).append(ev)
         forventede.append(forv)
@@ -686,8 +690,10 @@ def holdsport_historik(hs, forventede, foer, nu=None):
       venter   – ny i kalenderen, Holdsport har ikke nået at hente den (under VENTETID)
       mangler  – har været i Holdsport og er væk nu, eller er ikke kommet inden for VENTETID
     og dem, der ligger på et andet tidspunkt i Holdsport end i kalenderen:
-      venter_tid  – flyttet for nylig, Holdsport har ikke nået at hente det (under VENTETID)
-      forkert_tid – Holdsport har ikke flyttet tjansen med kampen (eller har en ekstra kopi)
+      venter_tid  – Holdsport står på det gamle tidspunkt, og flytningen er under VENTETID
+                    gammel, så Holdsport har ikke nået at hente den
+      forkert_tid – Holdsport har ikke flyttet tjansen med kampen inden for VENTETID, står
+                    på et tidspunkt, robotten aldrig har udgivet, eller har en ekstra kopi
     og finder de aktiviteter, Holdsport har genbrugt til en anden tjans (hs["genbrugt"]) —
     så følger tilmeldingerne med til den forkerte tjans.
     foer: listen fra sidste kørsel (_sidste_historik) – None, hvis den ikke kunne læses."""
@@ -705,16 +711,16 @@ def holdsport_historik(hs, forventede, foer, nu=None):
         p = (foer or {}).get(n)
         start = f["start"][:16].replace("T", " ")
         if foer is None:                          # kunne ikke læse noget: regn den for gammel
-            post = {"set": gammel, "siden": nu_iso}
+            post = {"set": gammel}
         elif isinstance(p, dict):
-            post = {k: p[k] for k in ("set", "fundet", "aktivitet", "siden") if p.get(k)}
+            post = {k: p[k] for k in ("set", "fundet", "aktivitet", "flyttet", "forrige")
+                    if p.get(k)}
             post.setdefault("set", nu_iso)
             if p.get("start") and p["start"] != start:
-                post["siden"] = nu_iso            # flyttet nu – Holdsport skal nå at hente det
-            else:
-                post.setdefault("siden", post["set"])
+                # flyttet nu: husk hvornår og fra hvad – Holdsport skal nå at hente det
+                post["flyttet"], post["forrige"] = nu_iso, p["start"]
         else:
-            post = {"set": nu_iso, "siden": nu_iso}
+            post = {"set": nu_iso}
         post["start"], post["tjans"] = start, f["tjans"]
         post["seq"], post["aftryk"] = f.get("seq"), f.get("aftryk")
         if n in fundne:
@@ -733,6 +739,39 @@ def holdsport_historik(hs, forventede, foer, nu=None):
                              "foer": gl[0], "foer_start": gl[1].get("start", ""),
                              "nu": n, "nu_start": hist[n]["start"], "tjans": hist[n]["tjans"]})
     hist["_genbrugt"] = genbrugt
+
+    # Står tjansen på et andet tidspunkt i Holdsport end i kalenderen? Står Holdsport på et
+    # tidspunkt, robotten har udgivet før (før flytningen, eller tjanselistens oprindelige), har
+    # Holdsport bare ikke hentet flytningen endnu: den får VENTETID, regnet fra flytningen (eller
+    # fra første gang robotten ser den, hvis den ikke ved, hvornår kampen blev flyttet). Står
+    # Holdsport på et tidspunkt, robotten aldrig har udgivet, er der noget galt med det samme.
+    # Spillede kampe tæller ikke med.
+    i_dag = nu.astimezone(DK).strftime("%Y-%m-%d %H:%M")
+    ark = {tjans_noegle(f): f.get("ark") for f in forventede}
+    venter_tid, forkert_tid = [], []
+    for n, f in fundne.items():
+        post = hist.get(n) or {}
+        hs_start = f.get("hs_start") or ""
+        if not hs_start or hs_start == post.get("start") or post.get("start", "") < i_dag:
+            continue
+        r = {"tjans": f["tjans"], "kampnr": f["kampnr"], "holdsport": f.get("holdsport", ""),
+             "navn": f.get("navn", ""), "kamp": f.get("kamp", ""), "start": post["start"],
+             "hs_start": hs_start, "aktivitet": f.get("aktivitet")}
+        gammelt = hs_start in (post.get("forrige"), ark.get(n))
+        if gammelt and not post.get("flyttet"):
+            post["flyttet"] = nu_iso                # første gang robotten ser det: uret starter
+        if gammelt and _alder(post["flyttet"], nu) < VENTETID:
+            venter_tid.append(r)
+        else:
+            forkert_tid.append(r)
+    # En ekstra aktivitet med samme kampnummer på det gamle tidspunkt — Holdsport har lavet en
+    # ny i stedet for at flytte den gamle. Den gamle skal slettes, ellers tilmelder folk sig den.
+    for d in hs.get("dubletter") or []:
+        if d.get("start", "") >= i_dag:
+            forkert_tid.append({**d, "dublet": True})
+    forkert_tid.sort(key=lambda r: r["start"])
+    venter_tid.sort(key=lambda r: r["start"])
+
     json.dump(hist, open(os.path.join(ROOT, "docs", HISTORIK_FIL), "w", encoding="utf-8"),
               indent=0, sort_keys=True, ensure_ascii=False)
     if not tjekket:
@@ -748,28 +787,6 @@ def holdsport_historik(hs, forventede, foer, nu=None):
         else:
             mangler.append(m)
     hs["venter"], hs["mangler"], hs["genbrugt"] = venter, mangler, genbrugt
-
-    # Står tjansen på et andet tidspunkt i Holdsport end i kalenderen? Så har Holdsport ikke
-    # flyttet den med kampen. Holdsport henter kalenderne én gang i døgnet, så en tjans, der
-    # lige er flyttet, får VENTETID til at komme over. Spillede kampe tæller ikke med.
-    i_dag = nu.astimezone(DK).strftime("%Y-%m-%d %H:%M")
-    venter_tid, forkert_tid = [], []
-    for n, f in fundne.items():
-        post = hist.get(n) or {}
-        hs_start = f.get("hs_start") or ""
-        if not hs_start or hs_start == post.get("start") or post.get("start", "") < i_dag:
-            continue
-        r = {"tjans": f["tjans"], "kampnr": f["kampnr"], "holdsport": f.get("holdsport", ""),
-             "navn": f.get("navn", ""), "kamp": f.get("kamp", ""), "start": post["start"],
-             "hs_start": hs_start, "aktivitet": f.get("aktivitet")}
-        (venter_tid if _alder(post.get("siden"), nu) < VENTETID else forkert_tid).append(r)
-    # En ekstra aktivitet med samme kampnummer på det gamle tidspunkt — Holdsport har lavet en
-    # ny i stedet for at flytte den gamle. Den gamle skal slettes, ellers tilmelder folk sig den.
-    for d in hs.get("dubletter") or []:
-        if d.get("start", "") >= i_dag:
-            forkert_tid.append({**d, "dublet": True})
-    forkert_tid.sort(key=lambda r: r["start"])
-    venter_tid.sort(key=lambda r: r["start"])
     hs["venter_tid"], hs["forkert_tid"] = venter_tid, forkert_tid
 
     for post in hs.get("hold") or []:

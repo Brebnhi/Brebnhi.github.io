@@ -313,7 +313,10 @@ def render(status, base_url=""):
                      "<p class='sub'>Robotten finder selv klubbens kampprogrammer og holdkoder "
                      "hver nat — også i en ny sæson og til pokalrunder og slutspil.</p>"
                      + (f"<p>{koder_tekst}</p>" if koder_tekst else "")
-                     + tabel(kp_rows, ["Række og pulje", "Klubbens hold", "Kalender"], ""))
+                     + tabel(kp_rows, ["Række og pulje", "Klubbens hold", "Kalender"], "")
+                     + (("<p class='sub' style='margin-top:14px'>Ikke med i tjanserne: "
+                         + ", ".join(E(u) for u in kp["udeladt"]) + ".</p>")
+                        if kp.get("udeladt") else ""))
     else:
         kp_afsnit = ("<h2>Kampprogrammer fra Volleyball Danmark</h2>"
                      "<div class='banner bad'><strong>Kunne ikke finde kampprogrammerne "
