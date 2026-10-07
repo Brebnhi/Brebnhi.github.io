@@ -5,7 +5,8 @@ kampprogram-feeds fra resultater.volleyball.dk.
 
 Ét feed pr. (hold, antal personer), fordi Holdsport sætter maks. deltagere
 én gang pr. import. Tjansen får stabilt UID pr. kampnummer, så en flyttet kamp
-flytter tjansen i stedet for at oprette en ny.
+flytter tjansen i stedet for at oprette en ny — og et SEQUENCE, der altid stiger,
+når tjansen ændres, så kalenderen ikke smider flytningen væk som "gammel".
 
 Kilder:  tjanselisten (Google-arket i SHEET_CSV_URL, ellers data/tjanser.csv) og
          klubbens kampprogrammer, som scripts/kampprogrammer.py selv finder hos
@@ -393,6 +394,34 @@ def ics_dt(dt):
     return dt.astimezone(UTC).strftime("%Y%m%dT%H%M%SZ")
 
 
+# SEQUENCE er tjansens versionsnummer. Det skal stige, hver gang tjansen ændres — en kalender,
+# der følger standarden, smider ellers ændringen væk som "gammel", og så flytter tjansen ikke med
+# kampen. Tallet er minutter siden 1/1 2026 på det tidspunkt, tjansen sidst blev ændret; en
+# uændret tjans beholder sit tal. (Indtil okt. 2026 var det kampens tidspunkt modulo 100000, og det
+# kunne falde, når en kamp blev flyttet: 149194 fra 17/10 til 3/12 gav 40200 → 26200.)
+SEKVENS_EPOKE = datetime(2026, 1, 1, tzinfo=UTC)
+
+
+def aftryk(e):
+    """Fingeraftryk af det, kalenderen viser om tjansen. Ændres det, får tjansen nyt SEQUENCE."""
+    tekst = "|".join([ics_dt(e["start"]), ics_dt(e["end"]), e["summary"],
+                      e["description"], e["location"]])
+    return hashlib.sha1(tekst.encode("utf-8")).hexdigest()[:12]
+
+
+def sekvens(foer_post, nyt_aftryk, nu):
+    """SEQUENCE til en tjans ud fra sidste kørsels udgave (fra tjans_holdsport.json).
+    Uændret: samme tal som sidst. Ændret, ny eller ukendt: minutter siden SEKVENS_EPOKE,
+    som altid er større end alt, robotten har udgivet før."""
+    nu_min = int((nu - SEKVENS_EPOKE).total_seconds() // 60)
+    gl = foer_post.get("seq") if isinstance(foer_post, dict) else None
+    if not isinstance(gl, int):
+        return nu_min
+    if foer_post.get("aftryk") == nyt_aftryk:
+        return gl
+    return max(nu_min, gl + 1)
+
+
 def build_ics(titel, entries, stamp):
     L = ["BEGIN:VCALENDAR", "VERSION:2.0",
          "PRODID:-//Aalborg Volley//Tjanser//DA", "CALSCALE:GREGORIAN",
@@ -421,7 +450,10 @@ def main():
         # Kun kampe fra tjanselistens sæson: så forstyrrer den nye sæsons kampprogram
         # ikke, før tjanselisten er lavet — og en gammel feeds.json heller ikke bagefter.
         kampe = {nr: k for nr, k in kampe.items() if saeson_for(k["start"]) == saeson_start}
-    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    nu = datetime.now(UTC)
+    stamp = nu.strftime("%Y%m%dT%H%M%SZ")
+    # Sidste kørsels udgave af hver tjans: giver SEQUENCE, og hvornår tidspunktet blev udgivet
+    foer = _sidste_historik(os.environ.get("BASE_URL", ""), (nu - VENTETID).isoformat())
     buckets, rapport, forventede = {}, [], []
 
     for row in rows:
@@ -473,16 +505,16 @@ def main():
 
         seed = row["kampnr"] or hashlib.md5(
             f"{row['dato']}{row['tid']}{row['raekke']}".encode()).hexdigest()[:8]
-        buckets.setdefault((row["tjans"], antal), []).append({
-            "uid": f"tjans-{seed}-{row['tjans']}@aalborgvolley.dk",
-            "start": start, "end": end, "summary": summary,
-            "description": desc, "location": sted,
-            "seq": int(match_start.timestamp()) % 100000,
-        })
-        forventede.append({"tjans": row["tjans"], "kampnr": row["kampnr"],
-                           "navn": summary, "start": start.astimezone(DK).isoformat(),
-                           "antal": antal,
-                           "kamp": f"{hjemme or klub} - {ude}"})
+        ev = {"uid": f"tjans-{seed}-{row['tjans']}@aalborgvolley.dk",
+              "start": start, "end": end, "summary": summary,
+              "description": desc, "location": sted}
+        forv = {"tjans": row["tjans"], "kampnr": row["kampnr"],
+                "navn": summary, "start": start.astimezone(DK).isoformat(),
+                "antal": antal, "kamp": f"{hjemme or klub} - {ude}",
+                "aftryk": aftryk(ev)}
+        forv["seq"] = ev["seq"] = sekvens((foer or {}).get(tjans_noegle(forv)), forv["aftryk"], nu)
+        buckets.setdefault((row["tjans"], antal), []).append(ev)
+        forventede.append(forv)
         rapport.append({**snapshot(row), "status": "ok", "kilde": kilde,
                         "start": start.astimezone(DK).isoformat(),
                         "kampstart": match_start.astimezone(DK).isoformat(),
@@ -511,7 +543,7 @@ def main():
 
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import holdsport
-    hs = holdsport_historik(holdsport.koer(forventede, ROOT), forventede)
+    hs = holdsport_historik(holdsport.koer(forventede, ROOT), forventede, foer, nu)
 
     huller, forsvundne = find_huller(rows, kampe)
     mm = mellemmand()
@@ -562,7 +594,12 @@ def main():
         else:
             print(f"Holdsport-tjek: {hs['fundet']}/{hs['kontrolleret']} tjanser fundet"
                   f" | mangler: {len(hs['mangler'])}"
-                  f" | nye, som Holdsport ikke har hentet endnu: {len(hs.get('venter') or [])}")
+                  f" | nye, som Holdsport ikke har hentet endnu: {len(hs.get('venter') or [])}"
+                  f" | flyttet, venter på Holdsport: {len(hs.get('venter_tid') or [])}"
+                  f" | forkert tidspunkt i Holdsport: {len(hs.get('forkert_tid') or [])}")
+            for r in hs.get("forkert_tid") or []:
+                print(f"  {r['tjans']} {r['kampnr']}: skal stå {r['start']}, står {r['hs_start']}"
+                      f" i Holdsport{' (ekstra kopi)' if r.get('dublet') else ''}")
         print("Dine hold i Holdsport: " + ", ".join(
             f"{h['navn']} (id {h['id']})" for h in hs["alle_hold"]) or "ingen")
     else:
@@ -644,15 +681,18 @@ def _sidste_historik(base, gammel):
     return h
 
 
-def holdsport_historik(hs, forventede, nu=None):
+def holdsport_historik(hs, forventede, foer, nu=None):
     """Sorterer de tjanser, Holdsport-tjekket ikke fandt:
       venter   – ny i kalenderen, Holdsport har ikke nået at hente den (under VENTETID)
       mangler  – har været i Holdsport og er væk nu, eller er ikke kommet inden for VENTETID
+    og dem, der ligger på et andet tidspunkt i Holdsport end i kalenderen:
+      venter_tid  – flyttet for nylig, Holdsport har ikke nået at hente det (under VENTETID)
+      forkert_tid – Holdsport har ikke flyttet tjansen med kampen (eller har en ekstra kopi)
     og finder de aktiviteter, Holdsport har genbrugt til en anden tjans (hs["genbrugt"]) —
-    så følger tilmeldingerne med til den forkerte tjans."""
+    så følger tilmeldingerne med til den forkerte tjans.
+    foer: listen fra sidste kørsel (_sidste_historik) – None, hvis den ikke kunne læses."""
     nu = nu or datetime.now(UTC)
     nu_iso, gammel = nu.isoformat(), (nu - VENTETID).isoformat()
-    foer = _sidste_historik(os.environ.get("BASE_URL", ""), gammel)
     tjekket = hs.get("aktiveret") and not hs.get("fejl")
     fundne = {tjans_noegle(f): f for f in hs.get("fundne") or []} if tjekket else {}
 
@@ -663,14 +703,20 @@ def holdsport_historik(hs, forventede, nu=None):
     for f in forventede:
         n = tjans_noegle(f)
         p = (foer or {}).get(n)
+        start = f["start"][:16].replace("T", " ")
         if foer is None:                          # kunne ikke læse noget: regn den for gammel
-            post = {"set": gammel}
+            post = {"set": gammel, "siden": nu_iso}
         elif isinstance(p, dict):
-            post = {k: p[k] for k in ("set", "fundet", "aktivitet") if p.get(k)}
+            post = {k: p[k] for k in ("set", "fundet", "aktivitet", "siden") if p.get(k)}
             post.setdefault("set", nu_iso)
+            if p.get("start") and p["start"] != start:
+                post["siden"] = nu_iso            # flyttet nu – Holdsport skal nå at hente det
+            else:
+                post.setdefault("siden", post["set"])
         else:
-            post = {"set": nu_iso}
-        post["start"], post["tjans"] = f["start"][:16].replace("T", " "), f["tjans"]
+            post = {"set": nu_iso, "siden": nu_iso}
+        post["start"], post["tjans"] = start, f["tjans"]
+        post["seq"], post["aftryk"] = f.get("seq"), f.get("aftryk")
         if n in fundne:
             post["fundet"] = nu_iso
             post["aktivitet"] = fundne[n].get("aktivitet") or post.get("aktivitet")
@@ -702,10 +748,35 @@ def holdsport_historik(hs, forventede, nu=None):
         else:
             mangler.append(m)
     hs["venter"], hs["mangler"], hs["genbrugt"] = venter, mangler, genbrugt
+
+    # Står tjansen på et andet tidspunkt i Holdsport end i kalenderen? Så har Holdsport ikke
+    # flyttet den med kampen. Holdsport henter kalenderne én gang i døgnet, så en tjans, der
+    # lige er flyttet, får VENTETID til at komme over. Spillede kampe tæller ikke med.
+    i_dag = nu.astimezone(DK).strftime("%Y-%m-%d %H:%M")
+    venter_tid, forkert_tid = [], []
+    for n, f in fundne.items():
+        post = hist.get(n) or {}
+        hs_start = f.get("hs_start") or ""
+        if not hs_start or hs_start == post.get("start") or post.get("start", "") < i_dag:
+            continue
+        r = {"tjans": f["tjans"], "kampnr": f["kampnr"], "holdsport": f.get("holdsport", ""),
+             "navn": f.get("navn", ""), "kamp": f.get("kamp", ""), "start": post["start"],
+             "hs_start": hs_start, "aktivitet": f.get("aktivitet")}
+        (venter_tid if _alder(post.get("siden"), nu) < VENTETID else forkert_tid).append(r)
+    # En ekstra aktivitet med samme kampnummer på det gamle tidspunkt — Holdsport har lavet en
+    # ny i stedet for at flytte den gamle. Den gamle skal slettes, ellers tilmelder folk sig den.
+    for d in hs.get("dubletter") or []:
+        if d.get("start", "") >= i_dag:
+            forkert_tid.append({**d, "dublet": True})
+    forkert_tid.sort(key=lambda r: r["start"])
+    venter_tid.sort(key=lambda r: r["start"])
+    hs["venter_tid"], hs["forkert_tid"] = venter_tid, forkert_tid
+
     for post in hs.get("hold") or []:
         v = sum(1 for m in venter if m["tjans"] == post.get("kode"))
         post["venter"] = v
         post["mangler"] = max(0, (post.get("mangler") or 0) - v)
+        post["forkert_tid"] = sum(1 for r in forkert_tid if r["tjans"] == post.get("kode"))
     return hs
 
 

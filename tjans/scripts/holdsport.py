@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Kontrollerer via Holdsports API, at tjans-aktiviteterne stadig ligger i kalenderen.
+Kontrollerer via Holdsports API, at tjans-aktiviteterne stadig ligger i kalenderen —
+og på det tidspunkt, kalenderen siger (så en tjans, der ikke er flyttet med kampen, ses).
 
 Kører kun hvis HOLDSPORT_USER og HOLDSPORT_PASSWORD er sat som hemmeligheder.
 Er de ikke sat, springes tjekket helt over, og resten af bygningen kører videre.
@@ -10,6 +11,9 @@ API: https://github.com/Holdsport/holdsport-api  (HTTP Basic auth)
 
 import base64, json, os, re, sys, urllib.error, urllib.request
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
+DK = ZoneInfo("Europe/Copenhagen")
 
 API = "https://api.holdsport.dk/v1"
 TIMEOUT = 45
@@ -68,6 +72,17 @@ def _start(a):
         except ValueError:
             continue
     return None
+
+
+def _lokal(a):
+    """Aktivitetens starttid som 'ÅÅÅÅ-MM-DD TT:MM' i dansk tid – samme form som robottens
+    egne tider. Tom, hvis Holdsport ikke har en."""
+    st = _start(a)
+    if not st:
+        return ""
+    if st.tzinfo is None:                 # uden tidszone: Holdsport regner i dansk tid
+        st = st.replace(tzinfo=DK)
+    return st.astimezone(DK).strftime("%Y-%m-%d %H:%M")
 
 
 def _norm(s):
@@ -140,14 +155,15 @@ def _par(forventede_hold, aktiviteter):
         ledige.remove(i)
         fundet[nøgle] = i
 
-    # 1. kampnummer
+    # 1. kampnummer – har Holdsport to med samme nummer (en ny og en gammel kopi), så den,
+    #    der står på det rigtige tidspunkt
     for k, f in enumerate(forventede_hold):
         if k in fundet or not f["kampnr"]:
             continue
-        for i in list(ledige):
-            if _kampnr(aktiviteter[i]) == f["kampnr"]:
-                tag(i, k)
-                break
+        kandidater = [i for i in ledige if _kampnr(aktiviteter[i]) == f["kampnr"]]
+        if kandidater:
+            rigtig = f["start"][:16].replace("T", " ")
+            tag(next((i for i in kandidater if _lokal(aktiviteter[i]) == rigtig), kandidater[0]), k)
 
     # 2. samme navn samme dag
     for k, f in enumerate(forventede_hold):
@@ -181,7 +197,7 @@ def _par(forventede_hold, aktiviteter):
 def tjek(forventede, konfig, bruger, kode):
     """forventede: liste af {tjans, kampnr, navn, start, antal, kamp}"""
     resultat = {"aktiveret": True, "fejl": None, "hold": [], "mangler": [], "fundne": [],
-                "kontrolleret": 0, "fundet": 0, "alle_hold": []}
+                "dubletter": [], "kontrolleret": 0, "fundet": 0, "alle_hold": []}
     try:
         hold = hent_hold(bruger, kode)
     except urllib.error.HTTPError as e:
@@ -228,18 +244,35 @@ def tjek(forventede, konfig, bruger, kode):
             if k in parret:
                 post["fundet"] += 1
                 resultat["fundet"] += 1
+                a = akt[parret[k]]
                 # aktivitetens nummer i Holdsport – så kan build.py se, hvis Holdsport
-                # senere genbruger aktiviteten til en anden tjans
+                # senere genbruger aktiviteten til en anden tjans – og dens tidspunkt, så
+                # build.py kan se, om Holdsport har flyttet tjansen med kampen
                 resultat["fundne"].append({
                     "tjans": kode_hold, "kampnr": f["kampnr"],
                     "start": f["start"][:16].replace("T", " "),
-                    "aktivitet": akt[parret[k]].get("id")})
+                    "aktivitet": a.get("id"), "hs_start": _lokal(a),
+                    "holdsport": h["navn"], "navn": f["navn"], "kamp": f.get("kamp", "")})
             else:
                 post["mangler"] += 1
                 resultat["mangler"].append({
                     "tjans": kode_hold, "holdsport": h["navn"], "kampnr": f["kampnr"],
                     "navn": f["navn"], "kamp": f.get("kamp", ""),
                     "start": f["start"][:16].replace("T", " ")})
+        # En ekstra aktivitet med samme kampnummer som en tjans, der er fundet: Holdsport har
+        # lavet en ny i stedet for at flytte den gamle, og den gamle står tilbage.
+        brugt = set(parret.values())
+        paa_nr = {f["kampnr"]: f for k, f in enumerate(liste) if k in parret and f["kampnr"]}
+        for i, a in enumerate(akt):
+            nr = _kampnr(a)
+            if i in brugt or nr not in paa_nr:
+                continue
+            f = paa_nr[nr]
+            resultat["dubletter"].append({
+                "tjans": kode_hold, "kampnr": nr, "holdsport": h["navn"],
+                "navn": f["navn"], "kamp": f.get("kamp", ""),
+                "start": f["start"][:16].replace("T", " "), "hs_start": _lokal(a),
+                "aktivitet": a.get("id")})
         resultat["hold"].append(post)
 
     resultat["mangler"].sort(key=lambda m: m["start"])

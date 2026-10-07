@@ -5,9 +5,13 @@ officielle kampprogrammer fra `resultater.volleyball.dk`. Kampprogrammerne og
 holdkoderne finder robotten selv hver nat — se *Kampprogrammer og holdkoder*.
 
 En kamp og dens tjans hænger sammen på **kampnummeret**. Flytter turnerings-
-systemet en kamp, flytter tjansen med — først her, og i Holdsport næste gang den henter
-kalenderne (én gang i døgnet). Hjemme- og udehold tages også fra kampprogrammet, så
-titlen passer, selv om tjanselisten har dem omvendt.
+systemet en kamp, flytter tjansen med — først her (ved robottens næste kørsel), og i
+Holdsport næste gang den henter kalenderne (én gang i døgnet). Hjemme- og udehold tages
+også fra kampprogrammet, så titlen passer, selv om tjanselisten har dem omvendt.
+
+Tjansen beholder sit kalender-id (UID), og dens versionsnummer (SEQUENCE) stiger, hver gang
+den ændres, så Holdsport opdaterer den i stedet for at smide flytningen væk som gammel.
+Robotten husker versionsnummeret i `docs/tjans_holdsport.json` på siden.
 
 ## Hvad der bliver bygget
 
@@ -89,6 +93,12 @@ tjanserne ligger i Holdsport. Holdsport henter kalenderne én gang i døgnet, s�
 (eller en tjans, der har skiftet hold) står som *venter* i halvandet døgn, før den tæller som
 slettet og kommer med i issuet. En tjans, der har været i Holdsport og er væk, meldes med det
 samme. Robotten husker det i `docs/tjans_holdsport.json` på siden.
+
+Den tjekker også, at tjansen står på **samme tidspunkt** i Holdsport som i kalenderen. Er en
+kamp flyttet, får Holdsport halvandet døgn til at flytte tjansen med (den står imens som
+*venter* på tjansesiden). Står den stadig på det gamle tidspunkt efter det — eller har
+Holdsport lavet en ny og ladet den gamle stå — kommer den med i issuet under *forkert
+tidspunkt i Holdsport*, så du kan rette den i Holdsport og tjekke de tilmeldte.
 
 Den husker også, hvilken aktivitet i Holdsport hver tjans ligger i. Laver Holdsport en
 eksisterende tjans om til en ny, når den henter kalenderen (det skete med H3 1/11 → 11/10 i

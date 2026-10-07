@@ -13,6 +13,12 @@ def gh(*args, **kw):
     return subprocess.run(["gh", *args], capture_output=True, text=True, **kw)
 
 
+def indhold(tekst):
+    """Issuets tekst uden første linje, så et nyt tidspunkt alene ikke giver en kommentar
+    (og en mail) ved hver kørsel."""
+    return (tekst or "").replace("\r\n", "\n").split("\n", 1)[-1].strip()
+
+
 def main():
     st = json.load(open(os.path.join(ROOT, "docs", "status.json"), encoding="utf-8"))
     huller, forsvundne = st["huller"], st["forsvundne"]
@@ -23,6 +29,7 @@ def main():
     arkfejl = kilde.split(": ", 1)[-1] if "Google-arket kunne ikke læses" in kilde else ""
     konflikter = st.get("konflikter") or []
     genbrugt = hs.get("genbrugt") or []
+    forkert_tid = hs.get("forkert_tid") or []     # Holdsport har ikke flyttet tjansen med kampen
 
     gh("label", "create", LABEL, "--color", "B60205",
        "--description", "Huller i tjansedækningen")
@@ -31,7 +38,7 @@ def main():
                 "--json", "number,body", "--limit", "1")
     aabne = json.loads(fundet.stdout or "[]")
 
-    if not huller and not forsvundne and not slettet and not arkfejl and not konflikter and not genbrugt:
+    if not (huller or forsvundne or slettet or arkfejl or konflikter or genbrugt or forkert_tid):
         if aabne:
             nr = str(aabne[0]["number"])
             gh("issue", "comment", nr, "--body",
@@ -77,6 +84,17 @@ def main():
                 raekke += f" [Ignorér]({side}#ignorer={k['noegle']}) |"
             linjer.append(raekke)
         linjer.append("")
+    if forkert_tid:
+        linjer += [f"## {len(forkert_tid)} tjans(er) står på et forkert tidspunkt i Holdsport", "",
+                   "Kampen er flyttet, men Holdsport har ikke flyttet tjansen med (eller der ligger "
+                   "en ekstra kopi på det gamle tidspunkt). Ret tidspunktet på aktiviteten i "
+                   "Holdsport — eller slet kopien — og tjek, om de tilmeldte stadig kan.", "",
+                   "| Tjans | Aktivitet | Skal stå (mødetid) | Står i Holdsport | Hold i Holdsport |",
+                   "|---|---|---|---|---|"]
+        linjer += [f"| {r['tjans']} | {r['navn']} (kamp {r['kampnr']}) | {r['start']} | "
+                   f"{r['hs_start']}{' – ekstra kopi, slet den' if r.get('dublet') else ''} | "
+                   f"{r['holdsport']} |" for r in forkert_tid]
+        linjer.append("")
     if slettet:
         linjer += [f"## {len(slettet)} tjans(er) er slettet i Holdsport", "",
                    "| Kampnr. | Mødetid | Aktivitet | Tjans | Hold i Holdsport |",
@@ -104,7 +122,8 @@ def main():
 
     if aabne:
         nr = str(aabne[0]["number"])
-        if (aabne[0].get("body") or "").split("Tjekket")[-1] != krop.split("Tjekket")[-1]:
+        # Første linje ("Tjekket <tidspunkt> …") skifter ved hver kørsel – den alene er ingen ændring
+        if indhold(aabne[0].get("body")) != indhold(krop):
             gh("issue", "edit", nr, "--body", krop)
             gh("issue", "comment", nr, "--body", "Status ændret — se opdateret oversigt ovenfor.")
             print(f"Issue #{nr} opdateret")

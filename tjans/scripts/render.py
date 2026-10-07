@@ -69,7 +69,9 @@ def render(status, base_url=""):
     pr_hold = Counter(t["tjans"] for t in status["tjanser"])
     konflikter = status.get("konflikter") or []
     genbrugt = hs.get("genbrugt") or []
-    andre = len(huller) + len(forsv) + len(slettet) + len(genbrugt)
+    forkert_tid = hs.get("forkert_tid") or []      # står på et andet tidspunkt i Holdsport
+    venter_tid = hs.get("venter_tid") or []        # flyttet for nylig, Holdsport har ikke hentet
+    andre = len(huller) + len(forsv) + len(slettet) + len(genbrugt) + len(forkert_tid)
     problemer = andre + len(konflikter)
 
     venter = hs.get("venter") or []
@@ -81,6 +83,9 @@ def render(status, base_url=""):
                     'på, at Holdsport henter kalenderen.')
     else:
         hs_tekst = f', og alle {hs["fundet"]} tjanser ligger i Holdsport.'
+    if venter_tid and hs.get("aktiveret") and not hs.get("fejl"):
+        hs_tekst += (f' {len(venter_tid)} {"tjans er" if len(venter_tid) == 1 else "tjanser er"} '
+                     'flyttet med kampen og venter på, at Holdsport henter det nye tidspunkt.')
     ok_tekst = ('<strong>Alle hjemmekampe er dækket</strong>'
                 f'Alle {status["feed_kampe"]} kampe i kampprogrammet er tjekket mod '
                 'tjanselisten — hver hjemmekamp har et hold på tjans' + hs_tekst)
@@ -94,6 +99,9 @@ def render(status, base_url=""):
     if genbrugt:
         bits.append(f"{len(genbrugt)} tjans{'er' if len(genbrugt)>1 else ''} i Holdsport, der har "
                     "fået en andens tilmeldinger")
+    if forkert_tid:
+        bits.append(f"{len(forkert_tid)} tjans{'er' if len(forkert_tid)>1 else ''} på et forkert "
+                    "tidspunkt i Holdsport")
     andre_bits = " og ".join(bits)
     if konflikter:
         bits.append(f"{len(konflikter)} tjans{'er' if len(konflikter)>1 else ''} oven i holdets egen kamp")
@@ -184,6 +192,8 @@ def render(status, base_url=""):
         for h in hs.get("hold", []):
             status_tekst = (f"{h['fundet']} af {h['forventet']}"
                             + (f" · {h['venter']} venter" if h.get("venter") else "")
+                            + (f" · {h['forkert_tid']} på forkert tidspunkt"
+                               if h.get("forkert_tid") else "")
                             if not h.get("fejl") else E(h["fejl"]))
             hold_rows.append(
                 f"<tr><td><span class='tag'>{E(h['kode'])}</span></td>"
@@ -203,18 +213,40 @@ def render(status, base_url=""):
             "tilmeldt, og om den gamle tjans er kommet igen.</div>"
             + tabel(gb_rows, ["Hold", "Var tjansen", "Er nu tjansen", "Aktivitet i Holdsport"], "")
             if genbrugt else "")
+
+        def tid_tr(r):
+            return (f"<tr><td><span class='tag'>{E(r['tjans'])}</span></td>"
+                    f"<td><span class='muted'>{E(r['hs_start'])}</span> → "
+                    f"<strong>{E(r['start'])}</strong>"
+                    + ("<br><span class='muted'>ekstra kopi på det gamle tidspunkt – slet den"
+                       "</span>" if r.get("dublet") else "")
+                    + f"</td><td>{E(r['navn'])}<br><span class='muted'>kamp {E(r['kampnr'])}"
+                    f"</span></td><td class='muted'>{E(r['holdsport'])}</td></tr>")
+        tid_kol = ["Tjans", "Står i Holdsport → skal stå (mødetid)", "Aktivitet",
+                   "Hold i Holdsport"]
+        tid_afsnit = (
+            "<div class='banner bad'><strong>Holdsport har ikke flyttet tjansen med kampen"
+            "</strong>Kampen er flyttet, men tjansen står stadig på det gamle tidspunkt i "
+            "Holdsport (eller der ligger en ekstra kopi dér). Ret tidspunktet på aktiviteten i "
+            "Holdsport — eller slet kopien — og tjek, om de tilmeldte stadig kan.</div>"
+            + tabel([tid_tr(r) for r in forkert_tid], tid_kol, "")
+            if forkert_tid else "")
         holdsport_afsnit = (
-            "<h2>Kontrol mod Holdsport</h2>" + genbrug_afsnit +
+            "<h2>Kontrol mod Holdsport</h2>" + genbrug_afsnit + tid_afsnit +
             f"<p class='sub'>{hs['fundet']} af {hs['kontrolleret']} tjanser fundet i "
             "Holdsport ved sidste kørsel. Holdsport henter kalenderne én gang i døgnet, så en "
-            "ny tjans får halvandet døgn til at komme over. En tjans, der har været i Holdsport "
-            "og er væk, meldes med det samme.</p>"
+            "ny eller flyttet tjans får halvandet døgn til at komme over. En tjans, der har "
+            "været i Holdsport og er væk, meldes med det samme.</p>"
             + tabel(sl_rows, ["Kampnr.", "Mødetid", "Aktivitet", "Tjans", "Hold i Holdsport"],
                     "Ingen tjanser er blevet slettet — alle ligger som de skal.")
             + ("<p class='sub' style='margin-top:14px'>Nye i kalenderen — venter på, at "
                "Holdsport henter dem:</p>"
                + tabel(ve_rows, ["Kampnr.", "Mødetid", "Aktivitet", "Tjans"], "")
                if venter else "")
+            + ("<p class='sub' style='margin-top:14px'>Flyttet med kampen — venter på, at "
+               "Holdsport henter det nye tidspunkt:</p>"
+               + tabel([tid_tr(r) for r in venter_tid], tid_kol, "")
+               if venter_tid else "")
             + "<h2>Holdopslag</h2>"
             + "<p class='sub'>Sådan er holdene fra tjanselisten koblet til dine hold i "
               "Holdsport. Passer et opslag ikke, så ret navnet eller nummeret i "
