@@ -1,7 +1,7 @@
 name: Opdater tjans-kalendere
 
 on:
-      schedule:
+    schedule:
       - cron: "20 3 * * *"
       - cron: "50 11,19 * * *"
   workflow_dispatch:            # kan altid startes manuelt
