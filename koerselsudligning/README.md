@@ -43,18 +43,20 @@ division, for hver runde i pokalturneringen og for slutspillet i Volleyligaen.
    - regnes, når klubben har hold i slutspillet (eller grundspillet er ved at
      være slut), så siden i efteråret kun viser grundspil og pokal.
 
-   **Talentkampe** (fra 2026/27): VD's regionale talenthold spiller hjemme i
-   Ikast mod 2. divisionsholdene i en ekstra pulje *Talent*, hvor holdene står med
-   "(T)" efter navnet (fx "Aalborg Volleyball.2 (T)").
-   - VD har ikke meldt ud, om eller hvordan de ture indgår i rejseudligningen, så
-     talentpuljen er **ikke med** i rækkens udligning. Ellers bliver (T)-holdene
-     til ekstra hold uden udgift, der trækker gennemsnittet ned og rykker
-     holdkoderne (H2/H3/D3 blev til H4/H5/D4).
-   - turene vises for sig under *Talentkampe* — regnet som en almindelig
-     udekamp i rækken (2 biler fra holdets hjemmebane) og med holdets kode fra
-     grundspillet.
-   - melder VD ud, at de skal med, er det `talentture()` og `er_talentpulje()` i
-     `scripts/beregn.py`, der skal rettes.
+   **Talentkampe** (fra 2026/27): VD's talenthold spiller hjemme i Ikast mod
+   2. divisionsholdene i en ekstra pulje *Talent*, hvor holdene står med "(T)"
+   efter navnet (fx "Aalborg Volleyball.2 (T)").
+   - VD har meldt ud (okt. 2026), at kampene er med i den almindelige
+     kørselsudligning som helt normale kampe. (T)-holdet er klubbens almindelige
+     hold (samme kode), og turen til Ikast er en udekamp mere i rækken: 2 biler
+     fra holdets hjemmebane. Rækkens snit deles af alle rækkens hold — også dem
+     i puljer uden talentkampe.
+   - talentholdet selv har ingen udgifter og er ikke med i rækkens snit. Det har
+     VD ikke sagt noget om. Skal det tælle med (og betale snittet), så sæt
+     `talent` → `talenthold_i_snittet` til `true` i `config.json`.
+   - siden viser klubbens talentkampe for sig under *Talentkampe*.
+   - står et (T)-hold ikke i rækkens andre puljer, kan dets kamp ikke placeres. Den
+     springes over, og siden viser en advarsel.
 
 5. Lægger resultatet på siden og holder ét GitHub-issue pr. sæson opdateret.
    GitHub sender en mail, når en ny sæson er regnet, og når beløbet flytter
@@ -110,5 +112,5 @@ Glemmer du det, bruges sidste års tal, og siden viser en advarsel.
     python koerselsudligning/test/test_beregn.py
 
 kører hele kæden uden netværk på rigtige puljer, adresser og afstande — plus
-pokalrunder (med omkamp og med en pulje uden datoer), et slutspil og kampe med
-resultat i titlen.
+pokalrunder (med omkamp og med en pulje uden datoer), et slutspil, talentkampe og
+kampe med resultat i titlen.

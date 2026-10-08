@@ -22,7 +22,9 @@ import beregn  # noqa: E402
 FX = json.load(open(os.path.join(HER, "fixtures.json"), encoding="utf-8"))
 KLUB = "Aalborg Volleyball"
 # Talentpuljer (fra 2026/27): VD's talenthold spiller hjemme i Ikast mod 2. divisionsholdene, der
-# står med "(T)" efter navnet. De må hverken rykke holdkoderne eller rækkernes udligning.
+# står med "(T)" efter navnet. VD (okt. 2026): kampene er med i den almindelige kørselsudligning som
+# helt normale kampe — (T)-holdet er det almindelige hold (samme kode), og turen til Ikast er en
+# udekamp mere i rækken. Talentholdet selv er ikke med i snittet (kan slås til i config.json).
 # Som i virkeligheden ligger én kamp i "Hyldgårdsskolens Sal", hvor VD har stavet adressen forkert —
 # den skal regnes som Hyldgårdsskolen (samme_sted i config.json).
 FX["steder"]["Hyldgårdsskolens Sal"] = {**FX["steder"]["Hyldgårdsskolens Hal"],
@@ -35,6 +37,10 @@ for _rid, (_pid, _kampe) in TALENT.items():
     FX["saesoner"]["2026/27"]["raekker"][_rid]["puljer"][str(_pid)] = {
         "navn": "Talent", "hold": {"Talenthold": "Hyldgårdsskolens Hal", **{k[0]: None for k in _kampe}},
         "kampe": [("Talenthold", *k) for k in _kampe]}
+# Vendsyssel → Hyldgårdsskolen mangler i fixtures (skøn: fugleflugt 140,8 km × 1,12)
+_a, _h = FX["steder"]["Toftegårdshallen"], FX["steder"]["Hyldgårdsskolens Hal"]
+_ka, _kh = f"{_a['lat']:.5f},{_a['lon']:.5f}", f"{_h['lat']:.5f},{_h['lon']:.5f}"
+FX["afstande"][f"{_ka}|{_kh}"] = FX["afstande"][f"{_kh}|{_ka}"] = 157700.0
 SID = {navn: 5000 + i for i, navn in enumerate(sorted(FX["steder"]))}   # SpillestedsId
 SID_NAVN = {v: k for k, v in SID.items()}
 
@@ -346,6 +352,18 @@ def forventet_pokal(rid=2390):
     return {h: udgift[h] - snit for h in udgift}
 
 
+def talentture(rid):
+    """{hold: tur til Ikast} for talentkampene i en række, regnet uafhængigt: 2 biler fra
+    holdets hjemmebane i rækkens almindelige pulje til Hyldgårdsskolen."""
+    puljer = FX["saesoner"]["2026/27"]["raekker"][rid]["puljer"].values()
+    ture = {}
+    for hold, *_ in TALENT[rid][1]:
+        base = re.sub(r"\s*\(T\)$", "", hold)
+        hjem = next(p["hold"][base] for p in puljer if p["hold"].get(base))
+        ture[base] = ture.get(base, 0) + 2 * 2 * km(hjem, "Hyldgårdsskolens Hal") * 2.28
+    return ture
+
+
 def forventet_slutspil():
     kampe = [k for rid in (2400, 2401) for k in SLUTSPIL[rid]["puljer"][4200 + rid - 2400]["kampe"]]
     udgift, antal = {}, {}
@@ -410,10 +428,20 @@ def main():
     tjek(sorted(koder) == ["D1", "D2", "D3", "H1", "H2", "H3"], f"hold: {sorted(koder)}")
     # H1 er med VD's egne 200 km Aalborg–Årre (km_rettelser i config.json); uden: 10.708
     forventet = {"D1": 19042, "D2": 12820, "D3": 3086, "H1": 10203, "H2": 1786, "H3": 1786}
+    grund_forventet = 48723                    # uden talentkampene
+    # Talentkampene er almindelige udekampe: holdets tur til Ikast lægges oven i, og rækkens snit
+    # stiger med alle talentture delt på rækkens hold (30 herrer, 29 kvinder – uden talentholdet)
+    for kode, rid, hold, n in (("H2", "2372", "Aalborg Volleyball.2", 30),
+                               ("H3", "2372", "Aalborg Volleyball.3", 30),
+                               ("D3", "2374", "Aalborg Volleyball.3", 29)):
+        ture = talentture(rid)
+        forventet[kode] += ture[hold] - sum(ture.values()) / n
+        grund_forventet += ture[hold] - sum(ture.values()) / n
     for k, v in forventet.items():
         tjek(naer(koder.get(k, {}).get("udligning"), v, 1.5),
-             f"{k} {koder.get(k, {}).get('raekke')}: {koder.get(k, {}).get('udligning')} ≈ {v}")
-    tjek(naer(st["grundspil"], 48723, 3), f"grundspil {st['grundspil']} ≈ 48.723")
+             f"{k} {koder.get(k, {}).get('raekke')}: {koder.get(k, {}).get('udligning')} ≈ {v:.2f}")
+    tjek(naer(st["grundspil"], grund_forventet, 3),
+         f"grundspil {st['grundspil']} ≈ {grund_forventet:.2f}")
     aarre = [t for t in koder["H1"]["ture"] if "Årre" in (t.get("adresse") or t.get("sted") or "")
              or "Granly" in (t.get("sted") or "")]
     tjek(len(aarre) == 1 and aarre[0]["km"] == 200,
@@ -479,17 +507,27 @@ def main():
     tjek(sorted(t["kode"] for t in talent) == ["D3", "H2", "H3"],
          f"talentkampe med grundspillets koder: {[(t['kode'], t['hold']) for t in talent]}")
     t2 = next((t for t in talent if t["kode"] == "H2"), {})
-    tjek(t2.get("sted") == "Hyldgårdsskolen" and t2.get("dato") == "18-12-2026" and t2.get("km")
-         and naer(t2.get("beloeb"), 2 * 2 * t2["km"] * 2.28, 0.05),
+    tjek(t2.get("sted") == "Hyldgårdsskolen" and t2.get("dato") == "18-12-2026" and t2.get("km") == 125
+         and naer(t2.get("beloeb"), 2 * 2 * 125 * 2.28, 0.01),
          f"H2's tur til talentholdet: {t2.get('km')} km, {t2.get('beloeb')} kr (2 biler)")
+    tjek(any(t.get("talent") and t["modstander"] == "Talenthold" for t in koder["H2"]["ture"])
+         and koder["H2"]["udekampe"] == 10 and koder["H3"]["udekampe"] == 10
+         and koder["D3"]["udekampe"] == 10,
+         "talentkampen er en udekamp mere for H2, H3 og D3 (10 i alt)")
     r2h = next(r for r in st["raekker"] if r["raekke"] == "2. Division Herrer")
-    tjek("Talent" not in r2h["puljer"] and r2h.get("talent_puljer") == ["Talent"]
-         and r2h["antal_hold"] == 30, f"2. div H: {r2h['antal_hold']} hold i {r2h['puljer']}, "
-         f"talentpuljen {r2h.get('talent_puljer')} er ikke med")
+    tjek("Talent" in r2h["puljer"] and r2h.get("talent_puljer") == ["Talent"]
+         and r2h.get("talenthold") == ["Talenthold"] and r2h["antal_hold"] == 30,
+         f"2. div H: {r2h['antal_hold']} hold, puljer {r2h['puljer']} – talentpuljen er med, "
+         "talentholdet tæller ikke i snittet")
+    vend = next((h for h in r2h["hold"] if h["hold"] == "VK Vendsyssel"), {})
+    tjek(vend.get("udekampe") == 10 and vend.get("pulje") == "Nord",
+         f"også de andre klubbers talentkampe tæller: VK Vendsyssel {vend.get('udekampe')} udekampe")
     tjek(all("(T)" not in h["hold"] and h["hold"] != "Talenthold" for r in st["raekker"] for h in r["hold"]),
-         "ingen talenthold i rækkernes udligning")
-    tjek("<h2>Talentkampe</h2>" in html and "Talent er ikke med" in html,
-         "siden viser talentkampene for sig")
+         "ingen (T)-hold eller talenthold som hold i rækkernes udligning")
+    tjek("<h2>Talentkampe</h2>" in html and "med i tallene ovenfor" in html
+         and "+ kampene i Talent" in html and "Talent er ikke med" not in html
+         and "Talentholdet har ingen udgifter og er ikke regnet med i rækkens snit" in html,
+         "siden viser, at talentkampene er med")
     t3 = next((t for t in talent if t["kode"] == "H3"), {})
     tjek(t2.get("sted") == t3.get("sted") == "Hyldgårdsskolen" and t2.get("km") == t3.get("km"),
          f"Salen med forkert adresse og Hallen er begge Hyldgårdsskolen: {t2.get('sted')} "
@@ -596,6 +634,47 @@ def main():
             for l in k["linjer"] if l["noegle"] == "Volleyligaen Kvinder|Aalborg Volleyball"]
     tjek(tidl and naer(tidl[0]["model"], kal["2025/26"]["Volleyligaen Kvinder|Aalborg Volleyball"]["model"], 0.01),
          "reglen gælder fra 1/7 2026 — kontrollen af 2025/26 er uændret")
+
+    print("10) Talentholdet tæller med i rækkens snit (config.json → talent)")
+    kfg10 = json.loads(json.dumps(kfg))
+    kfg10["talent"] = {"talenthold_i_snittet": True}
+    json.dump(kfg10, open(os.path.join(rod, "config.json"), "w", encoding="utf-8"),
+              ensure_ascii=False)
+    st10 = koer(rod, ud, cache, nu="2026-09-22")
+    k10 = {h["kode"]: h for h in st10["klubhold"]}
+    for r in st10["raekker"]:
+        tjek(abs(sum(h["udligning"] for h in r["hold"])) < 0.5, f"{r['raekke']}: stadig nulsum")
+    for navn_, n_, koder_ in (("2. Division Herrer", 31, ("H2", "H3")), ("2. Division Kvinder", 30, ("D3",))):
+        r10 = next(r for r in st10["raekker"] if r["raekke"] == navn_)
+        r1 = next(r for r in st["raekker"] if r["raekke"] == navn_)
+        th = next((h for h in r10["hold"] if h["hold"] == "Talenthold"), {})
+        tjek(r10["antal_hold"] == n_ and th.get("udgift") == 0 and th.get("pulje") == "Talent"
+             and naer(th.get("udligning"), -r10["gennemsnit"], 0.01),
+             f"{navn_}: {r10['antal_hold']} hold, talentholdet betaler snittet "
+             f"({th.get('udligning')} kr)")
+        for kode in koder_:
+            tjek(naer(k10[kode]["udligning"],
+                      koder[kode]["udligning"] + r1["gennemsnit"] - r10["gennemsnit"], 0.02),
+                 f"{kode}: {k10[kode]['udligning']} = {koder[kode]['udligning']} + lavere snit "
+                 f"({r1['gennemsnit']} → {r10['gennemsnit']})")
+    html10 = open(os.path.join(ud, "index.html"), encoding="utf-8").read()
+    tjek("Talentholdet tæller med som et hold i rækkens snit" in html10, "siden siger det")
+
+    print("11) Et (T)-hold, der ikke spiller i rækkens andre puljer, kan ikke placeres")
+    p4303 = FX["saesoner"]["2026/27"]["raekker"]["2372"]["puljer"]["4303"]
+    p4303["kampe"].append(("Talenthold", "Ukendt VK (T)", "2027-02-01"))
+    p4303["hold"]["Ukendt VK (T)"] = None
+    json.dump(kfg, open(os.path.join(rod, "config.json"), "w", encoding="utf-8"),
+              ensure_ascii=False)
+    st11 = koer(rod, ud, cache, nu="2026-09-22")
+    r11 = next(r for r in st11["raekker"] if r["raekke"] == "2. Division Herrer")
+    tjek(any("Ukendt VK (T)" in a and "ikke regnet med" in a for a in st11["advarsler"]),
+         f"advarsel: {[a for a in st11['advarsler'] if 'Ukendt' in a]}")
+    tjek(r11["antal_hold"] == 30 and naer(r11["gennemsnit"], r2h["gennemsnit"], 0.01)
+         and not any(h["hold"].startswith("Ukendt") for h in r11["hold"]),
+         "kampen er ikke med, og rækken er som før")
+    p4303["kampe"].pop()
+    del p4303["hold"]["Ukendt VK (T)"]
 
     shutil.rmtree(tmp)
     print("\nALT OK" if not fejl else f"\n{len(fejl)} FEJL")

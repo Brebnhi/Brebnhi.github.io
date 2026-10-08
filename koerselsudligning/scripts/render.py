@@ -146,8 +146,11 @@ def render(st):
     def tag(h):
         return f'<span class="tag">{E(h["kode"])}</span> ' if h.get("kode") else ""
 
-    # Talentkampe: VD's talenthold mod 2. divisionsholdene – ikke med i udligningen
+    # Talentkampe: VD's talenthold mod 2. divisionsholdene – med i udligningen som almindelige
+    # udekampe (VD, okt. 2026)
     talent = st.get("talent") or []
+    talent_rk = [r for r in st.get("raekker") or [] if r.get("talent_puljer")]
+    med_th = any(r.get("talenthold_i_snittet") for r in talent_rk)
     talent_rows = [
         f'<tr><td>{tag(t)}{E(t["hold"])}</td><td class="d">{E(t["dato"]) or "uden dato"}</td>'
         f'<td>{E(t["modstander"])}</td><td class="lav">{E(t["sted"])}</td>'
@@ -156,11 +159,13 @@ def render(st):
         for t in talent]
     talent_html = (
         "<h2>Talentkampe</h2>"
-        "<p class='sub' style='margin-bottom:12px'>VD's talenthold spiller hjemme mod "
+        "<p class='sub' style='margin-bottom:12px'>VD's talenthold spiller hjemme i Ikast mod "
         "2. divisionsholdene i puljen <i>Talent</i>, hvor holdene står med (T) efter navnet. VD "
-        "har ikke meldt ud, om eller hvordan de ture indgår i kørselsudligningen, så de er "
-        "<b>ikke med</b> i tallene ovenfor. Turen er regnet som en almindelig udekamp i rækken "
-        "— til orientering.</p>"
+        "har meldt ud, at kampene er med i den almindelige kørselsudligning som helt normale "
+        "kampe: turen er en udekamp for holdet og er <b>med i tallene ovenfor</b>. "
+        + ("Talentholdet tæller med som et hold i rækkens snit." if med_th else
+           "Talentholdet har ingen udgifter og er ikke regnet med i rækkens snit.")
+        + "</p>"
         + tabel(["Hold", "Dato", "Hos", "~Spillested", "#Km (enkelt)", "#Beløb"], talent_rows)
         if talent else "")
 
@@ -288,12 +293,12 @@ def render(st):
             f'<td class="n lav">{h["bro"]}</td><td class="n">{kr(h["udgift"], False)}</td>'
             f'<td class="n {klasse(h["udligning"])}">{kr(h["udligning"])}</td></tr>'
             for h in r["hold"]]
+        tp = r.get("talent_puljer") or []
         raekke_html.append(
             f'<details><summary>{E(r["raekke"])} <span class="meta">— {r["antal_hold"]} hold i '
-            f'{E(", ".join(r["puljer"]))} · gennemsnit {kr(r["gennemsnit"], False)} kr · '
-            f'{r["biler"]} biler'
-            + (f' · {E(", ".join(r["talent_puljer"]))} er ikke med' if r.get("talent_puljer") else "")
-            + '</span></summary>'
+            f'{E(", ".join(p for p in r["puljer"] if p not in tp))}'
+            + (f' + kampene i {E(", ".join(tp))}' if tp else "")
+            + f' · gennemsnit {kr(r["gennemsnit"], False)} kr · {r["biler"]} biler</span></summary>'
             + tabel(["Hold", "Pulje", "~#Udekampe", "~#Km i alt", "~#Broture", "#Udgift", "#Udligning"],
                     rows) + "</details>")
 
@@ -361,8 +366,12 @@ def render(st):
         "hold bærer halvdelen af gennemsnitsprisen pr. kamp, det har spillet, og får sine "
         "egne udeture dækket. Afregnes efter sæsonen.</p>"
         "<p><b>Talentkampe</b> (fra 2026/27): kampene mod VD's talenthold i puljen Talent er "
-        "ikke med i rækkens udligning, før VD har meldt ud, hvordan de afregnes. Holdene står "
-        "med (T) efter navnet og har samme kode som i grundspillet.</p>"
+        "med i rækkens udligning som almindelige udekampe — det har VD meldt ud. Holdene står "
+        "med (T) efter navnet, men er klubbens almindelige hold med samme kode. "
+        + ("Talentholdet tæller med som et hold i rækkens snit." if med_th else
+           "Talentholdet har ingen udgifter og er ikke med i rækkens snit — det har VD ikke "
+           "sagt noget om.")
+        + "</p>"
         "<p>Plus betyder kreditnota til klubben, minus betyder faktura.</p>"
         "<p class='muted'>Hold, runder og kampe hentes hver nat fra resultater.volleyball.dk "
         "(foreningssider → rækker → puljernes kampprogram). Adresser og vejafstande slås op i "

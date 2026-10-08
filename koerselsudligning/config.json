@@ -121,6 +121,10 @@
       }
     }
   ],
+  "talent": {
+    "_om": "Talentkampe i 2. division (puljen Talent, holdene står med (T) efter navnet). VD har meldt ud (okt. 2026), at de er med i den almindelige kørselsudligning som helt normale kampe: turen til talentholdet er en udekamp for klubbens almindelige hold. talenthold_i_snittet: true, hvis talentholdet selv skal tælle som et hold i rækkens snit (så betaler det snittet, da det ikke har udgifter). Det har VD ikke sagt, så false.",
+    "talenthold_i_snittet": false
+  },
   "hold_koder": {
     "_om": "Valgfrit, fx \"1. Division Kvinder|Aalborg Volleyball.2\": \"D2\". Står der intet, gættes koden: D1/H1 er holdet i den bedste række."
   },
