@@ -71,7 +71,9 @@ def render(status, base_url=""):
     genbrugt = hs.get("genbrugt") or []
     forkert_tid = hs.get("forkert_tid") or []      # står på et andet tidspunkt i Holdsport
     venter_tid = hs.get("venter_tid") or []        # flyttet for nylig, Holdsport har ikke hentet
-    andre = len(huller) + len(forsv) + len(slettet) + len(genbrugt) + len(forkert_tid)
+    dobbelt = status.get("dobbelt_tjans") or []    # samme hold, to tjanser på samme tid
+    andre = (len(huller) + len(forsv) + len(slettet) + len(genbrugt) + len(forkert_tid)
+             + len(dobbelt))
     problemer = andre + len(konflikter)
 
     venter = hs.get("venter") or []
@@ -102,6 +104,9 @@ def render(status, base_url=""):
     if forkert_tid:
         bits.append(f"{len(forkert_tid)} tjans{'er' if len(forkert_tid)>1 else ''} på et forkert "
                     "tidspunkt i Holdsport")
+    if dobbelt:
+        bits.append(f"{len(dobbelt)} gang{'e' if len(dobbelt)>1 else ''}, hvor et hold har to "
+                    "tjanser på samme tid")
     andre_bits = " og ".join(bits)
     if konflikter:
         bits.append(f"{len(konflikter)} tjans{'er' if len(konflikter)>1 else ''} oven i holdets egen kamp")
@@ -128,6 +133,14 @@ def render(status, base_url=""):
     fo_rows = [f"<tr><td><code>{E(f['kampnr'])}</code></td><td>{E(f['dato'])}</td>"
                f"<td>{E(f['kamp'])}</td><td><span class='tag'>{E(f['tjans'])}</span></td></tr>"
                for f in forsv]
+    db_rows = [f"<tr><td>{E(d['dato'])}</td><td><span class='tag'>{E(d['hold'])}</span></td>"
+               f"<td>{E(d['tjans1'])}<br>{E(d['tjans2'])}</td></tr>" for d in dobbelt]
+    dobbelt_afsnit = (
+        "<h2>Hold med to tjanser på samme tid</h2>"
+        "<div class='banner bad'><strong>Giv den ene tjans til et andet hold</strong>Holdet kan "
+        "ikke tage begge. Og står to tjanser på samme tidspunkt i holdets kalender, laver "
+        "Holdsport dem til én aktivitet, så den ene tjans forsvinder.</div>"
+        + tabel(db_rows, ["Dato", "Hold", "Tjanser på samme tid"], "")) if dobbelt else ""
     fl_rows = [f"<tr><td><code>{E(f['kampnr'])}</code></td><td>{E(f['dato'])} {E(f['tid'])}</td>"
                f"<td>{E(f['kampstart'][:16].replace('T',' '))}</td>"
                f"<td><span class='tag'>{E(f['tjans'])}</span></td>"
@@ -210,7 +223,8 @@ def render(status, base_url=""):
             "<div class='banner bad'><strong>Holdsport har genbrugt en tjans</strong>"
             "Holdsport har lavet en eksisterende tjans om til en ny, da den hentede kalenderen. "
             "Tilmeldingerne fulgte med, så de står nu på den forkerte dag. Tjek, hvem der er "
-            "tilmeldt, og om den gamle tjans er kommet igen.</div>"
+            "tilmeldt, og om den gamle tjans er kommet igen. Advarslen forsvinder af sig selv, "
+            "når begge tjanser ligger i Holdsport på det rigtige tidspunkt.</div>"
             + tabel(gb_rows, ["Hold", "Var tjansen", "Er nu tjansen", "Aktivitet i Holdsport"], "")
             if genbrugt else "")
 
@@ -218,17 +232,18 @@ def render(status, base_url=""):
             return (f"<tr><td><span class='tag'>{E(r['tjans'])}</span></td>"
                     f"<td><span class='muted'>{E(r['hs_start'])}</span> → "
                     f"<strong>{E(r['start'])}</strong>"
-                    + ("<br><span class='muted'>ekstra kopi på det gamle tidspunkt – slet den"
-                       "</span>" if r.get("dublet") else "")
+                    + (("<br><span class='muted'>"
+                        + ("ekstra kopi, du selv har oprettet" if r.get("egen") else "ekstra kopi")
+                        + " – slet den</span>") if r.get("dublet") else "")
                     + f"</td><td>{E(r['navn'])}<br><span class='muted'>kamp {E(r['kampnr'])}"
                     f"</span></td><td class='muted'>{E(r['holdsport'])}</td></tr>")
         tid_kol = ["Tjans", "Står i Holdsport → skal stå (mødetid)", "Aktivitet",
                    "Hold i Holdsport"]
         tid_afsnit = (
-            "<div class='banner bad'><strong>Holdsport har ikke flyttet tjansen med kampen"
-            "</strong>Kampen er flyttet, men tjansen står stadig på det gamle tidspunkt i "
-            "Holdsport (eller der ligger en ekstra kopi dér). Ret tidspunktet på aktiviteten i "
-            "Holdsport — eller slet kopien — og tjek, om de tilmeldte stadig kan.</div>"
+            "<div class='banner bad'><strong>Tjansen står forkert i Holdsport</strong>"
+            "Tjansen står på et andet tidspunkt i Holdsport end kampen, eller der ligger en "
+            "ekstra kopi. Ret tidspunktet på aktiviteten i Holdsport — eller slet kopien — og "
+            "tjek, om de tilmeldte stadig kan.</div>"
             + tabel([tid_tr(r) for r in forkert_tid], tid_kol, "")
             if forkert_tid else "")
         holdsport_afsnit = (
@@ -453,6 +468,8 @@ tjanseliste: {"Google-arket" if tjanskilde == "Google Sheet" else "data/tjanser.
 <h2>Tjanser hvor kampen ikke længere findes i kampprogrammet</h2>
 {tabel(fo_rows, ["Kampnr.", "Dato i ark", "Kamp", "Tjans"],
        "Ingen — alle tjanser peger på en kamp der stadig findes.")}
+
+{dobbelt_afsnit}
 
 {egen_afsnit}
 

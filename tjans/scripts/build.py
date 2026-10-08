@@ -512,7 +512,7 @@ def main():
         forv = {"tjans": row["tjans"], "kampnr": row["kampnr"],
                 "navn": summary, "start": start.astimezone(DK).isoformat(),
                 "antal": antal, "kamp": f"{hjemme or klub} - {ude}",
-                "aftryk": aftryk(ev),
+                "aftryk": aftryk(ev), "slut": end.astimezone(DK).isoformat(),
                 # mødetiden efter tjanselisten – den, Holdsport fik, før kampen blev flyttet
                 "ark": (row["ark_start"] - timedelta(minutes=lead)).astimezone(DK)
                        .strftime("%Y-%m-%d %H:%M")}
@@ -550,6 +550,7 @@ def main():
     hs = holdsport_historik(holdsport.koer(forventede, ROOT), forventede, foer, nu)
 
     huller, forsvundne = find_huller(rows, kampe)
+    dobbelt = dobbelt_tjans(forventede)
     mm = mellemmand()
     ignoreres, ign_fejl = ignorerede(mm)
     egne = egen_kamp(rows, kampe, ignoreres)
@@ -572,6 +573,7 @@ def main():
         "tjanser": rapport,
         "huller": huller,
         "forsvundne": forsvundne,
+        "dobbelt_tjans": dobbelt,                # samme hold, to tjanser på samme tid
         "flyttede": [r for r in rapport if r.get("flyttet")],
         "egen_kamp": egne,                       # tjanser på dage hvor holdet selv spiller
         "mellemmand": mm,                        # Ignorér-knappen (tom = ingen knap)
@@ -591,7 +593,8 @@ def main():
     print(f"{len(feeds)} feeds, {sum(f['kampe'] for f in feeds)} tjanser")
     print(f"{len(kampe)} kampe fra feeds ({raa} rå events)")
     print(f"huller: {len(huller)} | forsvundne: {len(forsvundne)} | flyttede: {len(status['flyttede'])}"
-          f" | tjans oven i egen kamp: {len(status['konflikter'])}")
+          f" | tjans oven i egen kamp: {len(status['konflikter'])}"
+          f" | to tjanser på samme tid: {len(dobbelt)}")
     if hs["aktiveret"]:
         if hs["fejl"]:
             print(f"Holdsport-tjek: {hs['fejl']}", file=sys.stderr)
@@ -603,7 +606,7 @@ def main():
                   f" | forkert tidspunkt i Holdsport: {len(hs.get('forkert_tid') or [])}")
             for r in hs.get("forkert_tid") or []:
                 print(f"  {r['tjans']} {r['kampnr']}: skal stå {r['start']}, står {r['hs_start']}"
-                      f" i Holdsport{' (ekstra kopi)' if r.get('dublet') else ''}")
+                      f" i Holdsport{kopi_tekst(r, ' – ')}")
         print("Dine hold i Holdsport: " + ", ".join(
             f"{h['navn']} (id {h['id']})" for h in hs["alle_hold"]) or "ingen")
     else:
@@ -738,6 +741,11 @@ def holdsport_historik(hs, forventede, foer, nu=None):
             genbrugt.append({"aktivitet": f["aktivitet"], "tid": nu_iso,
                              "foer": gl[0], "foer_start": gl[1].get("start", ""),
                              "nu": n, "nu_start": hist[n]["start"], "tjans": hist[n]["tjans"]})
+    # Advarslen er klaret, når både den gamle og den nye tjans ligger i Holdsport på det rigtige
+    # tidspunkt — fx når du selv har rettet aktiviteten og oprettet den anden tjans igen.
+    if tjekket:
+        paa_plads = {n for n, f in fundne.items() if f.get("hs_start") == hist[n]["start"]}
+        genbrugt = [g for g in genbrugt if not (g["foer"] in paa_plads and g["nu"] in paa_plads)]
     hist["_genbrugt"] = genbrugt
 
     # Står tjansen på et andet tidspunkt i Holdsport end i kalenderen? Står Holdsport på et
@@ -931,6 +939,45 @@ def find_huller(rows, kampe):
                   for r in rows if r["kampnr"] and r["kampnr"] not in kampe
                   and r["ark_start"] >= i_dag]
     return huller, forsvundne
+
+
+def dobbelt_tjans(forventede):
+    """Kommende tjanser, hvor samme hold har to tjanser, der overlapper i tid. Holdet kan ikke
+    tage begge — og står to tjanser på samme tidspunkt i holdets kalender, laver Holdsport dem
+    til én aktivitet, der hører til den ene. Sådan mistede H3 sin tjans 1/11 i 2026: pokaltjansen
+    stod en overgang samme tidspunkt, og aktiviteten blev pokaltjansens."""
+    i_dag = datetime.now(DK).replace(hour=0, minute=0, second=0, microsecond=0)
+    pr_hold = {}
+    for f in forventede:
+        st, sl = datetime.fromisoformat(f["start"]), datetime.fromisoformat(f["slut"])
+        if st >= i_dag:
+            pr_hold.setdefault(f["tjans"], []).append((st, sl, f))
+
+    def beskriv(st, f):
+        return f"kl. {st:%H:%M} {f['kamp']}" + (f" (kamp {f['kampnr']})" if f["kampnr"] else "")
+
+    ud = []
+    for hold, liste in sorted(pr_hold.items()):
+        liste.sort(key=lambda x: x[0])
+        for i, (st1, sl1, f1) in enumerate(liste):
+            for st2, sl2, f2 in liste[i + 1:]:
+                if st2 >= sl1:                   # sorteret efter start: resten ligger senere
+                    break
+                ud.append({"hold": hold, "dato": st1.strftime("%d-%m-%Y"), "_t": st1,
+                           "samme_tid": st1 == st2,
+                           "tjans1": beskriv(st1, f1), "tjans2": beskriv(st2, f2)})
+    ud.sort(key=lambda e: (e["_t"], e["hold"]))
+    for e in ud:
+        del e["_t"]
+    return ud
+
+
+def kopi_tekst(r, foer=""):
+    """Tekst til en ekstra aktivitet med samme kampnummer (r["dublet"]): hvilken der skal væk."""
+    if not r.get("dublet"):
+        return ""
+    return foer + ("ekstra kopi, du selv har oprettet – slet den" if r.get("egen")
+                   else "ekstra kopi – slet den")
 
 
 if __name__ == "__main__":

@@ -140,6 +140,13 @@ def _kampnr(akt):
     return m.group(1) if m else ""
 
 
+def fra_kalender(akt):
+    """Har Holdsport selv lavet aktiviteten ud fra robottens kalender? Så står robottens
+    beskrivelse ("Der skal stilles 4 personer …") i kommentaren. En aktivitet, du selv har
+    oprettet, har din egen kommentar. Holdsport opdaterer kun dem, den selv har lavet."""
+    return "der skal stilles" in (akt.get("comment") or "").lower()
+
+
 def _par(forventede_hold, aktiviteter):
     """Parrer forventede tjanser med Holdsport-aktiviteter, én til én.
 
@@ -155,15 +162,17 @@ def _par(forventede_hold, aktiviteter):
         ledige.remove(i)
         fundet[nøgle] = i
 
-    # 1. kampnummer – har Holdsport to med samme nummer (en ny og en gammel kopi), så den,
-    #    der står på det rigtige tidspunkt
+    # 1. kampnummer – har Holdsport flere med samme nummer (en ny og en gammel kopi, eller en,
+    #    du selv har oprettet), så helst den, der står rigtigt og er lavet ud fra kalenderen –
+    #    den holder Holdsport opdateret. De andre bliver meldt som kopier.
     for k, f in enumerate(forventede_hold):
         if k in fundet or not f["kampnr"]:
             continue
         kandidater = [i for i in ledige if _kampnr(aktiviteter[i]) == f["kampnr"]]
         if kandidater:
             rigtig = f["start"][:16].replace("T", " ")
-            tag(next((i for i in kandidater if _lokal(aktiviteter[i]) == rigtig), kandidater[0]), k)
+            tag(min(kandidater, key=lambda i: (_lokal(aktiviteter[i]) != rigtig,
+                                               not fra_kalender(aktiviteter[i]))), k)
 
     # 2. samme navn samme dag
     for k, f in enumerate(forventede_hold):
@@ -272,7 +281,8 @@ def tjek(forventede, konfig, bruger, kode):
                 "tjans": kode_hold, "kampnr": nr, "holdsport": h["navn"],
                 "navn": f["navn"], "kamp": f.get("kamp", ""),
                 "start": f["start"][:16].replace("T", " "), "hs_start": _lokal(a),
-                "aktivitet": a.get("id")})
+                "aktivitet": a.get("id"),
+                "egen": not fra_kalender(a)})        # oprettet i hånden, ikke af Holdsport
         resultat["hold"].append(post)
 
     resultat["mangler"].sort(key=lambda m: m["start"])

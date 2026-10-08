@@ -13,6 +13,26 @@ Tjansen beholder sit kalender-id (UID), og dens versionsnummer (SEQUENCE) stiger
 den ændres, så Holdsport opdaterer den i stedet for at smide flytningen væk som gammel.
 Robotten husker versionsnummeret i `docs/tjans_holdsport.json` på siden.
 
+## Sådan bruger Holdsport kalenderne
+
+Robotten retter aldrig selv i Holdsport — den læser kun. Det er Holdsport, der henter
+kalenderne én gang i døgnet og retter aktiviteterne efter dem. Det har vi set (okt. 2026):
+
+- **Hver aktivitet, Holdsport har lavet fra en kalender, hører til én tjans** (kalender-id).
+  Når tjansens versionsnummer stiger, skriver Holdsport tjansens tidspunkt, navn og kommentar
+  ind i aktiviteten — også oven i det, du selv har rettet. Ret derfor ikke en sådan aktivitet
+  om til en anden tjans; ret i tjanselisten, eller opret en ny aktivitet i hånden.
+- **Ændringer med et lavere versionsnummer springer Holdsport over.** Indtil 7/10 2026 kunne
+  nummeret falde, når en kamp blev flyttet, og så blev tjansen stående (fx D1 – DHV Odense på
+  17/10 og H3's pokaltjans på 1/11). Nu stiger det altid.
+- **To tjanser på samme tidspunkt i et holds kalender bliver til én aktivitet**, der hører til
+  den ene. Sådan mistede H3 sin tjans 1/11: pokaltjansen stod en overgang samme tidspunkt.
+  Robotten melder det nu, hvis et hold får to tjanser på samme tid.
+- **Holdsport har ikke selv oprettet tjanser, der kom til efter importen.** Robotten melder
+  dem som manglende efter halvandet døgn. Opret dem i hånden, og skriv `Kampnr. <nummer>` i
+  kommentaren, så robotten kan finde dem. En aktivitet, du selv har oprettet, rører Holdsport
+  aldrig — flyttes kampen, melder robotten det, og du flytter den i hånden.
+
 ## Hvad der bliver bygget
 
 | Fil | Indhold |
@@ -104,7 +124,9 @@ den i Holdsport og tjekke de tilmeldte.
 Den husker også, hvilken aktivitet i Holdsport hver tjans ligger i. Laver Holdsport en
 eksisterende tjans om til en ny, når den henter kalenderen (det skete med H3 1/11 → 11/10 i
 oktober 2026), følger tilmeldingerne med til den forkerte dag. Det står så øverst under
-*Kontrol mod Holdsport* og i issuet i tre døgn: tjek, hvem der er tilmeldt.
+*Kontrol mod Holdsport* og i issuet: tjek, hvem der er tilmeldt. Advarslen forsvinder ved
+næste kørsel, når begge tjanser ligger i Holdsport på det rigtige tidspunkt — og ellers
+efter tre døgn.
 
 Pokal-, slutspils- og kvalifikationskampe tæller med for tjanseholdene (D1–D3, H1–H3),
 så en ny hjemmekamp i pokalen eller slutspillet dukker op, indtil den står i tjanselisten.

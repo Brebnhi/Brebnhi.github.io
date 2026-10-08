@@ -30,6 +30,7 @@ def main():
     konflikter = st.get("konflikter") or []
     genbrugt = hs.get("genbrugt") or []
     forkert_tid = hs.get("forkert_tid") or []     # Holdsport har ikke flyttet tjansen med kampen
+    dobbelt = st.get("dobbelt_tjans") or []       # samme hold, to tjanser på samme tid
 
     gh("label", "create", LABEL, "--color", "B60205",
        "--description", "Huller i tjansedækningen")
@@ -38,7 +39,8 @@ def main():
                 "--json", "number,body", "--limit", "1")
     aabne = json.loads(fundet.stdout or "[]")
 
-    if not (huller or forsvundne or slettet or arkfejl or konflikter or genbrugt or forkert_tid):
+    if not (huller or forsvundne or slettet or arkfejl or konflikter or genbrugt or forkert_tid
+            or dobbelt):
         if aabne:
             nr = str(aabne[0]["number"])
             gh("issue", "comment", nr, "--body",
@@ -68,6 +70,14 @@ def main():
         linjer += [f"| {f['kampnr']} | {f['dato']} | {f['kamp']} | {f['tjans']} |"
                    for f in forsvundne]
         linjer.append("")
+    if dobbelt:
+        linjer += [f"## {len(dobbelt)} gang(e) har et hold to tjanser på samme tid", "",
+                   "Holdet kan ikke tage begge. Og står to tjanser på samme tidspunkt i holdets "
+                   "kalender, laver Holdsport dem til én aktivitet, så den ene tjans forsvinder. "
+                   "Giv den ene tjans til et andet hold i tjanselisten.", "",
+                   "| Dato | Hold | Tjans | Samtidig med |", "|---|---|---|---|"]
+        linjer += [f"| {d['dato']} | {d['hold']} | {d['tjans1']} | {d['tjans2']} |" for d in dobbelt]
+        linjer.append("")
     if konflikter:
         mm = st.get("mellemmand")
         linjer += [f"## {len(konflikter)} tjans(er) oven i holdets egen kamp", "",
@@ -85,15 +95,19 @@ def main():
             linjer.append(raekke)
         linjer.append("")
     if forkert_tid:
-        linjer += [f"## {len(forkert_tid)} tjans(er) står på et forkert tidspunkt i Holdsport", "",
-                   "Kampen er flyttet, men Holdsport har ikke flyttet tjansen med (eller der ligger "
-                   "en ekstra kopi på det gamle tidspunkt). Ret tidspunktet på aktiviteten i "
-                   "Holdsport — eller slet kopien — og tjek, om de tilmeldte stadig kan.", "",
+        linjer += [f"## {len(forkert_tid)} tjans(er) står forkert i Holdsport", "",
+                   "Tjansen står på et andet tidspunkt i Holdsport end kampen, eller der ligger en "
+                   "ekstra kopi. Ret tidspunktet på aktiviteten i Holdsport — eller slet kopien — "
+                   "og tjek, om de tilmeldte stadig kan.", "",
                    "| Tjans | Aktivitet | Skal stå (mødetid) | Står i Holdsport | Hold i Holdsport |",
                    "|---|---|---|---|---|"]
+        def kopi(r):
+            if not r.get("dublet"):
+                return ""
+            return (" – ekstra kopi, du selv har oprettet – slet den" if r.get("egen")
+                    else " – ekstra kopi, slet den")
         linjer += [f"| {r['tjans']} | {r['navn']} (kamp {r['kampnr']}) | {r['start']} | "
-                   f"{r['hs_start']}{' – ekstra kopi, slet den' if r.get('dublet') else ''} | "
-                   f"{r['holdsport']} |" for r in forkert_tid]
+                   f"{r['hs_start']}{kopi(r)} | {r['holdsport']} |" for r in forkert_tid]
         linjer.append("")
     if slettet:
         linjer += [f"## {len(slettet)} tjans(er) er slettet i Holdsport", "",
