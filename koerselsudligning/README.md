@@ -12,7 +12,9 @@ division, for hver runde i pokalturneringen og for slutspillet i Volleyligaen.
    (`forening_id` i `config.json`). Det sker af sig selv hver sæson — også når
    en ny pokalrunde er trukket, eller slutspillet er lagt ud.
 2. Henter alle puljer i de rækker, klubben spiller i, og puljernes kampprogram.
-3. Slår spillestedernes adresser op i DAWA og vejafstande i OpenStreetMap (OSRM).
+3. Slår spillestedernes adresser og vejafstande op i OpenStreetMap (Nominatim og OSRM).
+   DAWA, som blev brugt før, lukkede 1. oktober 2026. Spillesteder, der er det samme sted
+   (fx Hyldgårdsskolens haller i Ikast), står under `samme_sted` i `config.json`.
 4. Regner de tre slags udligning (plus = kreditnota til klubben, minus = faktura):
 
    **Grundspil** (Økonomiske retningslinjer § 2) — som VD's eget regneark:

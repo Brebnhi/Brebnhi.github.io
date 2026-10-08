@@ -2,7 +2,7 @@
 # sti: koerselsudligning/test/test_beregn.py
 """Offline-test af hele kæden uden netværk.
 
-fixtures.json indeholder rigtige puljer, spillesteder (DAWA-koordinater) og
+fixtures.json indeholder rigtige puljer, spillesteder (koordinater) og
 vejafstande (OSRM) for 2024/25, 2025/26 og 2026/27. Testen bygger sider og
 kalenderfeeds i volleyball.dk's format ud fra dem (plus pokalrunder og et
 slutspil), kører beregn.py mod en falsk `hent` og tjekker resultatet mod
@@ -23,13 +23,18 @@ FX = json.load(open(os.path.join(HER, "fixtures.json"), encoding="utf-8"))
 KLUB = "Aalborg Volleyball"
 # Talentpuljer (fra 2026/27): VD's talenthold spiller hjemme i Ikast mod 2. divisionsholdene, der
 # står med "(T)" efter navnet. De må hverken rykke holdkoderne eller rækkernes udligning.
-TALENT = {"2372": (4303, [("Aalborg Volleyball.2 (T)", "2026-12-18"), ("VK Vendsyssel (T)", "2027-01-17"),
+# Som i virkeligheden ligger én kamp i "Hyldgårdsskolens Sal", hvor VD har stavet adressen forkert —
+# den skal regnes som Hyldgårdsskolen (samme_sted i config.json).
+FX["steder"]["Hyldgårdsskolens Sal"] = {**FX["steder"]["Hyldgårdsskolens Hal"],
+                                       "adr": "Hyldsgårdsalle 9, 7430 Ikast", "ukendt": True}
+TALENT = {"2372": (4303, [("Aalborg Volleyball.2 (T)", "2026-12-18", "Hyldgårdsskolens Sal"),
+                          ("VK Vendsyssel (T)", "2027-01-17"),
                           ("Aalborg Volleyball.3 (T)", "2027-03-24")]),
           "2374": (4302, [("Aalborg Volleyball.3 (T)", "2026-11-25"), ("Randers VK (T)", "2027-02-10")])}
 for _rid, (_pid, _kampe) in TALENT.items():
     FX["saesoner"]["2026/27"]["raekker"][_rid]["puljer"][str(_pid)] = {
-        "navn": "Talent", "hold": {"Talenthold": "Hyldgårdsskolens Hal", **{u: None for u, _ in _kampe}},
-        "kampe": [("Talenthold", u, d) for u, d in _kampe]}
+        "navn": "Talent", "hold": {"Talenthold": "Hyldgårdsskolens Hal", **{k[0]: None for k in _kampe}},
+        "kampe": [("Talenthold", *k) for k in _kampe]}
 SID = {navn: 5000 + i for i, navn in enumerate(sorted(FX["steder"]))}   # SpillestedsId
 SID_NAVN = {v: k for k, v in SID.items()}
 
@@ -239,10 +244,10 @@ def ics_event(nr, raekke_navn, pnavn, h, u, sted, dato):
 def ics(pid):
     s, r, p = pulje(pid)
     ev, nr = [], 100000 + int(pid) * 100
-    if "kampe" in p:                             # pokal/slutspil: givne kampe
-        for h, u, d in p["kampe"]:
+    if "kampe" in p:                             # pokal/slutspil/talent: givne kampe
+        for h, u, d, *sted in p["kampe"]:
             nr += 1
-            ev.append(ics_event(nr, r["navn"], p["navn"], h, u, hjem_for(h),
+            ev.append(ics_event(nr, r["navn"], p["navn"], h, u, sted[0] if sted else hjem_for(h),
                                 datetime.fromisoformat(d).replace(hour=18, tzinfo=timezone.utc)))
     else:                                        # grundspil: dobbeltturnering
         hold = list(p["hold"])
@@ -258,17 +263,20 @@ def ics(pid):
             + "\r\nEND:VCALENDAR\r\n")
 
 
-def dawa(q):
-    q = urllib.parse.unquote(q)
-    m = re.match(r"(.+),\s*(\d{4})\s", q)
-    if not m:
+def nominatim(url):
+    """Falsk OpenStreetMap: finder adressen blandt spillestederne i fixtures. Søgning på
+    spillestedets navn eller kun postnummer giver intet – så slår en ukendt adresse fejl."""
+    q = dict(urllib.parse.parse_qsl(urllib.parse.urlparse(url).query))
+    if "street" not in q:
         return "[]"
-    gade, postnr = beregn.norm(m.group(1)), m.group(2)
+    gade, postnr = beregn.norm(beregn.husnr(q["street"])), q.get("postalcode", "")
     for navn, s in FX["steder"].items():
+        if s.get("ukendt"):
+            continue
         g, pb = adr_dele(navn)
         g = re.sub(r"(\d+)\s+([A-Za-z])\b", r"\1\2", g)
         if pb.startswith(postnr) and beregn.norm(g) == gade:
-            return json.dumps([{"betegnelse": s["adr"], "x": s["lon"], "y": s["lat"]}])
+            return json.dumps([{"lat": str(s["lat"]), "lon": str(s["lon"]), "display_name": s["adr"]}])
     return "[]"
 
 
@@ -303,8 +311,8 @@ def falsk_hent(url, accept="*/*", pause=0.0, forsoeg=3):
         if NET["tom_kalender"]:
             return "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n"
         return ics(int(url.rsplit("-", 1)[1]))
-    if "api.dataforsyningen.dk/adresser?" in url:
-        return dawa(url.split("&q=", 1)[1])
+    if "nominatim.openstreetmap.org/search" in url:
+        return nominatim(url)
     if "/table/v1/driving/" in url:
         return osrm(url.split("/table/v1/driving/")[1].split("?")[0])
     raise RuntimeError(f"{url}: ukendt i testen")
@@ -376,6 +384,12 @@ def main():
         {"saeson": "2025/26", "kilde": "Kreditnota 107996", "raekke_ids": [2249, 2250],
          "faktisk": {"Volleyligaen Kvinder|Aalborg Volleyball": 11014.96,
                      "1. Division Herrer|Aalborg Volleyball": 10071.13}}]
+    # Fixtures har VD's afstande til Ikast KFUM's hjemmebane, som den stod i kampprogrammet
+    # (Sportscenter Ikast). Reglen om, at alle kampe mod Ikast spilles på Hyldgårdsskolen,
+    # testes for sig i trin 9 — her gælder samme_sted kun talentholdet og stedets navn.
+    hyld = kfg["samme_sted"]["Hyldgårdsskolen"]
+    ikast_regel = dict(hyld)
+    hyld["hjemmehold"] = ["Talenthold"]
     fp0 = forventet_pokal()          # pokalkontrol: samme runde som "faktura"
     kfg["kalibrering"].append(
         {"saeson": "2025/26", "type": "pokal", "kilde": "Test-faktura", "runder": [[4154]],
@@ -465,7 +479,7 @@ def main():
     tjek(sorted(t["kode"] for t in talent) == ["D3", "H2", "H3"],
          f"talentkampe med grundspillets koder: {[(t['kode'], t['hold']) for t in talent]}")
     t2 = next((t for t in talent if t["kode"] == "H2"), {})
-    tjek(t2.get("sted") == "Hyldgårdsskolens Hal" and t2.get("dato") == "18-12-2026" and t2.get("km")
+    tjek(t2.get("sted") == "Hyldgårdsskolen" and t2.get("dato") == "18-12-2026" and t2.get("km")
          and naer(t2.get("beloeb"), 2 * 2 * t2["km"] * 2.28, 0.05),
          f"H2's tur til talentholdet: {t2.get('km')} km, {t2.get('beloeb')} kr (2 biler)")
     r2h = next(r for r in st["raekker"] if r["raekke"] == "2. Division Herrer")
@@ -476,10 +490,16 @@ def main():
          "ingen talenthold i rækkernes udligning")
     tjek("<h2>Talentkampe</h2>" in html and "Talent er ikke med" in html,
          "siden viser talentkampene for sig")
+    t3 = next((t for t in talent if t["kode"] == "H3"), {})
+    tjek(t2.get("sted") == t3.get("sted") == "Hyldgårdsskolen" and t2.get("km") == t3.get("km"),
+         f"Salen med forkert adresse og Hallen er begge Hyldgårdsskolen: {t2.get('sted')} "
+         f"{t2.get('km')} km / {t3.get('sted')} {t3.get('km')} km")
+    tjek(not any("Hyldgårdsskolens Sal" in a for a in st["advarsler"]),
+         "ingen advarsel om Salens forkerte adresse")
 
     print("2) Anden kørsel — adresser og afstande kommer fra cachen")
     NET["kald"].clear()
-    NET["slaa_fra"] = {"dataforsyningen", "/table/v1/"}
+    NET["slaa_fra"] = {"nominatim", "/table/v1/"}
     st2 = koer(rod, ud, cache, nu="2026-09-22")
     tjek(naer(st2["total"], st["total"], 0.01), f"samme total fra cache ({st2['total']})")
     tjek(not any("Pulje-Komplet" in u for u in NET["kald"]), "kalender-nøgler genbruges")
@@ -556,6 +576,26 @@ def main():
          "en runde over 14 dage gammel er spillet")
     tjek("2 af 28 hold har ikke en kamp med dato endnu" in side,
          "damernes 2. runde (9 dage, ingen 3. runde) kan stadig nå at få datoer")
+
+    print("9) Alle kampe mod Ikast spilles på Hyldgårdsskolen (samme_sted i config.json)")
+    kfg9 = json.loads(json.dumps(kfg))
+    kfg9["samme_sted"]["Hyldgårdsskolen"] = ikast_regel
+    json.dump(kfg9, open(os.path.join(rod, "config.json"), "w", encoding="utf-8"),
+              ensure_ascii=False)
+    st9 = koer(rod, ud, cache, nu="2026-09-22")
+    k9 = {h["kode"]: h for h in st9["klubhold"]}
+    ikast = [t for t in k9["D1"]["ture"] if t["modstander"].startswith("Ikast KFUM")]
+    tjek(len(ikast) == 1 and ikast[0]["sted"] == "Hyldgårdsskolen" and ikast[0]["km"],
+         f"D1's tur til Ikast KFUM går til Hyldgårdsskolen: {[(t['sted'], t['km']) for t in ikast]}")
+    gl = [t for t in koder["D1"]["ture"] if t["modstander"].startswith("Ikast KFUM")]
+    tjek(gl and gl[0]["sted"] == "Sportscenter Ikast", "uden reglen stod den til Sportscenter Ikast")
+    for r in st9["raekker"]:
+        tjek(abs(sum(h["udligning"] for h in r["hold"])) < 0.5,
+             f"{r['raekke']}: stadig nulsum med Ikast på Hyldgårdsskolen")
+    tidl = [l for k in st9["kalibrering"] if k["saeson"] == "2025/26" and k.get("type") != "pokal"
+            for l in k["linjer"] if l["noegle"] == "Volleyligaen Kvinder|Aalborg Volleyball"]
+    tjek(tidl and naer(tidl[0]["model"], kal["2025/26"]["Volleyligaen Kvinder|Aalborg Volleyball"]["model"], 0.01),
+         "reglen gælder fra 1/7 2026 — kontrollen af 2025/26 er uændret")
 
     shutil.rmtree(tmp)
     print("\nALT OK" if not fejl else f"\n{len(fejl)} FEJL")

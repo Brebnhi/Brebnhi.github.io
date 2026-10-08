@@ -126,5 +126,24 @@
   },
   "steder": {
     "_om": "Valgfrit: ret et spillesteds placering, hvis adressen geokodes forkert. Nøgle = adresse som i kampprogrammet, værdi = [breddegrad, længdegrad]."
+  },
+  "samme_sted": {
+    "_om": "Spillesteder, der regnes som ét sted, uanset hvad kampprogrammet skriver. \"navne\": spillesteder, hvis navn begynder sådan. \"hjemmehold\": hold, der altid spiller deres hjemmekampe her (navnet begynder sådan). \"fra\": gælder kampe fra den dato. \"koordinater\": [breddegrad, længdegrad], så adressen ikke skal slås op.",
+    "Hyldgårdsskolen": {
+      "_om": "Alle talentholdets kampe og kampe mod Ikast spilles på Hyldgårdsskolen (Hal A, Hal B eller Salen). VD har stavet adressen forkert ved Salen.",
+      "adresse": "Hyldgårds Allé 9, 7430 Ikast",
+      "koordinater": [
+        56.12625694,
+        9.15415196
+      ],
+      "navne": [
+        "Hyldgårdsskolen"
+      ],
+      "hjemmehold": [
+        "Ikast KFUM",
+        "Talenthold"
+      ],
+      "fra": "2026-07-01"
+    }
   }
 }

@@ -365,8 +365,8 @@ def render(st):
         "med (T) efter navnet og har samme kode som i grundspillet.</p>"
         "<p>Plus betyder kreditnota til klubben, minus betyder faktura.</p>"
         "<p class='muted'>Hold, runder og kampe hentes hver nat fra resultater.volleyball.dk "
-        "(foreningssider → rækker → puljernes kampprogram). Adresser slås op i DAWA og "
-        "vejafstande i OpenStreetMap (OSRM). VD bruger Google Maps, så enkelte ture kan afvige — "
+        "(foreningssider → rækker → puljernes kampprogram). Adresser og vejafstande slås op i "
+        "OpenStreetMap (Nominatim og OSRM). VD bruger Google Maps, så enkelte ture kan afvige — "
         "især skrå ture på tværs af Jylland. Kontrollen ovenfor viser, hvor tæt modellen har ramt. "
         "Km markeret med * er skønnet. Grundspillet sendes til godkendelse senest 15. oktober.</p>"
         "</div>")

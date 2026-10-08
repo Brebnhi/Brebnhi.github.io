@@ -37,8 +37,8 @@ Klubbens hold, pokalrunder og slutspil findes automatisk via foreningssiderne
 på resultater.volleyball.dk, så intet skal rettes, når en ny sæson starter —
 kun km-taksten og broprisen i config.json en gang om året.
 
-Kilder:  config.json · resultater.volleyball.dk · DAWA (adresser → koordinater)
-         · OSRM/OpenStreetMap (vejafstande)
+Kilder:  config.json · resultater.volleyball.dk · OpenStreetMap Nominatim (adresser →
+         koordinater; DAWA lukkede 1. oktober 2026) · OSRM/OpenStreetMap (vejafstande)
 Cache:   cache/*.json — gemmes mellem kørsler af GitHub Actions
 Output:  <ud>/index.html og <ud>/status.json
 """
@@ -53,7 +53,6 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DK, UTC = ZoneInfo("Europe/Copenhagen"), timezone.utc
 TMS = "https://resultater.volleyball.dk/tms/Turneringer-og-resultater/"
 CAL = "https://resultater.volleyball.dk/cal/Puljekampprogram.ashx?key="
-DAWA = "https://api.dataforsyningen.dk/"
 NOMINATIM = "https://nominatim.openstreetmap.org/search"
 OSRM = os.environ.get("OSRM_URL", "https://router.project-osrm.org").rstrip("/")
 UA = ("aalborg-volley-koerselsudligning/1.0 "
@@ -216,7 +215,7 @@ def norm(s):
 
 
 def husnr(gade):
-    """'Stadion Alle 2 B' → 'Stadion Alle 2B' (samme skrivemåde som DAWA)."""
+    """'Stadion Alle 2 B' → 'Stadion Alle 2B' (samme skrivemåde som adresseregistret)."""
     return re.sub(r"(\d+)\s+([A-Za-z])\b", r"\1\2", re.sub(r"\s+", " ", gade or "")).strip()
 
 # ------------------------------------------------------------------ turneringssystemet
@@ -316,6 +315,47 @@ def parse_kamp(ev):
     return k
 
 
+# Spillesteder, der regnes som ét sted, uanset hvad kampprogrammet skriver (config.json
+# "samme_sted") – fx spilles alle kampe mod Ikast og talentholdet på Hyldgårdsskolen, men VD
+# skriver Hal A, Hal B eller Sal og har stavet adressen forkert ved Salen. Sættes i main().
+SAMME_STED = []
+
+
+def samme_sted(kfg):
+    ud = []
+    for navn, v in (kfg.get("samme_sted") or {}).items():
+        if navn.startswith("_") or not isinstance(v, dict):
+            continue
+        m = re.match(r"\s*(.+?),\s*(\d{4})\s+(.+)", v.get("adresse") or "")
+        if not m:
+            advar(f"samme_sted \"{navn}\" i config.json mangler en adresse som "
+                  "\"Gade 1, 1234 By\" og bruges ikke.")
+            continue
+        fra = None
+        if v.get("fra"):
+            fra = datetime.fromisoformat(v["fra"]).replace(tzinfo=DK)
+        ud.append({"sted": navn, "gade": m.group(1).strip(), "postnr": m.group(2),
+                   "by": m.group(3).strip(), "koordinater": v.get("koordinater"), "fra": fra,
+                   "navne": [norm(x) for x in v.get("navne") or []],
+                   "hjemmehold": [norm(x) for x in v.get("hjemmehold") or []]})
+    return ud
+
+
+def saml_sted(k, hjemmehold="", dato=None):
+    """Spillestedet k – eller det fælles sted fra config.json "samme_sted", hvis stedets navn
+    eller hjemmeholdet hører til det (og kampen er fra "fra"-datoen eller senere)."""
+    navn, hold = norm(k.get("sted")), norm(hjemmehold)
+    for s in SAMME_STED:
+        if s["fra"] and dato and dato < s["fra"]:
+            continue
+        if (any(navn.startswith(p) for p in s["navne"])
+                or any(hold.startswith(p) for p in s["hjemmehold"])):
+            ny = {**k, "sted": s["sted"], "gade": s["gade"], "postnr": s["postnr"], "by": s["by"]}
+            ny["key"] = sted_noegle(ny)
+            return ny
+    return k
+
+
 def sted_noegle(k):
     if k.get("gade") and k.get("postnr"):
         return norm(f"{husnr(k['gade'])}, {k['postnr']}")
@@ -333,6 +373,7 @@ def kampe_i_pulje(pulje_id, cache):
         k = parse_kamp(ev)
         if not k or k["kampnr"] in set_:
             continue
+        k = saml_sted(k, k["hjemme"], k["start"])
         set_.add(k["kampnr"])
         kampe.append(k)
     if not kampe:
@@ -419,51 +460,34 @@ def hold_i_pulje(pulje_id):
 # ------------------------------------------------------------------ steder og afstande
 
 
-def adresse_kandidater(gade, postnr, by):
+def gade_kandidater(gade):
+    """Gadeadressen, og ved "v/ Holbæk By Skole, Bispehøjen 2" også delen efter kommaet."""
     gade = husnr(gade)
-    ud = [f"{gade}, {postnr} {by}"]
-    if "," in gade:                      # "v/ Holbæk By Skole, Bispehøjen 2"
-        ud.append(f"{gade.split(',')[-1].strip()}, {postnr} {by}")
+    ud = [gade]
+    if "," in gade:
+        ud.append(gade.split(",")[-1].strip())
     return ud
 
 
-def _dawa(adr):
-    d = hent_json(f"{DAWA}adresser?struktur=mini&per_side=1&q=" + urllib.parse.quote(adr))
+def _nominatim_svar(q, praecision="adresse"):
+    d = hent_json(NOMINATIM + "?" + urllib.parse.urlencode(
+        {"format": "jsonv2", "limit": "1", "countrycodes": "dk", **q}), pause=1.1)
     if d:
-        return {"lat": d[0]["y"], "lon": d[0]["x"], "kilde": "DAWA",
-                "praecision": "adresse", "fundet": d[0].get("betegnelse", "")}
-
-
-def _dawa_vask(adr):
-    d = hent_json(f"{DAWA}datavask/adresser?betegnelse=" + urllib.parse.quote(adr))
-    r = (d.get("resultater") or [None])[0]
-    if not r:
-        return None
-    a = r.get("aktueladresse") or r.get("adresse") or {}
-    if not a.get("href"):
-        return None
-    m = hent_json(a["href"] + ("&" if "?" in a["href"] else "?") + "struktur=mini")
-    kat = d.get("kategori", "?")
-    return {"lat": m["y"], "lon": m["x"], "kilde": f"DAWA datavask ({kat})",
-            "praecision": "adresse" if kat in ("A", "B") else "usikker adresse",
-            "fundet": m.get("betegnelse", "")}
+        return {"lat": float(d[0]["lat"]), "lon": float(d[0]["lon"]), "kilde": "OpenStreetMap",
+                "praecision": praecision, "fundet": d[0].get("display_name", "")}
 
 
 def _nominatim(gade, postnr, by):
-    q = {"format": "jsonv2", "limit": "1", "countrycodes": "dk",
-         "street": gade, "postalcode": postnr, "city": by}
-    d = hent_json(NOMINATIM + "?" + urllib.parse.urlencode(q), pause=1.1)
-    if d:
-        return {"lat": float(d[0]["lat"]), "lon": float(d[0]["lon"]),
-                "kilde": "OpenStreetMap", "praecision": "adresse",
-                "fundet": d[0].get("display_name", "")}
+    return _nominatim_svar({"street": gade, "postalcode": postnr, "city": by})
+
+
+def _nominatim_navn(sted, postnr, by):
+    """Spillestedets navn i byen – fx når VD har stavet gaden forkert."""
+    return _nominatim_svar({"q": f"{sted}, {postnr} {by}"}, "spillestedets navn")
 
 
 def _postnummer(postnr):
-    d = hent_json(f"{DAWA}postnumre/{postnr}")
-    lon, lat = d["visueltcenter"]
-    return {"lat": lat, "lon": lon, "kilde": "DAWA postnummer",
-            "praecision": "postnummer", "fundet": f"{postnr} {d.get('navn', '')}"}
+    return _nominatim_svar({"postalcode": postnr}, "postnummer")
 
 
 def geokod(k, cache, manuelle):
@@ -479,21 +503,19 @@ def geokod(k, cache, manuelle):
     if key in geo:
         return geo[key]
     res = None
-    if k.get("postnr") and not k.get("gade"):
-        try:
-            res = _postnummer(k["postnr"])
-        except Exception:                 # noqa: BLE001
-            res = None
-    if k.get("gade") and k.get("postnr"):
-        kilder = [(_dawa, a) for a in adresse_kandidater(k["gade"], k["postnr"], k["by"])]
-        kilder += [(_dawa_vask, adr), (lambda _a: _nominatim(k["gade"], k["postnr"], k["by"]), adr),
-                   (lambda _a: _postnummer(k["postnr"]), adr)]
-        for fn, a in kilder:
+    if k.get("postnr"):
+        # DAWA lukkede 1. oktober 2026 – nu OpenStreetMap: adressen, så spillestedets navn i
+        # byen, og til sidst postnummerets midte (med en advarsel)
+        kilder = [lambda g=g: _nominatim(g, k["postnr"], k.get("by", ""))
+                  for g in (gade_kandidater(k["gade"]) if k.get("gade") else [])]
+        if k.get("sted"):
+            kilder.append(lambda: _nominatim_navn(k["sted"], k["postnr"], k.get("by", "")))
+        kilder.append(lambda: _postnummer(k["postnr"]))
+        for fn in kilder:
             try:
-                res = fn(a)
+                res = fn()
             except Exception as exc:     # noqa: BLE001 — næste kilde
-                print(f"  geokodning via {getattr(fn, '__name__', 'kilde')} fejlede for "
-                      f"{a}: {exc}", file=sys.stderr)
+                print(f"  geokodning fejlede for {adr}: {exc}", file=sys.stderr)
                 res = None
             if res:
                 break
@@ -501,9 +523,9 @@ def geokod(k, cache, manuelle):
         advar(f"Kunne ikke finde {k.get('sted') or key} ({adr}). Tilføj koordinater under "
               "\"steder\" i config.json.")
         return None
-    if res["praecision"] != "adresse":
-        advar(f"{k.get('sted')} ({adr}) er placeret ud fra {res['praecision']} "
-              f"({res['fundet']}).")
+    if res["praecision"] == "postnummer":
+        advar(f"{k.get('sted')} ({adr}) er placeret ud fra postnummeret "
+              f"({res['fundet']}). Tilføj koordinater under \"steder\" i config.json.")
     res.update({"navn": k.get("sted"), "adresse": adr})
     geo[key] = res
     return res
@@ -583,6 +605,9 @@ class Kontekst:
     def __init__(self, cache, kfg, takst, bro):
         self.cache, self.kfg, self.takst, self.bro = cache, kfg, takst, bro
         self.manuelle = {k: v for k, v in kfg.get("steder", {}).items() if not k.startswith("_")}
+        for s in SAMME_STED:
+            if s.get("koordinater"):
+                self.manuelle.setdefault(f"{s['gade']}, {s['postnr']} {s['by']}", s["koordinater"])
         self.lg = float(kfg.get("storebaelt_laengdegrad", 10.98))
         self.bornholm_pris = kfg.get("bornholm_pris_16_personer")
         self.rettelser = km_rettelser(kfg)
@@ -672,6 +697,8 @@ def beregn_pulje(navn, puljer, ktx, biler, klubnavne, metode="snit", hjem="kampe
                         if adr:
                             sted = {"sted": reg[h]["navn"], **adr}
                             sted["key"] = sted_noegle(sted)
+                            sted = saml_sted(sted, h, min((k["start"] for k in kampe
+                                                          if k["start"]), default=None))
                     oprindelse[h] = sted or ktx.reserve.get(h) or lokale.get(h)
         else:
             oprindelse = lokale
@@ -1098,6 +1125,7 @@ def main():
     args = ap.parse_args()
 
     kfg = json.load(open(os.path.join(ROOT, "config.json"), encoding="utf-8"))
+    SAMME_STED[:] = samme_sted(kfg)
     cache = Cache(args.cache)
     nu = (datetime.fromisoformat(args.nu).replace(tzinfo=DK) if args.nu
           else datetime.now(UTC).astimezone(DK))
