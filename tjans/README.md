@@ -13,25 +13,61 @@ Tjansen beholder sit kalender-id (UID), og dens versionsnummer (SEQUENCE) stiger
 den ændres, så Holdsport opdaterer den i stedet for at smide flytningen væk som gammel.
 Robotten husker versionsnummeret i `docs/tjans_holdsport.json` på siden.
 
+## Robotten retter selv i Holdsport
+
+Ved hver kørsel (tre gange i døgnet, og når noget uploades) sammenholder robotten
+tjanselisten og kampprogrammet med Holdsport og **retter selv** det, der står forkert:
+
+- **En tjans på et forkert tidspunkt flyttes** til mødetiden — også når Volleyball Danmark
+  har flyttet kampen, så der ikke skal ventes på Holdsports kalenderhentning.
+- **En tjans, der mangler, oprettes** — også en ny i tjanselisten og en, der er slettet i
+  Holdsport. Den får aktivitetstypen *Tjans* (findes den på holdet), antal pladser efter
+  tjanselisten, holdets tilmeldingstype og påmindelser, og kommentaren slutter med
+  *Oprettet af tjans-robotten*. Skal en tjans ikke være, så fjern den fra tjanselisten.
+- **Robotten sletter aldrig noget.** En ekstra kopi meldes, og du sletter den.
+
+Holdsports officielle API kan kun læse, så robotten skriver gennem det API, Holdsports egen
+app bruger, med samme login (`HOLDSPORT_USER` og `HOLDSPORT_PASSWORD`). Det login kræver dit
+**Holdsport-brugernavn** — siger robotten, at login blev afvist, så ret hemmeligheden
+`HOLDSPORT_USER` til brugernavnet (det virker også til tjekket). Når robotten skriver, skifter
+den dit *aktuelle hold* i Holdsport, så appen kan åbne på et andet hold end sidst.
+
+Sikkerhed: robotten skriver først, når Holdsport har bekræftet holdskiftet; den læser en
+aktivitet, før den ændrer den, og sender alle dens indstillinger med tilbage; gentagne
+aktiviteter og betalingsaktiviteter røres ikke; højst 12 flytninger og 8 nye pr. kørsel; en
+tjans, den har oprettet, og som bliver slettet, oprettes ikke igen før efter en uge (du får
+besked); og en aktivitet, der bliver flyttet tilbage igen og igen, giver den op på efter 3
+gange på 3 døgn og slår alarm. Bagefter læser den Holdsport igen og viser resultatet.
+Slå det fra med `HOLDSPORT_RETTER = False` i `scripts/indstillinger.py` — så læser robotten
+kun og slår alarm.
+
 ## Sådan bruger Holdsport kalenderne
 
-Robotten retter aldrig selv i Holdsport — den læser kun. Det er Holdsport, der henter
-kalenderne én gang i døgnet og retter aktiviteterne efter dem. Det har vi set (okt. 2026):
+Holdsport henter kalenderne én gang i døgnet og retter aktiviteterne efter dem. Det har vi
+set (okt. 2026):
 
-- **Hver aktivitet, Holdsport har lavet fra en kalender, hører til én tjans** (kalender-id).
+- **Hver aktivitet, Holdsport har lavet fra en kalender, hører til en tjans** (kalender-id).
   Når tjansens versionsnummer stiger, skriver Holdsport tjansens tidspunkt, navn og kommentar
-  ind i aktiviteten — også oven i det, du selv har rettet. Ret derfor ikke en sådan aktivitet
-  om til en anden tjans; ret i tjanselisten, eller opret en ny aktivitet i hånden.
+  ind i aktiviteten — også oven i det, du selv har rettet.
 - **Ændringer med et lavere versionsnummer springer Holdsport over.** Indtil 7/10 2026 kunne
   nummeret falde, når en kamp blev flyttet, og så blev tjansen stående (fx D1 – DHV Odense på
   17/10 og H3's pokaltjans på 1/11). Nu stiger det altid.
-- **To tjanser på samme tidspunkt i et holds kalender bliver til én aktivitet**, der hører til
-  den ene. Sådan mistede H3 sin tjans 1/11: pokaltjansen stod en overgang samme tidspunkt.
-  Robotten melder det nu, hvis et hold får to tjanser på samme tid.
-- **Holdsport har ikke selv oprettet tjanser, der kom til efter importen.** Robotten melder
-  dem som manglende efter halvandet døgn. Opret dem i hånden, og skriv `Kampnr. <nummer>` i
-  kommentaren, så robotten kan finde dem. En aktivitet, du selv har oprettet, rører Holdsport
-  aldrig — flyttes kampen, melder robotten det, og du flytter den i hånden.
+- **To tjanser på samme tidspunkt i et holds kalender bliver til én aktivitet**, og Holdsport
+  kobler begge tjansers kalender-id til den. Bagefter skriver Holdsport begge tjanser ind i
+  den samme aktivitet ved hver hentning, så den hopper frem og tilbage mellem dem. Sådan
+  forsvandt H3's pokaltjans 11/10 2026 igen og igen. Robotten melder det, hvis et hold får to
+  tjanser på samme tid.
+- **Holdsport opretter ikke selv tjanser, der kom til efter importen** — det gør robotten nu.
+  En aktivitet, du selv har oprettet, rører Holdsport aldrig.
+
+**Når Holdsport har koblet to tjanser til én aktivitet**, ser robotten det selv: aktiviteten
+står præcis på den anden tjans' tidspunkt, eller den var én tjans ved sidste kørsel og er en
+anden nu. Aktiviteten (og dens tilmeldinger) bliver hos den tjans, den var — robotten flytter
+den tilbage og giver den anden tjans sin egen aktivitet. Den anden tjans' kalender-id viser
+derefter den første tjans i kalenderen, så Holdsport skriver det samme ind i aktiviteten fra
+begge id'er, og den bliver, hvor den skal være. Har du selv givet tjansen en anden aktivitet
+med `Kampnr. <nummer>` i kommentaren, respekterer robotten det. Tjansesiden viser koblingerne
+under *Kontrol mod Holdsport*.
 
 ## Hvad der bliver bygget
 
@@ -63,15 +99,15 @@ faste filer, som robotten ikke bygger.
    hente feed'ene, og GitHub Pages er kun gratis på offentlige repos.
    Læg alle filer herfra ind (træk og slip virker fint i browseren).
 2. **Slå Pages til.** Settings → Pages → Source: **GitHub Actions**.
-3. **Kør robotten første gang.** Actions → *Opdater tjans-kalendere* → Run workflow.
-4. **Hent adresserne.** Åbn https://brebnhi.github.io/tjanser/ — alle
-   feed-adresser står i tabellen "Feeds til Holdsport".
-5. **Importér i Holdsport,** ét feed ad gangen på det hold der har tjansen:
-   Kalender → Mere → Importer kampprogram → *Importer kampprogram fra et WebCal feed*.
-   Indsæt adressen, sæt **maks. antal deltagere** til tallet i tabellen, og slå
-   **automatisk opdatering én gang i døgnet** til.
+3. **Holdsport-login.** Settings → Secrets and variables → Actions → *New repository
+   secret*: `HOLDSPORT_USER` (dit Holdsport-brugernavn) og `HOLDSPORT_PASSWORD`.
+4. **Kør robotten første gang.** Actions → *Opdater tjans-kalendere* → Run workflow.
+   Robotten opretter selv tjanserne i Holdsport (op til 8 pr. kørsel, de første først).
 
-Robotten kører derefter hver nat af sig selv.
+Robotten kører derefter tre gange i døgnet af sig selv. (Indtil oktober 2026 kom tjanserne
+i Holdsport via kalender-import — *Importer kampprogram fra et WebCal feed* med adresserne i
+tabellen "Feeds til Holdsport". De importer kører stadig, men nye skal ikke laves: så kan
+der komme dobbelte tjanser.)
 
 ## Tjanselisten
 
@@ -109,17 +145,26 @@ oprettes ét GitHub-issue med listen, og GitHub sender en mail. Issuet lukker
 sig selv, når hullet er lukket. Er alt dækket, sker der ingenting.
 
 Er `HOLDSPORT_USER` og `HOLDSPORT_PASSWORD` sat som hemmeligheder, tjekker robotten også, at
-tjanserne ligger i Holdsport. Holdsport henter kalenderne én gang i døgnet, så en ny tjans
-(eller en tjans, der har skiftet hold) står som *venter* i halvandet døgn, før den tæller som
-slettet og kommer med i issuet. En tjans, der har været i Holdsport og er væk, meldes med det
-samme. Robotten husker det i `docs/tjans_holdsport.json` på siden.
+tjanserne ligger i Holdsport på **samme tidspunkt** som i kalenderen, og retter selv det, der
+står forkert (se *Robotten retter selv i Holdsport*). Det, den ikke kan rette, kommer med i
+issuet med det samme — og på telefonen. Robotten husker det hele i
+`docs/tjans_holdsport.json` på siden.
 
-Den tjekker også, at tjansen står på **samme tidspunkt** i Holdsport som i kalenderen. Er en
-kamp flyttet, får Holdsport halvandet døgn til at flytte tjansen med (den står imens som
-*venter* på tjansesiden). Står den stadig på det gamle tidspunkt efter det — eller står den
-på et tidspunkt, robotten aldrig har udgivet, eller har Holdsport lavet en ny og ladet den
-gamle stå — kommer den med i issuet under *forkert tidspunkt i Holdsport*, så du kan rette
-den i Holdsport og tjekke de tilmeldte.
+Er rettelserne slået fra (`HOLDSPORT_RETTER = False`), venter robotten på Holdsports
+kalenderhentning: en ny tjans står som *venter* i halvandet døgn, og en flyttet kamp får
+halvandet døgn til at komme med, før den meldes — bortset fra tjanser inden for 3 døgn.
+
+## Alarm på telefonen
+
+Robotten sender en besked til appen **ntfy** (gratis, ingen konto), når noget nyt kræver
+handling, når den selv har rettet noget i Holdsport, når alt er i orden igen — og ved hver
+kørsel, så længe en tjans inden for 3 døgn står forkert eller mangler. Sådan (én gang):
+
+1. Installér **ntfy** fra App Store eller Google Play.
+2. Tryk **+** og abonnér på emnet `aav-tjans-x7t6nj282s` (står som `ALARM_NTFY` i
+   `scripts/indstillinger.py`).
+
+Issuet på GitHub tildeles dig og nævner dig (@), så GitHub også sender en mail.
 
 Den husker også, hvilken aktivitet i Holdsport hver tjans ligger i. Laver Holdsport en
 eksisterende tjans om til en ny, når den henter kalenderen (det skete med H3 1/11 → 11/10 i
@@ -191,9 +236,9 @@ kampprogram forstyrrer ikke, før listen er lavet. Når Volleyball Danmark har l
 sæsons kampprogram ud, opretter robotten et issue med labelen **ny sæson**:
 
 1. **Tjanselisten** for den nye sæson — se *Tjanselisten* ovenfor.
-2. **Holdsport skal ikke røres.** Kalenderne hedder det samme hver sæson (`D1-4pers.ics`
-   osv.), så importerne henter bare de nye tjanser. Står der et feed på tjansesiden, som
-   ikke er importeret endnu – fx første gang et hold har 6-personers-tjanser – så importér det.
+2. **Holdsport skal ikke røres.** Robotten opretter selv den nye sæsons tjanser i Holdsport
+   (de første først, op til 8 pr. kørsel). Importér ikke kalenderne igen — så kan der komme
+   dobbelte tjanser.
 
 Issuet lukker sig selv, når tjanselisten er fra den nye sæson.
 

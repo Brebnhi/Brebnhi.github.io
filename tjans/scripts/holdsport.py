@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
+# sti: tjans/scripts/holdsport.py
 """
 Kontrollerer via Holdsports API, at tjans-aktiviteterne stadig ligger i kalenderen —
 og på det tidspunkt, kalenderen siger (så en tjans, der ikke er flyttet med kampen, ses).
+Det, der står forkert, retter holdsport_skriv.py bagefter.
 
 Kører kun hvis HOLDSPORT_USER og HOLDSPORT_PASSWORD er sat som hemmeligheder.
 Er de ikke sat, springes tjekket helt over, og resten af bygningen kører videre.
@@ -44,22 +46,23 @@ def hent_hold(bruger, kode):
 
 
 def hent_aktiviteter(bruger, kode, hold_id, fra_dato, til_dato):
-    """Henter aktiviteter fra og med fra_dato, side for side."""
+    """Henter aktiviteter fra og med fra_dato, side for side. Returnerer (aktiviteter, hele) –
+    hele er False, hvis der var flere sider, end robotten henter (så kan en tjans være overset)."""
     alle, side = [], 1
     while side <= MAKS_SIDER:
         sti = f"teams/{hold_id}/activities?date={fra_dato}&page={side}&per_page={PER_SIDE}"
         data = _kald(sti, bruger, kode)
         akt = data.get("activities", data) if isinstance(data, dict) else data
         if not akt:
-            break
+            return alle, True
         alle.extend(akt)
         if len(akt) < PER_SIDE:
-            break
+            return alle, True
         sidste = _start(akt[-1])
         if sidste and sidste.date().isoformat() > til_dato:
-            break
+            return alle, True
         side += 1
-    return alle
+    return alle, False
 
 
 def _start(a):
@@ -140,20 +143,38 @@ def _kampnr(akt):
     return m.group(1) if m else ""
 
 
+ROBOT_MAERKE = "Oprettet af tjans-robotten"      # sidste linje i kommentaren på robottens egne
+
+
+def kilde(akt):
+    """Hvem har lavet aktiviteten?
+      robot    – robotten selv (holdsport_skriv.py): ROBOT_MAERKE står i kommentaren
+      kalender – Holdsport ud fra robottens kalender: robottens beskrivelse ("Der skal stilles
+                 4 personer …") står i kommentaren. Kun dem opdaterer Holdsport selv.
+      egen     – du selv: din egen kommentar"""
+    c = (akt.get("comment") or "").lower()
+    if ROBOT_MAERKE.lower() in c:
+        return "robot"
+    return "kalender" if "der skal stilles" in c else "egen"
+
+
 def fra_kalender(akt):
-    """Har Holdsport selv lavet aktiviteten ud fra robottens kalender? Så står robottens
-    beskrivelse ("Der skal stilles 4 personer …") i kommentaren. En aktivitet, du selv har
-    oprettet, har din egen kommentar. Holdsport opdaterer kun dem, den selv har lavet."""
-    return "der skal stilles" in (akt.get("comment") or "").lower()
+    """Har Holdsport selv lavet aktiviteten ud fra robottens kalender?"""
+    return kilde(akt) == "kalender"
 
 
-def _par(forventede_hold, aktiviteter):
+def _par(forventede_hold, aktiviteter, faste=None):
     """Parrer forventede tjanser med Holdsport-aktiviteter, én til én.
 
     Kampnummeret er den stærke nøgle — det overlever, at en kamp flyttes.
     Findes det ikke (fx hvis kommentarfeltet ikke fulgte med i importen),
     matches på navn plus dato, og til sidst på et entydigt navn alene.
     En aktivitet kan kun bruges én gang, så to ens navne ikke dækker hinanden.
+
+    faste: {aktivitet: tjans} – aktiviteter, Holdsport har koblet til flere tjanser (se
+    bindinger i build.py). De hører til den tjans, robotten har givet dem, uanset hvad Holdsport
+    senere har skrevet i dem; robotten retter dem tilbage. Har tjansen fået en anden aktivitet
+    med sit kampnummer (fx en, du selv har oprettet), er det den, der gælder.
     """
     ledige = list(range(len(aktiviteter)))
     fundet = {}
@@ -162,9 +183,20 @@ def _par(forventede_hold, aktiviteter):
         ledige.remove(i)
         fundet[nøgle] = i
 
+    # 0. aktiviteter, robotten har givet en bestemt tjans
+    for k, f in enumerate(forventede_hold):
+        n = f"{f['kampnr'] or f['start'][:10]}-{f['tjans']}"
+        for i in list(ledige):
+            if k in fundet or str((faste or {}).get(str(aktiviteter[i].get("id")))) != n:
+                continue
+            if not any(j != i and f["kampnr"] and _kampnr(aktiviteter[j]) == f["kampnr"]
+                       for j in ledige):
+                tag(i, k)
+
     # 1. kampnummer – har Holdsport flere med samme nummer (en ny og en gammel kopi, eller en,
-    #    du selv har oprettet), så helst den, der står rigtigt og er lavet ud fra kalenderen –
-    #    den holder Holdsport opdateret. De andre bliver meldt som kopier.
+    #    du selv har oprettet), så helst den, der står rigtigt, og derefter den, Holdsport har
+    #    lavet ud fra kalenderen, så robottens egen, så din. De andre bliver meldt som kopier.
+    rang = {"kalender": 0, "robot": 1, "egen": 2}
     for k, f in enumerate(forventede_hold):
         if k in fundet or not f["kampnr"]:
             continue
@@ -172,7 +204,7 @@ def _par(forventede_hold, aktiviteter):
         if kandidater:
             rigtig = f["start"][:16].replace("T", " ")
             tag(min(kandidater, key=lambda i: (_lokal(aktiviteter[i]) != rigtig,
-                                               not fra_kalender(aktiviteter[i]))), k)
+                                               rang[kilde(aktiviteter[i])])), k)
 
     # 2. samme navn samme dag
     for k, f in enumerate(forventede_hold):
@@ -203,8 +235,9 @@ def _par(forventede_hold, aktiviteter):
     return fundet
 
 
-def tjek(forventede, konfig, bruger, kode):
-    """forventede: liste af {tjans, kampnr, navn, start, antal, kamp}"""
+def tjek(forventede, konfig, bruger, kode, faste=None):
+    """forventede: liste af {tjans, kampnr, navn, start, antal, kamp}
+    faste: {aktivitet: tjans} – se _par"""
     resultat = {"aktiveret": True, "fejl": None, "hold": [], "mangler": [], "fundne": [],
                 "dubletter": [], "kontrolleret": 0, "fundet": 0, "alle_hold": []}
     try:
@@ -240,13 +273,15 @@ def tjek(forventede, konfig, bruger, kode):
             resultat["hold"].append(post)
             continue
         try:
-            akt = hent_aktiviteter(bruger, kode, h["id"], fra, til)
+            akt, hele = hent_aktiviteter(bruger, kode, h["id"], fra, til)
         except Exception as e:
             post["fejl"] = f"Kunne ikke hente aktiviteter: {e}"
             resultat["hold"].append(post)
             continue
+        if not hele:
+            post["ufuldstaendig"] = True       # så opretter robotten ikke noget på holdet
         liste = pr_hold[kode_hold]
-        parret = _par(liste, akt)
+        parret = _par(liste, akt, faste)
         post["aktiviteter"] = len(akt)
         for k, f in enumerate(liste):
             resultat["kontrolleret"] += 1
@@ -260,13 +295,14 @@ def tjek(forventede, konfig, bruger, kode):
                 resultat["fundne"].append({
                     "tjans": kode_hold, "kampnr": f["kampnr"],
                     "start": f["start"][:16].replace("T", " "),
-                    "aktivitet": a.get("id"), "hs_start": _lokal(a),
+                    "aktivitet": a.get("id"), "hs_start": _lokal(a), "kilde": kilde(a),
+                    "hs_navn": a.get("name") or "", "hold_id": h["id"],
                     "holdsport": h["navn"], "navn": f["navn"], "kamp": f.get("kamp", "")})
             else:
                 post["mangler"] += 1
                 resultat["mangler"].append({
                     "tjans": kode_hold, "holdsport": h["navn"], "kampnr": f["kampnr"],
-                    "navn": f["navn"], "kamp": f.get("kamp", ""),
+                    "navn": f["navn"], "kamp": f.get("kamp", ""), "hold_id": h["id"],
                     "start": f["start"][:16].replace("T", " ")})
         # En ekstra aktivitet med samme kampnummer som en tjans, der er fundet: Holdsport har
         # lavet en ny i stedet for at flytte den gamle, og den gamle står tilbage.
@@ -281,15 +317,15 @@ def tjek(forventede, konfig, bruger, kode):
                 "tjans": kode_hold, "kampnr": nr, "holdsport": h["navn"],
                 "navn": f["navn"], "kamp": f.get("kamp", ""),
                 "start": f["start"][:16].replace("T", " "), "hs_start": _lokal(a),
-                "aktivitet": a.get("id"),
-                "egen": not fra_kalender(a)})        # oprettet i hånden, ikke af Holdsport
+                "aktivitet": a.get("id"), "kilde": kilde(a),
+                "egen": kilde(a) == "egen"})         # oprettet i hånden, ikke af Holdsport
         resultat["hold"].append(post)
 
     resultat["mangler"].sort(key=lambda m: m["start"])
     return resultat
 
 
-def koer(forventede, rod):
+def koer(forventede, rod, faste=None):
     bruger = os.environ.get("HOLDSPORT_USER", "").strip()
     kode = os.environ.get("HOLDSPORT_PASSWORD", "").strip()
     if not bruger or not kode:
@@ -303,4 +339,4 @@ def koer(forventede, rod):
                       if not k.startswith("_")}
         except Exception as e:
             print(f"ADVARSEL: kunne ikke læse holdsport_hold.json ({e})", file=sys.stderr)
-    return tjek(forventede, konfig, bruger, kode)
+    return tjek(forventede, konfig, bruger, kode, faste)

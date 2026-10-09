@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# sti: tjans/scripts/render.py
 """Renderer status.json til docs/tjanser/index.html — klubbens live-overblik over tjanser."""
 import html, json, os
 from collections import Counter, defaultdict
@@ -72,8 +73,11 @@ def render(status, base_url=""):
     forkert_tid = hs.get("forkert_tid") or []      # står på et andet tidspunkt i Holdsport
     venter_tid = hs.get("venter_tid") or []        # flyttet for nylig, Holdsport har ikke hentet
     dobbelt = status.get("dobbelt_tjans") or []    # samme hold, to tjanser på samme tid
+    rettet = hs.get("rettet") or {}                # det, robotten selv har rettet i Holdsport
+    gjort = (rettet.get("flyttet") or []) + (rettet.get("oprettet") or [])
+    skrivefejl = (rettet.get("fejl") or []) + (rettet.get("givet_op") or [])
     andre = (len(huller) + len(forsv) + len(slettet) + len(genbrugt) + len(forkert_tid)
-             + len(dobbelt))
+             + len(dobbelt) + len(skrivefejl))
     problemer = andre + len(konflikter)
 
     venter = hs.get("venter") or []
@@ -107,6 +111,8 @@ def render(status, base_url=""):
     if dobbelt:
         bits.append(f"{len(dobbelt)} gang{'e' if len(dobbelt)>1 else ''}, hvor et hold har to "
                     "tjanser på samme tid")
+    if skrivefejl:
+        bits.append(f"{len(skrivefejl)} ting, robotten ikke kunne rette i Holdsport")
     andre_bits = " og ".join(bits)
     if konflikter:
         bits.append(f"{len(konflikter)} tjans{'er' if len(konflikter)>1 else ''} oven i holdets egen kamp")
@@ -120,6 +126,10 @@ def render(status, base_url=""):
                   'handling</strong>' + " og ".join(bits) + ".</div>")
     if banner_data:
         banner += f'<template id="banner-ok">{ok_tekst}</template>'
+    if gjort:
+        banner += (f'<div class="banner ok"><strong>Robotten har rettet {len(gjort)} '
+                   f'{"tjans" if len(gjort) == 1 else "tjanser"} i Holdsport ved denne kørsel'
+                   '</strong>Se <a href="#holdsport">Kontrol mod Holdsport</a>.</div>')
 
     def tabel(rows, cols, empty):
         if not rows:
@@ -228,13 +238,20 @@ def render(status, base_url=""):
             + tabel(gb_rows, ["Hold", "Var tjansen", "Er nu tjansen", "Aktivitet i Holdsport"], "")
             if genbrugt else "")
 
+        fejl_pr_tjans = {(e.get("kampnr"), e.get("tjans")): e["fejl"]
+                         for e in rettet.get("fejl") or [] if e.get("tjans")}
+
         def tid_tr(r):
+            kopi = {"egen": "ekstra kopi, du selv har oprettet",
+                    "robot": "ekstra kopi, robotten har oprettet"}.get(r.get("kilde"), "ekstra kopi")
+            fejl = "" if r.get("dublet") else fejl_pr_tjans.get((r["kampnr"], r["tjans"]), "")
             return (f"<tr><td><span class='tag'>{E(r['tjans'])}</span></td>"
                     f"<td><span class='muted'>{E(r['hs_start'])}</span> → "
                     f"<strong>{E(r['start'])}</strong>"
-                    + (("<br><span class='muted'>"
-                        + ("ekstra kopi, du selv har oprettet" if r.get("egen") else "ekstra kopi")
-                        + " – slet den</span>") if r.get("dublet") else "")
+                    + (f"<br><span class='muted'>{kopi} – slet den</span>" if r.get("dublet")
+                       else "")
+                    + (f"<br><span class='muted'>Robotten kunne ikke flytte den: {E(fejl)}</span>"
+                       if fejl else "")
                     + f"</td><td>{E(r['navn'])}<br><span class='muted'>kamp {E(r['kampnr'])}"
                     f"</span></td><td class='muted'>{E(r['holdsport'])}</td></tr>")
         tid_kol = ["Tjans", "Står i Holdsport → skal stå (mødetid)", "Aktivitet",
@@ -242,16 +259,73 @@ def render(status, base_url=""):
         tid_afsnit = (
             "<div class='banner bad'><strong>Tjansen står forkert i Holdsport</strong>"
             "Tjansen står på et andet tidspunkt i Holdsport end kampen, eller der ligger en "
-            "ekstra kopi. Ret tidspunktet på aktiviteten i Holdsport — eller slet kopien — og "
+            "ekstra kopi. Robotten flytter selv en tjans, der står forkert – det her kunne den "
+            "ikke. Ret tidspunktet på aktiviteten i Holdsport — eller slet kopien — og "
             "tjek, om de tilmeldte stadig kan.</div>"
             + tabel([tid_tr(r) for r in forkert_tid], tid_kol, "")
             if forkert_tid else "")
+
+        def rt_tr(r, hvad):
+            return (f"<tr><td><span class='tag'>{E(r['tjans'])}</span></td><td>{hvad}</td>"
+                    f"<td>{E(r['navn'])}<br><span class='muted'>kamp {E(r['kampnr'])}</span></td>"
+                    f"<td class='muted'>{E(r.get('aktivitet', ''))}</td></tr>")
+        rt_rows = ([rt_tr(r, f"Flyttet: <span class='muted'>{E(r['fra'])}</span> → "
+                             f"<strong>{E(r['til'])}</strong>") for r in rettet.get("flyttet") or []]
+                   + [rt_tr(r, f"Oprettet: <strong>{E(r['start'])}</strong>")
+                      for r in rettet.get("oprettet") or []])
+        rettet_afsnit = ("<div class='banner ok'><strong>Rettet af robotten ved denne kørsel"
+                         "</strong>Robotten har selv flyttet eller oprettet tjanserne herunder i "
+                         "Holdsport. Tjek gerne, om de tilmeldte stadig kan.</div>"
+                         + tabel(rt_rows, ["Tjans", "Hvad", "Aktivitet", "Nr. i Holdsport"], "")
+                         if rt_rows else "")
+        sf_rows = ([f"<tr><td>{E(e.get('hvilken') or 'Holdsport')}</td><td>{E(e['fejl'])}</td></tr>"
+                    for e in rettet.get("fejl") or []]
+                   + [f"<tr><td>{E(g['hvilken'])}</td><td>"
+                      + ("Robotten oprettede den, men den er slettet igen. Skal den ikke være, så "
+                         "fjern den fra tjanselisten – ellers opretter robotten den igen om en uge."
+                         if g.get("oprettet_foer") else
+                         f"Bliver flyttet tilbage i Holdsport igen og igen (aktivitet "
+                         f"{E(g.get('aktivitet'))}). Robotten har flyttet den 3 gange på 3 døgn "
+                         "og venter nu på dig: ret den i Holdsport.") + "</td></tr>"
+                      for g in rettet.get("givet_op") or []])
+        skrivefejl_afsnit = ("<div class='banner bad'><strong>Robotten kunne ikke rette alt i "
+                             "Holdsport</strong>Her er, hvad der gik galt. Robotten prøver igen "
+                             "ved næste kørsel.</div>"
+                             + tabel(sf_rows, ["Tjans", "Hvad der gik galt"], "")
+                             if sf_rows else "")
+        udskudt = rettet.get("udskudt") or []
+        if not rettet.get("slaaet_til"):
+            ret_note = ("<p class='sub'>Robotten retter <strong>ikke</strong> selv i Holdsport – "
+                        "<code>HOLDSPORT_RETTER</code> er <code>False</code> i "
+                        "<code>scripts/indstillinger.py</code>"
+                        + (f". {len(udskudt)} ting ville den have rettet" if udskudt else "")
+                        + ".</p>")
+        elif udskudt:
+            ret_note = (f"<p class='sub'>{len(udskudt)} rettelse{'r' if len(udskudt) > 1 else ''}"
+                        " venter til næste kørsel – robotten retter højst 12 tidspunkter og "
+                        "opretter højst 8 tjanser ad gangen.</p>")
+        else:
+            ret_note = ""
+        spejl = hs.get("spejl") or {}
+        bundet = hs.get("bundet") or {}
+
+        def akt_for(n, ejer):
+            return next((a for a, p in bundet.items()
+                         if n in p.get("tjanser", []) and p.get("ejer") == ejer), "")
+        spejl_afsnit = "".join(
+            f"<p class='sub'><code>{E(n)}</code>: Holdsport har koblet tjansens kalender-id til "
+            f"aktivitet {E(akt_for(n, e))}, som er <code>{E(e)}</code>. Kalenderen viser derfor "
+            f"<code>{E(e)}</code> under begge kalender-id'er, så Holdsport ikke flytter "
+            "aktiviteten frem og tilbage. Tjansen har sin egen aktivitet, som robotten holder på "
+            "plads.</p>" for n, e in sorted(spejl.items()))
         holdsport_afsnit = (
-            "<h2>Kontrol mod Holdsport</h2>" + genbrug_afsnit + tid_afsnit +
+            "<h2 id='holdsport'>Kontrol mod Holdsport</h2>" + skrivefejl_afsnit + rettet_afsnit
+            + genbrug_afsnit + tid_afsnit + ret_note +
             f"<p class='sub'>{hs['fundet']} af {hs['kontrolleret']} tjanser fundet i "
-            "Holdsport ved sidste kørsel. Holdsport henter kalenderne én gang i døgnet, så en "
-            "ny eller flyttet tjans får halvandet døgn til at komme over. En tjans, der har "
-            "været i Holdsport og er væk, meldes med det samme.</p>"
+            "Holdsport ved sidste kørsel. Robotten retter selv en tjans, der står på et forkert "
+            "tidspunkt eller mangler, ved hver kørsel – også en, der er slettet i Holdsport – og "
+            "slår alarm, hvis den ikke kan. Den sletter aldrig noget.</p>"
+            + spejl_afsnit
             + tabel(sl_rows, ["Kampnr.", "Mødetid", "Aktivitet", "Tjans", "Hold i Holdsport"],
                     "Ingen tjanser er blevet slettet — alle ligger som de skal.")
             + ("<p class='sub' style='margin-top:14px'>Nye i kalenderen — venter på, at "
@@ -425,7 +499,7 @@ def render(status, base_url=""):
   // Den aktuelle liste — også det, der er ignoreret siden robottens sidste kørsel
   kald("").then(function (d) { if (d.nyest) vis(d.ignoreret); }).catch(function () {});
   // Fra mailen: .../tjanser/#ignorer=148228-D1-3fa2
-  var m = /^#ignorer=([\w-]+)$/.exec(location.hash);
+  var m = /^#ignorer=([\\w-]+)$/.exec(location.hash);
   if (m) {
     history.replaceState(null, "", location.pathname + location.search);
     var tr = document.querySelector('tr[data-noegle="' + m[1] + '"]');

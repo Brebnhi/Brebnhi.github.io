@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
+# sti: tjans/scripts/alert.py
 """Åbner, opdaterer eller lukker ét GitHub-issue afhængigt af, om der er huller
-i tjansedækningen. GitHub sender selv mail, når issuet oprettes eller ændres,
-så der kommer kun besked, når noget faktisk mangler."""
-import json, os, subprocess, sys
+i tjansedækningen – og sender en alarm til telefonen (ntfy), når noget nyt kræver handling,
+når robotten selv har rettet noget i Holdsport, eller når en tjans inden for 3 døgn står
+forkert. Issuet tildeles og @-nævner ejeren af repoet, så GitHub også giver besked."""
+import json, os, subprocess, sys, urllib.request
 
 TITEL = "Tjanser: noget mangler"
 LABEL = "tjans"
@@ -11,6 +13,41 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def gh(*args, **kw):
     return subprocess.run(["gh", *args], capture_output=True, text=True, **kw)
+
+
+def indstilling(navn, standard):
+    """En indstilling fra scripts/indstillinger.py – standard, hvis den ikke står der."""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import indstillinger
+        return getattr(indstillinger, navn, standard)
+    except ImportError:
+        return standard
+
+
+def push(st, side):
+    """Alarm på telefonen med ntfy (ALARM_NTFY i scripts/indstillinger.py). Hvad der skal
+    sendes, har build.py regnet ud (status.json → "alarm"). Fejler det, kører resten videre."""
+    a = st.get("alarm") or {}
+    emne = (indstilling("ALARM_NTFY", "") or "").strip()
+    if not a.get("send") or not emne:
+        print("Ingen alarm til telefonen" + ("" if emne else " (ALARM_NTFY er tom)"))
+        return
+    problem = a.get("titel", "").startswith("Tjanser: noget nyt")
+    data = {"topic": emne, "title": a.get("titel") or "Tjanser",
+            "message": "\n".join((a.get("linjer") or [])[:10]) or (a.get("titel") or "Tjanser"),
+            "priority": 5 if a.get("akut") else 4 if problem else 3,
+            "tags": (["rotating_light"] if a.get("akut") else ["warning"] if problem else
+                     ["wrench"] if a.get("rettet") else ["white_check_mark"])}
+    if side:
+        data["click"] = side
+    req = urllib.request.Request("https://ntfy.sh", data=json.dumps(data).encode("utf-8"),
+                                 headers={"Content-Type": "application/json"}, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            print(f"Alarm sendt til telefonen ({r.status}): {data['title']}")
+    except Exception as exc:                       # noqa: BLE001 – issuet skal stadig med
+        print(f"Kunne ikke sende alarm til telefonen: {exc}", file=sys.stderr)
 
 
 def indhold(tekst):
@@ -31,6 +68,12 @@ def main():
     genbrugt = hs.get("genbrugt") or []
     forkert_tid = hs.get("forkert_tid") or []     # Holdsport har ikke flyttet tjansen med kampen
     dobbelt = st.get("dobbelt_tjans") or []       # samme hold, to tjanser på samme tid
+    hsfejl = hs.get("fejl") if hs.get("aktiveret") else None
+    rettet = hs.get("rettet") or {}               # det, robotten selv har rettet i Holdsport
+    skrivefejl = (rettet.get("fejl") or []) + (rettet.get("givet_op") or [])
+    ejer = os.environ.get("GITHUB_REPOSITORY_OWNER") or "Brebnhi"
+
+    push(st, side)
 
     gh("label", "create", LABEL, "--color", "B60205",
        "--description", "Huller i tjansedækningen")
@@ -40,7 +83,7 @@ def main():
     aabne = json.loads(fundet.stdout or "[]")
 
     if not (huller or forsvundne or slettet or arkfejl or konflikter or genbrugt or forkert_tid
-            or dobbelt):
+            or dobbelt or hsfejl or skrivefejl):
         if aabne:
             nr = str(aabne[0]["number"])
             gh("issue", "comment", nr, "--body",
@@ -53,6 +96,23 @@ def main():
         return
 
     linjer = [f"Tjekket {st['opdateret']} mod {st['feed_kampe']} kampe i kampprogrammet.", ""]
+    if hsfejl:
+        linjer += ["## Robotten kunne ikke tjekke Holdsport", "",
+                   f"{hsfejl}. Indtil det virker igen, ser robotten ikke, om tjanserne står "
+                   "rigtigt i Holdsport.", ""]
+    if skrivefejl:
+        linjer += [f"## Robotten kunne ikke rette {len(skrivefejl)} ting i Holdsport", "",
+                   "Robotten prøver igen ved næste kørsel.", "",
+                   "| Tjans | Hvad der gik galt |", "|---|---|"]
+        for e in rettet.get("fejl") or []:
+            linjer.append(f"| {e.get('hvilken') or 'Holdsport'} | {e['fejl']} |")
+        for g in rettet.get("givet_op") or []:
+            linjer.append(f"| {g['hvilken']} | " + (
+                "Robotten oprettede den, men den er slettet igen. Skal den ikke være, så fjern "
+                "den fra tjanselisten." if g.get("oprettet_foer") else
+                f"Bliver flyttet tilbage i Holdsport igen og igen (aktivitet {g.get('aktivitet')})"
+                " – ret den i Holdsport.") + " |")
+        linjer.append("")
     if arkfejl:
         linjer += ["## Google-arket med tjanselisten kunne ikke læses", "",
                    f"{arkfejl}. Robotten bruger `data/tjanser.csv`, så rettelser i arket når "
@@ -97,15 +157,17 @@ def main():
     if forkert_tid:
         linjer += [f"## {len(forkert_tid)} tjans(er) står forkert i Holdsport", "",
                    "Tjansen står på et andet tidspunkt i Holdsport end kampen, eller der ligger en "
-                   "ekstra kopi. Ret tidspunktet på aktiviteten i Holdsport — eller slet kopien — "
+                   "ekstra kopi. Robotten flytter selv en tjans, der står forkert – det her kunne "
+                   "den ikke. Ret tidspunktet på aktiviteten i Holdsport — eller slet kopien — "
                    "og tjek, om de tilmeldte stadig kan.", "",
                    "| Tjans | Aktivitet | Skal stå (mødetid) | Står i Holdsport | Hold i Holdsport |",
                    "|---|---|---|---|---|"]
         def kopi(r):
             if not r.get("dublet"):
                 return ""
-            return (" – ekstra kopi, du selv har oprettet – slet den" if r.get("egen")
-                    else " – ekstra kopi, slet den")
+            return {"egen": " – ekstra kopi, du selv har oprettet – slet den",
+                    "robot": " – ekstra kopi, robotten har oprettet – slet den"}.get(
+                        r.get("kilde"), " – ekstra kopi, slet den")
         linjer += [f"| {r['tjans']} | {r['navn']} (kamp {r['kampnr']}) | {r['start']} | "
                    f"{r['hs_start']}{kopi(r)} | {r['holdsport']} |" for r in forkert_tid]
         linjer.append("")
@@ -128,23 +190,29 @@ def main():
                    f"{g['nu_start']} (kamp {g['nu'].split('-')[0]}) | {g['aktivitet']} |"
                    for g in genbrugt]
         linjer.append("")
-    linjer.append("Ret tjanselisten eller genopret aktiviteten i Holdsport, "
-                  "så lukker issuet sig selv ved næste kørsel.")
+    # Det, robotten selv har rettet, står på siden og kommer på telefonen – ikke i issuet, så
+    # det ikke giver to mails (en når det kommer, en når det forsvinder igen).
+    linjer.append("Robotten retter selv det, den kan, i Holdsport. Når resten er rettet – i "
+                  "tjanselisten eller i Holdsport – lukker issuet sig selv ved næste kørsel.")
     if side:
         linjer.append(f"\nHele overblikket: {side}")
-    krop = "\n".join(linjer)
+    krop = "\n".join(linjer) + f"\n\n@{ejer}"      # @-nævnt: GitHub giver ejeren besked
 
     if aabne:
         nr = str(aabne[0]["number"])
         # Første linje ("Tjekket <tidspunkt> …") skifter ved hver kørsel – den alene er ingen ændring
         if indhold(aabne[0].get("body")) != indhold(krop):
             gh("issue", "edit", nr, "--body", krop)
-            gh("issue", "comment", nr, "--body", "Status ændret — se opdateret oversigt ovenfor.")
+            gh("issue", "comment", nr, "--body",
+               f"@{ejer} Status ændret — se opdateret oversigt ovenfor.")
             print(f"Issue #{nr} opdateret")
         else:
             print(f"Issue #{nr} uændret")
     else:
-        r = gh("issue", "create", "--title", TITEL, "--label", LABEL, "--body", krop)
+        r = gh("issue", "create", "--title", TITEL, "--label", LABEL, "--body", krop,
+               "--assignee", ejer)
+        if r.returncode:                            # kan ejeren ikke tildeles, så uden
+            r = gh("issue", "create", "--title", TITEL, "--label", LABEL, "--body", krop)
         print("Issue oprettet:", r.stdout.strip() or r.stderr.strip())
 
 
