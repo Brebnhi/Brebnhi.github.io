@@ -1,0 +1,1022 @@
+<!doctype html>
+<!-- sti: tjans/docs/kontingentmodel/index.html -->
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="referrer" content="no-referrer">
+<title>Kontingentmodel · Aalborg Volley</title>
+<!--
+  Kontingentmodellen for https://brebnhi.github.io/kontingentmodel/ (repoet Brebnhi.github.io).
+  Filen er statisk og bygges IKKE af robotten. Den indeholder ingen tal.
+
+  Hvad burde kontingentet være pr. hold? Siden henter fanerne «Budget» (budgetlinjer, poster og
+  KONTINGENTBUDGET) og «Hold - status» fra budgetarket gennem det samme script og den samme kode
+  som budgetsiden (adresserne står i ../budget/adresse.txt – nyeste sæson nederst). Den forventede
+  kørselsudligning hentes fra ../koerselsudligning/status.json, som natkørslen skriver.
+
+  Ét hold ad gangen. Holdets poster er dets egne poster i budgettet plus dets andel pr. spiller af
+  klubbens (og ungdommens fælles) poster. Hver post kan justeres for holdet alene.
+    Udgifter:  halleje, turneringsgebyr, dommergebyr, rejseomkostninger, trænergodtgørelse,
+               tøj (nyt sæt hvert 3. år + huller mellem sæsonerne)
+    Indtægter: spiller egenbetaling, sponsorater, støtte og tilskud, klubaktiviteter (efter indkøb),
+               kørselsudligning
+  Forslag pr. rate = (udgifter − indtægter) ÷ (2 rater × alle spillere) + gebyr og afgang, rundet
+  til 50 kr. Fritagne (trænere og frivillige) regnes med som spillere, så deres gratis kontingent er
+  en udgift for klubben – ikke noget, holdkammeraterne betaler. Hold under divisionsniveau (hold
+  uden dommerbetaling) beholder mindst den nuværende takst.
+
+  Dine justeringer gemmes kun i browseren (localStorage «aav.kontingentmodel.*»), og et delt link
+  bærer dem i adressen (#s=…). Udregningen står mellem MODEL-START og MODEL-END.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#F4F6F8; --surface:#FFFFFF; --surface-2:#EEF2F6; --surface-3:#E6ECF2;
+  --ink:#16202C; --muted:#5B6A7B; --faint:#8595A6;
+  --line:#DCE2E9; --line-strong:#C3CDD8;
+  --accent:#1B4B73; --accent-soft:#D6E3EF; --on-accent:#FFFFFF;
+  --green:#28644F; --green-soft:#DBEBE2;
+  --clay:#9E403C; --clay-soft:#F6E2E0;
+  --ochre:#8F6410; --ochre-soft:#F6E9C9;
+  --shadow:0 1px 2px rgba(22,32,44,.05),0 6px 18px -10px rgba(22,32,44,.18);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0E141C; --surface:#151E29; --surface-2:#1A2531; --surface-3:#202D3B;
+    --ink:#E4EAF1; --muted:#96A5B6; --faint:#728496;
+    --line:#25323F; --line-strong:#33434F;
+    --accent:#7FB2DA; --accent-soft:#1E3549; --on-accent:#0E141C;
+    --green:#69B896; --green-soft:#1B3329;
+    --clay:#DE8079; --clay-soft:#3B2320;
+    --ochre:#DCA842; --ochre-soft:#3A2F16;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px -10px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0E141C; --surface:#151E29; --surface-2:#1A2531; --surface-3:#202D3B;
+  --ink:#E4EAF1; --muted:#96A5B6; --faint:#728496;
+  --line:#25323F; --line-strong:#33434F;
+  --accent:#7FB2DA; --accent-soft:#1E3549; --on-accent:#0E141C;
+  --green:#69B896; --green-soft:#1B3329;
+  --clay:#DE8079; --clay-soft:#3B2320;
+  --ochre:#DCA842; --ochre-soft:#3A2F16;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px -10px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+html{color-scheme:light dark;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--ground);color:var(--ink);
+  font-family:Archivo,"Helvetica Neue",Arial,sans-serif;font-size:15px;line-height:1.5;
+  -webkit-font-smoothing:antialiased}
+[hidden]{display:none!important}
+button,input,select{font:inherit;color:inherit}
+a{color:var(--accent)}
+.num{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;white-space:nowrap;letter-spacing:-.01em}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px}
+.eyebrow{font-size:11.5px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--accent);margin:0 0 6px}
+.eyebrow a{color:inherit;text-decoration:none}
+.eyebrow a:hover{text-decoration:underline}
+.stille{color:var(--muted)}
+.spacer{flex:1}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.neg{color:var(--clay)}
+.pos{color:var(--green)}
+.daemp{color:var(--faint)}
+
+/* ---------------------------------------------------------------- knapper og felter */
+.knap{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:9px;
+  background:var(--accent);color:var(--on-accent);font-weight:600;padding:10px 16px;cursor:pointer;text-decoration:none}
+.knap:disabled{opacity:.55;cursor:default}
+.knap.sekundaer{background:transparent;color:var(--ink);border:1px solid var(--line-strong)}
+.knap.lille{padding:6px 11px;font-size:13.5px;border-radius:8px}
+.felt{display:block;margin:12px 0 0}
+.felt>span{display:block;font-size:13px;font-weight:600;margin-bottom:5px}
+.felt input{width:100%;padding:10px 12px;border:1px solid var(--line-strong);border-radius:9px;background:var(--surface);font-size:16px}
+.felt input:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
+.tjek{display:flex;gap:8px;align-items:center;margin-top:12px;font-size:14px;color:var(--muted)}
+.fejl{color:var(--clay);font-size:14px;margin:10px 0 0;min-height:1em}
+.ikonknap{border:1px solid var(--line-strong);background:var(--surface);border-radius:7px;padding:4px 9px;font-size:12.5px;cursor:pointer}
+.ikonknap:hover{border-color:var(--accent)}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:7px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:transparent;padding:4px 9px;font-size:12.5px;cursor:pointer;color:var(--muted);white-space:nowrap}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);font-weight:600}
+.belob{width:104px;text-align:right;padding:3px 8px;border:1px solid var(--line-strong);border-radius:7px;background:var(--surface);font-size:14px;font-weight:600}
+.belob:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
+.felt-lille{width:86px;text-align:right;padding:2px 7px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);font-size:13px}
+.felt-lille:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
+input[type=range]{accent-color:var(--accent);margin:0;width:100%;height:22px;cursor:pointer;display:block}
+
+/* ---------------------------------------------------------------- lås */
+.midt{min-height:100vh;min-height:100svh;display:flex;align-items:center;justify-content:center;padding:24px 16px}
+.laaskort{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:26px 24px 20px;box-shadow:var(--shadow)}
+.laaskort h1{font-size:28px;letter-spacing:-.02em;margin:0 0 6px}
+.laaskort p{margin:0}
+.laaskort .knap{width:100%;margin-top:16px}
+.laaskort .smaa{margin-top:16px;font-size:13px;color:var(--muted);text-align:center}
+.laeser{display:flex;align-items:center;justify-content:center;min-height:60vh;color:var(--muted)}
+
+/* ---------------------------------------------------------------- top */
+.top{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--ground) 94%,transparent);
+  backdrop-filter:saturate(1.4) blur(8px);-webkit-backdrop-filter:saturate(1.4) blur(8px);border-bottom:1px solid var(--line)}
+.topin{display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap;padding-block:6px}
+.topin .eyebrow{margin:0;font-size:9.5px;letter-spacing:.12em}
+.topin h1{font-size:17px;margin:0;letter-spacing:-.01em;line-height:1.15;display:flex;align-items:center;gap:6px}
+#saesontekst{color:var(--accent)}
+.saesonvalg{appearance:none;-webkit-appearance:none;font:inherit;font-weight:700;color:var(--accent);cursor:pointer;
+  border:1px solid var(--line-strong);border-radius:7px;padding:0 24px 0 7px;line-height:1.35;background-color:var(--surface);
+  background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);
+  background-position:calc(100% - 13px) 55%,calc(100% - 8px) 55%;background-size:5px 5px;background-repeat:no-repeat}
+.topknapper{display:flex;gap:6px}
+@media (max-width:640px){.top{position:static;backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--ground)}}
+
+/* ---------------------------------------------------------------- bannere og nøgletal */
+.bannere{margin-top:8px;display:grid;gap:6px}
+.bannere:empty{display:none}
+.banner{border-radius:8px;padding:7px 10px;font-size:13px;border:1px solid;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.banner.gul{background:var(--ochre-soft);border-color:color-mix(in srgb,var(--ochre) 40%,transparent)}
+.banner.gul strong{color:var(--ochre)}
+.banner.blaa{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 35%,transparent)}
+.banner .ikonknap{padding:1px 8px;font-size:12px}
+.kpi{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0 0}
+.kpikort{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px 7px;min-width:0}
+.kpikort .lbl{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.kpikort .stor{font-size:18px;font-weight:600;letter-spacing:-.02em;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpikort .smaa{font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lead{color:var(--muted);font-size:13.5px;margin:8px 2px 0;max-width:95ch}
+@media (max-width:720px){.kpi{grid-template-columns:minmax(0,1fr)}.kpikort .smaa{white-space:normal}}
+
+/* ---------------------------------------------------------------- opdeling */
+.layout{display:grid;grid-template-columns:minmax(290px,370px) minmax(0,1fr);gap:20px;margin-top:12px;align-items:start}
+.holdliste{position:sticky;top:58px;min-width:0}
+@media (max-width:900px){.layout{grid-template-columns:minmax(0,1fr)}.holdliste{position:static}}
+.liste{background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.liste>*+*{border-top:1px solid var(--line)}
+.gruppehoved{display:flex;align-items:baseline;gap:6px;padding:6px 10px 3px;font-size:10.5px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);background:var(--surface-2)}
+.gruppehoved small{text-transform:none;letter-spacing:0;font-weight:400;color:var(--faint);font-size:11.5px}
+.lh{display:grid;grid-template-columns:minmax(0,1fr) 50px 58px 62px;gap:6px;padding:0 10px 2px;font-size:10.5px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.lh span:not(:first-child){text-align:right}
+.lr{display:grid;grid-template-columns:minmax(0,1fr) 50px 58px 62px;gap:6px;align-items:center;width:100%;padding:6px 10px;border:0;background:var(--surface);text-align:left;cursor:pointer;font-size:14px}
+.lr:hover{background:var(--surface-2)}
+.lr[aria-current="true"]{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+.lr .navn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.lr .navn small{font-weight:400;color:var(--faint);font-size:11.5px;margin-left:4px}
+.lr .v{text-align:right;font-size:13px}
+.lr .nu{color:var(--muted)}
+.lr .f{font-weight:650}
+.lsum{padding:7px 10px;font-size:12.5px;color:var(--muted);background:var(--surface);border-top:1.5px solid var(--line-strong)!important}
+.lsum b{color:var(--ink)}
+
+/* ---------------------------------------------------------------- holdet */
+.holdpanel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px 16px;min-width:0}
+.hp-top{display:flex;flex-wrap:wrap;gap:10px 20px;align-items:flex-start;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.hp-top h2{font-size:24px;letter-spacing:-.02em;margin:0;line-height:1.15}
+.hp-top .eyebrow{margin:0 0 3px}
+.hp-top .stille{margin:2px 0 0;font-size:13px}
+.hp-tal{margin-left:auto;text-align:right}
+.hp-tal .lbl{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.hp-tal .stort{font-size:30px;font-weight:650;letter-spacing:-.02em;line-height:1.1}
+.hp-tal .smaa{font-size:12.5px;color:var(--muted)}
+.gulv{margin:10px 0 0;padding:8px 10px;border-radius:8px;background:var(--ochre-soft);font-size:13px}
+.afsnit{display:flex;align-items:baseline;gap:8px;margin:14px 0 4px;font-size:10.5px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.afsnit .spacer{flex:1}
+.afsnit .num{text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--ink)}
+.pr{padding:8px 0 9px;border-bottom:1px solid var(--line)}
+.pr:last-child{border-bottom:0}
+.pr-top{display:flex;align-items:center;gap:8px}
+.pr-navn{font-weight:600;font-size:14.5px}
+.tag{display:inline-block;font-size:10.5px;line-height:1.45;padding:0 5px;border-radius:4px;background:var(--accent-soft);color:var(--accent);font-weight:500;white-space:nowrap}
+.nulstil{border:0;background:transparent;color:var(--faint);cursor:pointer;padding:0 2px;font-size:15px;line-height:1;width:18px}
+.nulstil:hover{color:var(--clay)}
+.nulstil[hidden]{display:inline-block!important;visibility:hidden}
+.pr input[type=range]{margin-top:4px}
+.pr-kilde{margin:2px 0 0;font-size:12px;color:var(--muted)}
+.pr-kilde button{border:0;background:none;padding:0;color:var(--accent);cursor:pointer;font-size:12px;text-decoration:underline}
+.toej{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin-top:6px;font-size:13px;color:var(--muted)}
+.regn{margin-top:14px;padding:10px 12px;border-radius:8px;background:var(--surface-2);font-size:13.5px}
+.regn table{width:100%;border-collapse:collapse}
+.regn td{padding:2px 0}
+.regn td.v{text-align:right;white-space:nowrap}
+.regn tr.t td{border-top:1.5px solid var(--line-strong);padding-top:5px;font-weight:650}
+.regn .stille{font-size:12.5px}
+.note{color:var(--muted);font-size:12.5px;margin:10px 0 0}
+.knapper{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+footer{margin:22px 0 40px;color:var(--muted);font-size:12px;line-height:1.6}
+@media (max-width:640px){
+  .holdpanel{padding:12px 12px 14px}
+  .hp-tal{margin-left:0;text-align:left}
+  .belob{width:96px}
+}
+@media print{.top,footer,.bannere,.holdliste{display:none}.layout{display:block}}
+</style>
+</head>
+<body>
+
+<div id="laeser" class="laeser" role="status">Henter …</div>
+
+<!-- ============================================================ lås -->
+<div id="laas" class="midt" hidden>
+  <form class="laaskort" id="laasform" autocomplete="on">
+    <p class="eyebrow">Aalborg Volley</p>
+    <h1>Kontingentmodel</h1>
+    <p class="stille">Hvad burde kontingentet være pr. hold? Tallene kommer direkte fra budgetarket – skriv den samme kode som til budgettet.</p>
+    <input type="text" name="username" value="budget" autocomplete="username" hidden>
+    <label class="felt"><span>Kode</span>
+      <input type="password" id="kode" name="password" autocomplete="current-password" required></label>
+    <label class="tjek"><input type="checkbox" id="husk"> Husk koden på denne enhed</label>
+    <button type="submit" class="knap" id="laasknap">Lås op</button>
+    <p class="fejl" id="laasfejl" role="alert"></p>
+    <p class="smaa"><a href="../budget/">Budgettet</a> · <a href="../">Klubbens værktøjer</a></p>
+  </form>
+</div>
+
+<!-- ============================================================ ingen adresse -->
+<div id="ingen" class="midt" hidden>
+  <div class="laaskort">
+    <p class="eyebrow">Aalborg Volley</p>
+    <h1>Kontingentmodel</h1>
+    <p class="stille">Siden henter tallene gennem budgetsidens forbindelse til budgetarket, og den er ikke sat op endnu.</p>
+    <a class="knap" href="../budget/#opsaetning">Kobl budgetsiden til arket</a>
+  </div>
+</div>
+
+<!-- ============================================================ selve siden -->
+<div id="app" hidden>
+  <header class="top">
+    <div class="wrap topin">
+      <div class="titelblok">
+        <p class="eyebrow"><a href="../">Aalborg Volley</a></p>
+        <h1><span>Kontingentmodel</span><select id="saesonvalg" class="saesonvalg" aria-label="Vælg budget" hidden></select><span id="saesontekst"></span></h1>
+      </div>
+      <div class="spacer"></div>
+      <div class="topknapper">
+        <button type="button" class="ikonknap" id="del" title="Kopiér et link med dine justeringer">Del</button>
+        <button type="button" class="ikonknap" id="opdater" title="Hent tallene fra arket igen">Opdatér</button>
+        <button type="button" class="ikonknap" id="laas-igen" title="Lås siden og glem koden på denne enhed">Lås</button>
+      </div>
+    </div>
+  </header>
+  <main class="wrap">
+    <div class="bannere" id="bannere"></div>
+    <section class="kpi" id="kpi" aria-label="Nøgletal"></section>
+    <p class="lead" id="lead"></p>
+    <div class="layout">
+      <section class="holdliste" aria-label="Holdene">
+        <div class="lh" aria-hidden="true"><span>Hold</span><span>Nu</span><span>Forslag</span><span>Forskel</span></div>
+        <div class="liste" id="holdliste"></div>
+        <p class="note" id="listenote"></p>
+      </section>
+      <section class="holdpanel" id="holdpanel" aria-live="polite"></section>
+    </div>
+    <footer id="fod"></footer>
+  </main>
+</div>
+
+<script>
+(function () {
+"use strict";
+
+/* ============================================================ indstillinger */
+const REPO = "Brebnhi/Brebnhi.github.io";
+const MAPPE = "tjans/docs/kontingentmodel";
+const ADRESSEFIL = "../budget/adresse.txt";
+const KOERSELFIL = "../koerselsudligning/status.json";
+const FANER = ["Budget", "Hold - status"];
+// Koden og adresserne deles med budgetsiden (samme domæne). Er budgettet låst op med «Husk koden», åbner denne side også.
+const BUDGETNOEGLE = { kode: "aav.budget.kode", koder: "aav.budget.koder", adresse: "aav.budget.adresse" };
+const NOEGLE = { indst: "aav.kontingentmodel.indst", fortryd: "aav.kontingentmodel.fortryd", hold: "aav.kontingentmodel.hold", saeson: "aav.kontingentmodel.saeson" };
+const LOKAL_TEST = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+
+/* === MODEL-START === ren udregning uden DOM, så den kan testes for sig */
+const tekst = s => String(s == null ? "" : s).trim();
+const lav = s => tekst(s).toLowerCase();
+const sum = (arr, f) => arr.reduce((a, x) => a + (f ? f(x) : x), 0);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const klon = x => x === undefined ? undefined : JSON.parse(JSON.stringify(x));
+const erObj = x => !!x && typeof x === "object" && !Array.isArray(x);
+function num(v, std) { return typeof v === "number" && isFinite(v) ? v : std; }
+function tal(v) {
+  if (typeof v === "number") return isFinite(v) ? v : 0;
+  if (typeof v === "boolean") return v ? 1 : 0;
+  let s = tekst(v);
+  if (!s) return 0;
+  let neg = false;
+  if (/^\(.*\)$/.test(s)) { neg = true; s = s.slice(1, -1); }
+  s = s.replace(/kr\.?|dkk|\s| /gi, "");
+  if (s.endsWith("%")) return tal(s.slice(0, -1)) / 100;
+  if (/^[-−]/.test(s)) { neg = !neg; s = s.slice(1); }
+  if (s.includes(",") && s.includes(".")) s = s.lastIndexOf(",") > s.lastIndexOf(".") ? s.replace(/\./g, "").replace(",", ".") : s.replace(/,/g, "");
+  else if (s.includes(",")) s = s.replace(",", ".");
+  else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, "");
+  const x = parseFloat(s);
+  return isNaN(x) ? 0 : (neg ? -x : x);
+}
+function forbogstav(s) { s = tekst(s); return s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : s; }
+/* «Herre 5 - Old boys» → «Herre 5» */
+const prefiks = s => { s = tekst(s); const i = s.indexOf(" - "); return i > 0 ? s.slice(0, i).trim() : s; };
+/* Nøglen, holdene matches på: «HU 15/17» og «HU15/17» er det samme hold. */
+const holdId = s => lav(prefiks(s)).replace(/\s+/g, "");
+/* «Dame 1» → «D1», «Herre 2» → «H2» – koderne i kørselsudligningen */
+function kodeFor(navn) {
+  const m = lav(prefiks(navn)).match(/^(dame|herre)\s*(\d+)$/);
+  return m ? (m[1] === "dame" ? "D" : "H") + m[2] : "";
+}
+const AFRUNDING = 50;      // satserne rundes til nærmeste 50 kr.
+const TOEJ_AAR = 3;        // spillertøjet skiftes hvert 3. år
+
+/* Posterne på siden – fundet ud fra budgetlinjens navn i arket. Alt andet er «ikke med endnu». */
+const POSTER = [
+  { id: "halleje", navn: "Halleje", art: "ud", match: l => /halleje/.test(l) },
+  { id: "turnering", navn: "Turneringsgebyr", art: "ud", match: l => /stævne|staevne|turnering|transfer/.test(l) && !/egenbetal/.test(l) },
+  { id: "dommer", navn: "Dommergebyr", art: "ud", match: l => /dommerbetal|^division/.test(l) },
+  { id: "rejse", navn: "Rejseomkostninger", art: "ud", match: l => /rejse/.test(l) },
+  { id: "traener", navn: "Trænergodtgørelse", art: "ud", match: l => /trænergodtg|traenergodtg/.test(l) },
+  { id: "toej", navn: "Tøj", art: "ud", match: l => /tøj|toej/.test(l), kunHold: true },
+  { id: "egenbetaling", navn: "Spiller egenbetaling", art: "ind", match: l => /egenbetal/.test(l) },
+  { id: "sponsor", navn: "Sponsorater", art: "ind", match: l => /sponsor/.test(l) },
+  { id: "tilskud", navn: "Støtte og tilskud", art: "ind", match: l => /støtte|stoette|tilskud/.test(l) },
+  { id: "aktiviteter", navn: "Klubaktiviteter", art: "ind", match: l => /klubaktiv|fest/.test(l) },
+  { id: "udligning", navn: "Kørselsudligning", art: "ind", match: l => /udligning/.test(l) }
+];
+const POST = Object.fromEntries(POSTER.map(p => [p.id, p]));
+const postFor = linje => { const l = lav(linje); return POSTER.find(p => p.match(l)) || null; };
+
+/* Fanen «Budget»: budgetlinjerne til venstre, posterne til højre og KONTINGENTBUDGET nederst. */
+function laesBudgetFane(rows) {
+  const ud = { saeson: "", linjer: [], poster: [], hold: [], gebyr: null, fejl: [] };
+  for (let r = 0; r < Math.min(rows.length, 4); r++) {
+    const m = tekst(rows[r] && rows[r][0]).match(/\d{2}\/\d{2}/);
+    if (m) { ud.saeson = m[0]; break; }
+  }
+  const h0 = rows.findIndex(r => lav(r[0]) === "overkategori" && lav(r[1]) === "budgetlinje");
+  if (h0 < 0) { ud.fejl.push("Fanen «Budget» har ikke overskrifterne Overkategori og Budgetlinje."); return ud; }
+  for (let r = h0 + 1; r < rows.length; r++) {
+    const a = tekst(rows[r][0]), b = tekst(rows[r][1]);
+    if (!a || !b) break;
+    ud.linjer.push({ over: a, navn: b, type: lav(a) === "nettoomsætning" ? "Indtægt" : "Udgift", budget: tal(rows[r][2]) });
+  }
+  const hdr = rows[h0].map(lav);
+  const pc = hdr.indexOf("post");
+  if (pc > 0) {
+    const find = n => hdr.indexOf(n, pc);
+    const C = { linje: hdr.lastIndexOf("budgetlinje"), beloeb: find("beløb"), hold: find("hold"), type: find("type") };
+    if (C.linje < 0 || C.linje > pc) C.linje = pc - 1;
+    if (C.beloeb < 0) C.beloeb = pc + 1;
+    if (C.hold < 0) C.hold = pc + 2;
+    if (C.type < 0) C.type = pc + 3;
+    for (let r = h0 + 1; r < rows.length; r++) {
+      const row = rows[r] || [];
+      const linje = tekst(row[C.linje]), post = tekst(row[pc]);
+      if (lav(post) === "i alt" || lav(linje) === "kontingentbudget") break;
+      if (!linje || !post) continue;
+      ud.poster.push({ linje, navn: post, beloeb: tal(row[C.beloeb]), hold: tekst(row[C.hold]), type: tekst(row[C.type]) });
+    }
+  }
+  // KONTINGENTBUDGET: Hold · Takst · Antal spillere · Trænerkomp. · Bestyrelseskomp. · Netto – og «Gebyr / afgang»
+  let k0 = -1;
+  for (let r = 0; r < rows.length && k0 < 0; r++) if ((rows[r] || []).some(v => lav(v) === "kontingentbudget")) k0 = r;
+  if (k0 < 0) { ud.fejl.push("Fanen «Budget» har ingen tabel KONTINGENTBUDGET med takst og antal spillere pr. hold."); return ud; }
+  let hr = -1;
+  for (let r = k0 + 1; r < Math.min(rows.length, k0 + 6); r++) {
+    const l = (rows[r] || []).map(lav);
+    if (l.includes("hold") && l.includes("takst")) { hr = r; break; }
+  }
+  if (hr < 0) { ud.fejl.push("Tabellen KONTINGENTBUDGET mangler overskrifterne Hold og Takst."); return ud; }
+  const l = rows[hr].map(lav);
+  const ci = n => l.findIndex(x => x.startsWith(n));
+  const C = { hold: l.indexOf("hold"), takst: l.indexOf("takst"), antal: ci("antal"), traener: ci("trænerkomp"), best: ci("bestyrelseskomp"), netto: ci("netto") };
+  for (let r = hr + 1; r < rows.length; r++) {
+    const row = rows[r] || [];
+    const navn = tekst(row[C.hold]), ln = lav(navn);
+    if (ln.startsWith("gebyr")) { const v = tal(row[C.hold + 1]); ud.gebyr = v >= 1 ? v / 100 : v; break; }
+    if (ln.startsWith("poster i budget")) break;
+    if (!navn || ln === "i alt") continue;
+    ud.hold.push({ navn, takst: tal(row[C.takst]), antal: C.antal >= 0 ? tal(row[C.antal]) : 0,
+      komp: (C.traener >= 0 ? tal(row[C.traener]) : 0) + (C.best >= 0 ? tal(row[C.best]) : 0),
+      netto: C.netto >= 0 && row[C.netto] !== "" && row[C.netto] != null ? tal(row[C.netto]) : null });
+  }
+  if (!ud.hold.length) ud.fejl.push("Tabellen KONTINGENTBUDGET har ingen hold.");
+  return ud;
+}
+
+/* «Hold - status»: holdene i arkets grupper (Senior, Ungdom, Mix, Klub). */
+function laesHoldStatus(rows) {
+  const grupper = [];
+  let blok = false;
+  for (let r = 0; r < rows.length; r++) {
+    const a = tekst(rows[r][0]), b = tekst(rows[r][1]), al = lav(a);
+    if (al.startsWith("indtægter pr")) { blok = true; continue; }
+    if (al.startsWith("udgifter pr") || al.startsWith("netto pr")) break;
+    if (!blok) continue;
+    if (a && !b) { grupper.push({ navn: forbogstav(a), hold: [] }); continue; }
+    if (!b || / i alt$/i.test(b) || lav(b) === "i alt") continue;
+    if (grupper.length) grupper[grupper.length - 1].hold.push(b);
+  }
+  return grupper;
+}
+function gaetGruppe(navn) {
+  const l = lav(navn);
+  return /^(herre|dame)/.test(l) ? "Senior" : /mix/.test(l) ? "Mix" : /klub/.test(l) ? "Klub" : "Ungdom";
+}
+
+/* Arkets svar → hold med deres egne poster og deres andel af de fælles poster. */
+function bygData(svar) {
+  const F = (svar && svar.faner) || {};
+  if (!F["Budget"]) throw new Error("fanen «Budget» findes ikke i arket" + (svar && svar.alleFaner ? " (arket har: " + svar.alleFaner.join(", ") + ")" : ""));
+  const B = laesBudgetFane(F["Budget"]);
+  const grupper = laesHoldStatus(F["Hold - status"] || []);
+  const gruppeAf = {};
+  grupper.forEach(g => g.hold.forEach(n => { gruppeAf[holdId(n)] = g.navn; }));
+  const gebyr = B.gebyr != null && B.gebyr >= 0 && B.gebyr < 0.5 ? B.gebyr : 0.05;
+  let hold = B.hold.map((x, i) => {
+    const kort = prefiks(x.navn), id = holdId(x.navn);
+    const netto = x.netto != null ? x.netto : Math.max(0, 2 * x.antal - x.komp) * x.takst * (1 - gebyr);
+    return { navn: x.navn, kort, id, kode: kodeFor(kort), takst: x.takst, antal: x.antal, komp: x.komp, netto,
+      gruppe: gruppeAf[id] || gaetGruppe(kort), _i: i, division: false };
+  });
+  const betalere = hold.filter(h => h.antal > 0);
+  const efterId = Object.fromEntries(betalere.map(h => [h.id, h]));
+  const typeAf = p => lav(p.type) === "indtægt" ? "Indtægt" : lav(p.type) === "udgift" ? "Udgift" : null;
+  const linjeType = {};
+  B.linjer.forEach(l => { linjeType[lav(l.navn)] = l.type; });
+
+  // std[hold][post] = beløb pr. sæson; kilde[hold][post] = hvor beløbet kommer fra
+  const std = {}, kilde = {};
+  betalere.forEach(h => { std[h.id] = {}; kilde[h.id] = {}; POSTER.forEach(P => { std[h.id][P.id] = 0; kilde[h.id][P.id] = { egne: [], puljer: {} }; }); });
+  const udenfor = {};          // linjer og poster, der ikke er med endnu: navn → nettoudgift
+  const puljeAntal = gr => sum(gr === "Alle" ? betalere : betalere.filter(h => h.gruppe === gr), h => h.antal);
+
+  B.poster.forEach(p => {
+    const lid = lav(p.linje);
+    if (/^kontingent(er)?$/.test(lid)) return;
+    const type = typeAf(p) || linjeType[lid] || "Udgift";
+    const P = postFor(p.linje);
+    const hid = holdId(p.hold || "Klub") || "klub";
+    if (!P || (P.kunHold && !efterId[hid])) {
+      const navn = !P ? p.linje : p.navn;
+      udenfor[navn] = (udenfor[navn] || 0) + (type === "Udgift" ? 1 : -1) * p.beloeb;
+      return;
+    }
+    // Beløbet i postens egen retning: udgifter som udgift, indtægter som indtægt (indkøb til fester trækkes fra klubaktiviteterne)
+    const v = (P.art === "ud") === (type === "Udgift") ? p.beloeb : -p.beloeb;
+    if (P.id === "dommer" && efterId[hid] && v > 0) efterId[hid].division = true;
+    if (efterId[hid]) {
+      std[hid][P.id] += v;
+      kilde[hid][P.id].egne.push({ navn: p.navn, beloeb: v });
+      return;
+    }
+    // Hold uden kontingent (Ungdom fælles, DU 20 …) deles pr. spiller i holdets gruppe; klubbens poster på alle hold.
+    let gr = gruppeAf[hid] || (hid === "klub" ? "Klub" : null);
+    if (!gr || gr === "Klub" || !betalere.some(h => h.gruppe === gr)) gr = "Alle";
+    const maal = gr === "Alle" ? betalere : betalere.filter(h => h.gruppe === gr);
+    const ialt = puljeAntal(gr);
+    if (!ialt) return;
+    const puljeNavn = gr === "Alle" ? (prefiks(p.hold) || "Klub") : prefiks(p.hold);
+    maal.forEach(h => {
+      const a = v * h.antal / ialt;
+      std[h.id][P.id] += a;
+      const k = kilde[h.id][P.id].puljer;
+      const n = puljeNavn + "|" + gr;
+      if (!k[n]) k[n] = { navn: puljeNavn, gruppe: gr, spillere: h.antal, ialt, total: 0, andel: 0 };
+      k[n].total += v; k[n].andel += a;
+    });
+  });
+  // Linjer uden poster (fx en tom linje) tæller ikke; linjer helt uden for modellen samles under «ikke med endnu»
+  const gOrden = grupper.map(g => g.navn).concat(["Senior", "Ungdom", "Mix", "Klub"]);
+  hold.sort((a, b) => (b.division - a.division) || (gOrden.indexOf(a.gruppe) - gOrden.indexOf(b.gruppe)) || (a._i - b._i));
+  const udenforListe = Object.keys(udenfor).map(n => ({ navn: n, beloeb: udenfor[n] })).filter(x => Math.abs(x.beloeb) >= 0.5)
+    .sort((a, b) => b.beloeb - a.beloeb);
+  return { saeson: B.saeson, ark: (svar && svar.ark) || "", hold, std, kilde, gebyr, fejl: B.fejl,
+    udenfor: udenforListe, udenforIalt: sum(udenforListe, x => x.beloeb), kontingentBudget: sum(betalere, h => h.netto || 0) };
+}
+
+/* Kørselsudligningens status.json → den forventede udligning pr. hold (D1, H2 …). */
+function lavProgram(k) {
+  if (!k || !Array.isArray(k.klubhold)) return null;
+  const hold = {};
+  k.klubhold.forEach(h => { if (h && h.kode && typeof h.udligning === "number") hold[h.kode] = { udligning: h.udligning, raekke: String(h.raekke || "") }; });
+  return { saeson: String(k.saeson || ""), opdateret: String(k.opdateret || ""), hold };
+}
+
+/* Dine justeringer: { hold: { [hold]: { [post]: kr. pr. sæson, saet: kr., huller: kr. } } } */
+const STANDARD = { hold: {} };
+const FELTER = POSTER.map(p => p.id).filter(id => id !== "toej").concat(["saet", "huller"]);
+function rensIndst(raa) {
+  const I = klon(STANDARD);
+  if (!erObj(raa) || !erObj(raa.hold)) return I;
+  Object.keys(raa.hold).forEach(id => {
+    const r = raa.hold[id];
+    if (!erObj(r)) return;
+    const ud = {};
+    FELTER.forEach(f => { if (typeof r[f] === "number" && isFinite(r[f])) ud[f] = clamp(r[f], -1e7, 1e7); });
+    if (Object.keys(ud).length) I.hold[id] = ud;
+  });
+  return I;
+}
+
+/* Forslaget for hvert hold. Fritagne tæller med som spillere: deres gratis kontingent er klubbens udgift. */
+function beregn(D, I) {
+  const g = 1 - D.gebyr;
+  const hold = D.hold.filter(h => h.antal > 0).map(h => {
+    const r = I.hold[h.id] || {}, std = D.std[h.id] || {};
+    const poster = {};
+    POSTER.forEach(P => {
+      if (P.id === "toej") return;
+      const s = std[P.id] || 0, v = num(r[P.id], s);
+      poster[P.id] = { std: s, v, rettet: typeof r[P.id] === "number" && Math.abs(v - s) >= 0.5 };
+    });
+    const tStd = std.toej || 0;
+    const saet = Math.max(0, num(r.saet, tStd * TOEJ_AAR)), huller = Math.max(0, num(r.huller, 0));
+    poster.toej = { std: tStd, v: saet / TOEJ_AAR + huller, saet, huller, rettet: typeof r.saet === "number" || typeof r.huller === "number" };
+    const ud = sum(POSTER.filter(P => P.art === "ud"), P => poster[P.id].v);
+    const ind = sum(POSTER.filter(P => P.art === "ind"), P => poster[P.id].v);
+    const netto = ud - ind, rater = 2 * h.antal;
+    const prRate = netto / rater, takst = prRate / g;
+    const beregnet = Math.max(0, Math.round(takst / AFRUNDING) * AFRUNDING);
+    const gulv = !h.division && beregnet < h.takst;           // hold under divisionsniveau falder ikke
+    const forslag = gulv ? h.takst : beregnet;
+    const fritaget = Math.min(h.komp, rater);
+    return { h, id: h.id, poster, ud, ind, netto, rater, fritaget, betalende: rater - fritaget, prRate, takst, beregnet, gulv, forslag,
+      nu: h.takst, forskel: forslag - h.takst, gebyrDel: takst - prRate, afrunding: beregnet - takst,
+      provenu: forslag * (rater - fritaget) * g, fritagelser: forslag * fritaget * g, rettet: POSTER.some(P => poster[P.id].rettet) };
+  });
+  return { hold, g, gebyr: D.gebyr, provenu: sum(hold, x => x.provenu), provenuNu: D.kontingentBudget,
+    fritagelser: sum(hold, x => x.fritagelser), gulvBidrag: sum(hold.filter(x => x.gulv), x => (x.forslag - Math.max(0, x.takst)) * x.betalende * g) };
+}
+/* === MODEL-END === */
+
+/* ============================================================ små hjælpere til siden */
+const $ = s => document.querySelector(s);
+function h(tag, attrs, ...born) {
+  const el = document.createElement(tag);
+  if (attrs) for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k.startsWith("on") && typeof v === "function") el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const b of born.flat(9)) if (b != null && b !== false && b !== "") el.append(b instanceof Node ? b : String(b));
+  return el;
+}
+function gem(lager, k, v) { try { if (v == null) lager.removeItem(k); else lager.setItem(k, v); } catch (e) { /* privat vindue */ } }
+function laes(lager, k) { try { return lager.getItem(k); } catch (e) { return null; } }
+const NF = [0, 1, 2].map(d => new Intl.NumberFormat("da-DK", { minimumFractionDigits: d, maximumFractionDigits: d }));
+function kr(n, dec, plus) {
+  if (n == null || !isFinite(n)) return "–";
+  const f = NF[dec || 0];
+  if (Math.abs(n) < 0.5 * Math.pow(10, -(dec || 0))) return f.format(0);
+  return (n < 0 ? "−" : plus ? "+" : "") + f.format(Math.abs(n));
+}
+const to = n => String(n).padStart(2, "0");
+const klok = d => to(d.getHours()) + "." + to(d.getMinutes());
+const flere = (n, en, mange) => n + " " + (n === 1 ? en : mange);
+/* «Halleje Aalborg Kommune» → «halleje Aalborg Kommune», men «IT» forbliver «IT» */
+const smaat = t => t.length > 1 && t[1] === t[1].toLowerCase() && t[0] !== t[0].toLowerCase() ? t[0].toLowerCase() + t.slice(1) : t;
+
+/* ============================================================ tilstand */
+const S = { saesoner: [], valgt: null, kode: null, D: null, P: null, R: null, I: rensIndst(null), hold: laes(localStorage, NOEGLE.hold), beskeder: [], hentet: null };
+let gemTimer = null;
+function gemIndst() {
+  clearTimeout(gemTimer);
+  gemTimer = setTimeout(() => gem(localStorage, NOEGLE.indst, Object.keys(S.I.hold).length ? JSON.stringify(S.I) : null), 250);
+}
+function laesIndst() {
+  try { S.I = rensIndst(JSON.parse(laes(localStorage, NOEGLE.indst) || "null")); } catch (e) { S.I = rensIndst(null); }
+}
+
+/* ============================================================ adresserne (de samme som budgetsiden) */
+function gyldigAdresse(u) {
+  u = tekst(u);
+  if (/^https:\/\/script\.google\.com\/(a\/macros\/[^/]+|macros)\/s\/[\w-]+\/exec$/.test(u)) return u;
+  if (LOKAL_TEST && /^http:\/\/(localhost|127\.0\.0\.1):\d+\/\S+\/exec$/.test(u)) return u;
+  return null;
+}
+function laesAdresseLinjer(txt) {
+  const ud = [];
+  String(txt || "").split(/\r?\n/).forEach(l => {
+    const dele = tekst(l).split(/\s+/);
+    const url = gyldigAdresse(dele.pop());
+    if (!url) return;
+    const label = dele.join(" ").replace(/^[\s#*-]+|[\s:=|;,–—-]+$/g, "");
+    for (let i = ud.length - 1; i >= 0; i--) if (ud[i].url === url || (label && lav(ud[i].label) === lav(label))) ud.splice(i, 1);
+    ud.push({ url, label });
+  });
+  return ud;
+}
+async function findAdresser() {
+  let fil = [], harFil = false;
+  try {
+    const r = await fetch(ADRESSEFIL + "?v=" + Date.now(), { cache: "no-store" });
+    if (r.ok) { harFil = true; fil = laesAdresseLinjer(await r.text()); }
+  } catch (e) { /* ingen fil */ }
+  const alle = fil.slice();
+  laesAdresseLinjer([laes(localStorage, BUDGETNOEGLE.adresse), laes(sessionStorage, BUDGETNOEGLE.adresse)].join("\n")).forEach(x => {
+    if (harFil && !x.label) return;
+    if (!alle.some(y => y.url === x.url || (x.label && lav(y.label) === lav(x.label)))) alle.push(x);
+  });
+  const aar = s => { const m = String(s.label || "").match(/(\d{2})\s*\/\s*(\d{2})/); return m ? +m[1] : null; };
+  if (alle.every(s => aar(s) != null)) alle.sort((a, b) => aar(a) - aar(b));
+  S.saesoner = alle.map(x => ({ url: x.url, label: x.label || "" }));
+}
+function kodeTil(s) {
+  try { const k = Object.assign({}, JSON.parse(laes(localStorage, BUDGETNOEGLE.koder) || "{}"), JSON.parse(laes(sessionStorage, BUDGETNOEGLE.koder) || "{}")); return typeof k[s.url] === "string" ? k[s.url] : null; }
+  catch (e) { return null; }
+}
+
+/* ============================================================ hent */
+class HentFejl extends Error { constructor(art, besked) { super(besked || art); this.art = art; } }
+async function hentFraArk(adresse, kode) {
+  const krop = JSON.stringify({ kode, faner: FANER, formler: [] });
+  let r;
+  try {
+    r = await fetch(adresse, { method: "POST", body: krop, redirect: "follow", credentials: "omit", cache: "no-store" });
+  } catch (e) {
+    const q = "?kode=" + encodeURIComponent(kode) + "&faner=" + encodeURIComponent(FANER.join("|"));
+    try { r = await fetch(adresse + q, { redirect: "follow", credentials: "omit", cache: "no-store" }); }
+    catch (e2) { throw new HentFejl("net"); }
+  }
+  if (!r.ok) throw new HentFejl("net", "HTTP " + r.status);
+  let svar;
+  try { svar = JSON.parse(await r.text()); } catch (e) { throw new HentFejl("svar"); }
+  if (!svar || svar.ok !== true) throw new HentFejl((svar && svar.fejl) || "svar", svar && svar.besked);
+  return svar;
+}
+function fejltekst(e) {
+  switch (e && e.art) {
+    case "kode": return "Forkert kode.";
+    case "lukket": return "For mange forkerte forsøg. Scriptet i arket holder lukket i 15 minutter.";
+    case "intern": return "Arket svarede med en fejl: " + (e.message || "ukendt") + ".";
+    case "svar": return "Svaret fra Google var ikke tallene. Virker budgetsiden?";
+    default: return "Kunne ikke få svar fra arket. Tjek forbindelsen og prøv igen.";
+  }
+}
+async function hentProgram() {
+  try {
+    const r = await fetch(KOERSELFIL + "?v=" + Date.now(), { cache: "no-store" });
+    S.P = r.ok ? lavProgram(await r.json()) : null;
+  } catch (e) { S.P = null; }
+}
+
+/* ============================================================ tegning */
+function regn() { if (S.D) S.R = beregn(S.D, S.I); }
+const valgtX = () => S.R.hold.find(x => x.id === S.hold) || S.R.hold[0];
+
+function tegn() {
+  regn();
+  if (!S.R.hold.some(x => x.id === S.hold)) S.hold = (S.R.hold.find(x => x.h.kode === "D1") || S.R.hold[0] || {}).id || null;
+  tegnTop(); tegnKpi(); tegnBannere(); tegnListe(); tegnHold(); tegnFod();
+}
+function opdaterTal() {           // efter en skyder: alt undtagen holdets poster tegnes om, så skyderen beholder grebet
+  regn();
+  tegnKpi(); tegnListe(); tegnHoldTal();
+  gemIndst();
+}
+
+function tegnTop() {
+  const sel = $("#saesonvalg");
+  sel.innerHTML = "";
+  if (S.saesoner.length > 1) {
+    S.saesoner.forEach((s, i) => sel.append(h("option", { value: String(i), selected: s === S.valgt }, s.label || S.D.saeson || "sæson " + (i + 1))));
+    sel.hidden = false; $("#saesontekst").textContent = "";
+  } else { sel.hidden = true; $("#saesontekst").textContent = S.D.saeson || S.valgt.label || ""; }
+  document.title = "Kontingentmodel " + (S.D.saeson || "") + " · Aalborg Volley";
+  $("#lead").textContent = "Vælg et hold, og justér holdets egne poster – forslaget regnes kun ud fra holdets tal i budget " + (S.D.saeson || "") +
+    ". Hold under divisionsniveau beholder mindst deres nuværende takst, og frivillige med gratis kontingent betales af klubben – ikke af holdkammeraterne. Intet ændres i arket.";
+}
+function kpiKort(lbl, stor, smaa) {
+  return h("div", { class: "kpikort" }, h("div", { class: "lbl" }, lbl), h("div", { class: "stor" }, stor), h("div", { class: "smaa" }, smaa));
+}
+function tegnKpi() {
+  const R = S.R, D = S.D, d = R.provenu - R.provenuNu;
+  $("#kpi").replaceChildren(
+    kpiKort("Kontingent i alt", kr(R.provenu) + " kr.", "efter gebyr og afgang · budget " + kr(R.provenuNu) + " · " + kr(d, 0, true)),
+    kpiKort("Fritagelser", kr(R.fritagelser) + " kr.", "trænere og frivillige – betales af klubben"),
+    kpiKort("Ikke med endnu", kr(D.udenforIalt) + " kr.", D.udenfor.slice(0, 4).map(x => smaat(x.navn)).join(", ") + (D.udenfor.length > 4 ? " m.m." : "")));
+  $("#kpi").lastChild.title = D.udenfor.map(x => x.navn + ": " + kr(x.beloeb) + " kr.").join("\n");
+}
+function tegnBannere() {
+  const ud = [];
+  S.beskeder.forEach((b, i) => ud.push(h("div", { class: "banner " + (b.klasse || "blaa") }, h("span", null, b.tekst),
+    b.knap ? h("button", { type: "button", class: "ikonknap", onclick: b.knap.handling }, b.knap.tekst) : null,
+    h("button", { type: "button", class: "ikonknap", onclick: () => { S.beskeder.splice(i, 1); tegnBannere(); } }, "OK"))));
+  S.D.fejl.forEach(f => ud.push(h("div", { class: "banner gul" }, h("strong", null, "Arket: "), h("span", null, f))));
+  $("#bannere").replaceChildren(...ud);
+}
+
+/* ------------------------------------------------------------ holdlisten */
+function tegnListe() {
+  const R = S.R, ud = [];
+  const div = R.hold.filter(x => x.h.division), oevrige = R.hold.filter(x => !x.h.division);
+  const raekke = x => {
+    const f = x.forskel;
+    return h("button", { type: "button", class: "lr", "data-hold": x.id, "aria-current": String(x.id === S.hold) },
+      h("span", { class: "navn" }, x.h.kort, x.rettet ? h("small", null, "justeret") : null),
+      h("span", { class: "v num nu" }, kr(x.nu)),
+      h("span", { class: "v num f" }, kr(x.forslag)),
+      h("span", { class: "v num " + (f >= 0.5 ? "pos" : f <= -0.5 ? "neg" : "daemp") }, Math.abs(f) < 0.5 ? "–" : kr(f, 0, true)));
+  };
+  if (div.length) { ud.push(h("div", { class: "gruppehoved" }, "Divisionshold")); div.forEach(x => ud.push(raekke(x))); }
+  if (oevrige.length) {
+    ud.push(h("div", { class: "gruppehoved" }, "Øvrige hold", h("small", null, "falder ikke under nuværende takst")));
+    oevrige.forEach(x => ud.push(raekke(x)));
+  }
+  ud.push(h("div", { class: "lsum" }, "Kontingent i alt ", h("b", { class: "num" }, kr(R.provenu) + " kr."), " · budget ", h("span", { class: "num" }, kr(R.provenuNu))));
+  $("#holdliste").replaceChildren(...ud);
+  $("#listenote").textContent = "Takst pr. rate – 2 rater pr. sæson. «Nu» er satsen i KONTINGENTBUDGET.";
+}
+
+/* ------------------------------------------------------------ holdet */
+function postMaks(id, x) {
+  const p = x.poster[id];
+  const andre = Math.max(0, ...S.R.hold.map(y => y.poster[id].std));
+  const m = Math.max(2 * Math.abs(p.std), 1.25 * Math.abs(andre), 1.25 * Math.abs(p.v), 5000);
+  const trin = m > 50000 ? 5000 : m > 10000 ? 1000 : 500;
+  return Math.ceil(m / trin) * trin;
+}
+function kildeTekst(x, id) {
+  const k = S.D.kilde[x.id] ? S.D.kilde[x.id][id] : null;
+  if (!k) return "";
+  const dele = [];
+  k.egne.slice(0, 3).forEach(e => dele.push(e.navn + " " + kr(e.beloeb)));
+  if (k.egne.length > 3) dele.push(flere(k.egne.length - 3, "post mere", "poster mere"));
+  Object.values(k.puljer).forEach(p => {
+    if (Math.abs(p.total) < 0.5) return;
+    dele.push((p.gruppe === "Alle" ? "klubbens " : p.navn + " ") + kr(p.total) + " delt pr. spiller (" + p.spillere + " af " + p.ialt + ")");
+  });
+  return dele.join(" · ");
+}
+function postRaekke(x, P) {
+  const p = x.poster[P.id];
+  if (P.id === "toej") {
+    return h("div", { class: "pr", "data-post": "toej" },
+      h("div", { class: "pr-top" }, h("span", { class: "pr-navn" }, "Tøj"), p.rettet ? h("span", { class: "tag" }, "justeret") : null,
+        h("span", { class: "spacer" }), h("span", { class: "belob num", style: "border-color:transparent", id: "toejbeloeb" }, kr(p.v)),
+        h("button", { type: "button", class: "nulstil", "data-nul": "toej", title: "Tilbage til budgettet", hidden: !p.rettet }, "×")),
+      h("div", { class: "toej" },
+        h("span", null, "Nyt sæt"), h("input", { class: "felt-lille num", inputmode: "decimal", value: kr(p.saet), "data-toej": "saet", "aria-label": "Pris for et nyt sæt tøj" }),
+        h("span", null, "kr. hvert " + TOEJ_AAR + ". år + huller"), h("input", { class: "felt-lille num", inputmode: "decimal", value: kr(p.huller), "data-toej": "huller", "aria-label": "Huller mellem sæsonerne, kr. pr. sæson" }),
+        h("span", null, "kr. pr. sæson")),
+      h("p", { class: "pr-kilde" }, p.std ? "Budgettet har " + kr(p.std) + " kr. pr. sæson – regnet som et sæt til " + kr(p.std * TOEJ_AAR) + " kr. hvert " + TOEJ_AAR + ". år." : "Intet tøj i budgettet – skriv prisen for et nyt sæt."));
+  }
+  const maks = postMaks(P.id, x);
+  const hint = P.id === "udligning" && S.P && x.h.kode && S.P.hold[x.h.kode] ? S.P.hold[x.h.kode].udligning : null;
+  // «Brug» erstatter holdets egen udligning med natkørslens – holdets andel af klubbens (pokal-)udligning bliver stående
+  const k = S.D.kilde[x.id] && S.D.kilde[x.id][P.id];
+  const brug = hint == null ? null : Math.round(hint + (k ? sum(Object.values(k.puljer), q => q.andel) : 0));
+  return h("div", { class: "pr", "data-post": P.id },
+    h("div", { class: "pr-top" }, h("span", { class: "pr-navn" }, P.navn), p.rettet ? h("span", { class: "tag" }, "justeret") : null,
+      h("span", { class: "spacer" }),
+      h("input", { class: "belob num", inputmode: "decimal", value: kr(p.v), "data-beloeb": P.id, "aria-label": P.navn + " i kr. pr. sæson" }),
+      h("button", { type: "button", class: "nulstil", "data-nul": P.id, title: "Tilbage til budgettets " + kr(p.std) + " kr.", hidden: !p.rettet }, "×")),
+    h("input", { type: "range", min: "0", max: String(maks), step: maks > 20000 ? "500" : "100", value: String(Math.max(0, Math.round(p.v))), "data-skyder": P.id, "aria-label": P.navn + " for " + x.h.kort }),
+    h("p", { class: "pr-kilde" }, (p.rettet ? "Budgettet: " + kr(p.std) + " kr. – " : "") + (kildeTekst(x, P.id) || "Intet i budgettet for holdet."),
+      brug != null && Math.abs(brug - p.v) >= 0.5 ? [" · Natkørslen forventer ", h("button", { type: "button", "data-brug": String(brug), title: "Brug natkørslens forventede udligning for holdet" }, kr(hint) + " kr.")] : null));
+}
+function tegnHold() {
+  const el = $("#holdpanel");
+  const x = S.R.hold.length ? valgtX() : null;
+  if (!x) { el.replaceChildren(h("p", { class: "stille" }, "Ingen hold med spillere i KONTINGENTBUDGET.")); return; }
+  const ud = POSTER.filter(P => P.art === "ud"), ind = POSTER.filter(P => P.art === "ind");
+  el.replaceChildren(
+    h("div", { class: "hp-top" },
+      h("div", null,
+        h("p", { class: "eyebrow" }, x.h.division ? "Divisionshold" : "Øvrigt hold"),
+        h("h2", null, x.h.navn),
+        h("p", { class: "stille" }, x.h.antal + " spillere" + (x.fritaget ? " · " + flere(x.fritaget, "fritaget rate", "fritagne rater") + " (trænere og frivillige)" : ""))),
+      h("div", { class: "hp-tal" }, h("div", { class: "lbl" }, "Forslag pr. rate"), h("div", { class: "stort", id: "hp-forslag" }), h("div", { class: "smaa", id: "hp-sub" }))),
+    h("div", { id: "hp-gulv" }),
+    h("div", { class: "afsnit" }, "Udgifter", h("span", { class: "spacer" }), h("span", { class: "num", id: "hp-ud" })),
+    h("div", null, ud.map(P => postRaekke(x, P))),
+    h("div", { class: "afsnit" }, "Indtægter", h("span", { class: "spacer" }), h("span", { class: "num", id: "hp-ind" })),
+    h("div", null, ind.map(P => postRaekke(x, P))),
+    h("div", { class: "regn", id: "hp-regn" }),
+    h("div", { class: "knapper" }, x.rettet ? h("button", { type: "button", class: "knap sekundaer lille", "data-nulhold": "1" }, "Nulstil " + x.h.kort + " til budgettet") : null));
+  tegnHoldTal();
+}
+function tegnHoldTal() {
+  const x = valgtX();
+  if (!x || !$("#hp-forslag")) return;
+  $("#hp-forslag").textContent = kr(x.forslag) + " kr.";
+  $("#hp-sub").textContent = "nu " + kr(x.nu) + " · " + (Math.abs(x.forskel) < 0.5 ? "uændret" : kr(x.forskel, 0, true)) + " · " + kr(x.forslag * 2) + " kr. pr. år";
+  $("#hp-ud").textContent = kr(x.ud) + " kr.";
+  $("#hp-ind").textContent = kr(x.ind) + " kr.";
+  const tb = $("#toejbeloeb"); if (tb) tb.textContent = kr(x.poster.toej.v);
+  $("#hp-gulv").replaceChildren(...(x.gulv ? [h("p", { class: "gulv" }, "Holdets egne tal giver " + kr(x.beregnet) + " kr. pr. rate, men hold under divisionsniveau beholder mindst den nuværende takst på " +
+    kr(x.nu) + " kr. Forskellen går til klubben.")] : []));
+  const r = (a, b, k) => h("tr", { class: k || null }, h("td", null, a), h("td", { class: "v num" }, b));
+  $("#hp-regn").replaceChildren(h("table", null, h("tbody", null,
+    r("Udgifter", kr(x.ud) + " kr."),
+    r("Indtægter", kr(-x.ind) + " kr."),
+    r("Holdets nettoudgift", kr(x.netto) + " kr.", "t"),
+    r("÷ " + x.rater + " rater (" + x.h.antal + " spillere × 2)", kr(x.prRate) + " kr."),
+    r("+ " + kr(S.R.gebyr * 100, 1) + " % gebyr og afgang", kr(x.gebyrDel, 0, true) + " kr."),
+    r("Rundet til nærmeste " + AFRUNDING + " kr.", kr(x.beregnet) + " kr.", "t"))),
+    h("p", { class: "stille", style: "margin:8px 0 0" },
+      (x.fritaget ? flere(x.fritaget, "rate er", "rater er") + " fritaget (trænere og frivillige). De tæller med som spillere, så holdkammeraterne ikke betaler for dem – klubben betaler " +
+        kr(x.fritagelser) + " kr. " : "") +
+      "Holdet giver " + kr(x.provenu) + " kr. i kontingent efter gebyr og afgang (budgettet: " + kr(x.h.netto) + " kr.)." +
+      (x.netto < 0 ? " Holdets indtægter er større end udgifterne." : "")));
+  const kn = document.querySelector('[data-nulhold]');
+  if (kn) kn.hidden = !x.rettet;
+}
+
+/* ------------------------------------------------------------ fod */
+function tegnFod() {
+  const D = S.D;
+  $("#fod").replaceChildren(
+    "Tallene kommer fra budgetarket «" + (D.ark || "Overblik") + "» (fanerne Budget og Hold - status), hentet kl. " + klok(S.hentet) + ". ",
+    S.P ? "Den forventede kørselsudligning fra natkørslen (" + S.P.opdateret + "). " : "",
+    "Ikke med endnu: " + D.udenfor.map(x => smaat(x.navn) + " " + kr(x.beloeb)).join(", ") + ". ",
+    "Dine justeringer gemmes kun i denne browser. ",
+    h("a", { href: "../" }, "Klubbens værktøjer"), " · ", h("a", { href: "../budget/" }, "Budgettet"), " · ",
+    h("a", { href: "https://github.com/" + REPO + "/blob/main/" + MAPPE + "/index.html", target: "_blank", rel: "noopener" }, "Koden på GitHub"));
+}
+
+/* ============================================================ justeringer */
+function saet(felt, v) {
+  const x = valgtX();
+  const r = S.I.hold[x.id] || (S.I.hold[x.id] = {});
+  if (v == null) delete r[felt]; else r[felt] = v;
+  if (!Object.keys(r).length) delete S.I.hold[x.id];
+}
+function knytHold() {
+  const p = $("#holdpanel");
+  p.addEventListener("input", e => {
+    const t = e.target;
+    if (!t.dataset.skyder) return;
+    const id = t.dataset.skyder, v = +t.value;
+    saet(id, v);
+    const felt = p.querySelector('[data-beloeb="' + id + '"]'); if (felt) felt.value = kr(v);
+    markerRettet(id);
+    opdaterTal();
+  });
+  p.addEventListener("change", e => {
+    const t = e.target;
+    if (t.dataset.beloeb) {
+      const id = t.dataset.beloeb, v = Math.max(0, tal(t.value));
+      saet(id, tekst(t.value) ? v : null);
+      opdaterTal(); tegnHold();
+    } else if (t.dataset.toej) {
+      saet(t.dataset.toej, tekst(t.value) ? Math.max(0, tal(t.value)) : null);
+      opdaterTal(); tegnHold();
+    }
+  });
+  p.addEventListener("click", e => {
+    const t = e.target.closest("button");
+    if (!t) return;
+    if (t.dataset.nul) {
+      if (t.dataset.nul === "toej") { saet("saet", null); saet("huller", null); }
+      else saet(t.dataset.nul, null);
+      opdaterTal(); tegnHold();
+    } else if (t.dataset.brug) { saet("udligning", +t.dataset.brug); opdaterTal(); tegnHold(); }
+    else if (t.dataset.nulhold) {
+      const x = valgtX();
+      gem(localStorage, NOEGLE.fortryd, JSON.stringify(S.I));
+      delete S.I.hold[x.id];
+      opdaterTal(); tegnHold();
+      S.beskeder = [{ tekst: x.h.kort + " er sat tilbage til budgettet.", knap: { tekst: "Fortryd", handling: fortryd } }];
+      tegnBannere();
+    }
+  });
+  p.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("input:not([type=range])")) e.target.blur(); });
+}
+function markerRettet(id) {
+  const x = valgtX(), raekke = document.querySelector('.pr[data-post="' + id + '"]');
+  if (!raekke) return;
+  const knap = raekke.querySelector(".nulstil");
+  const r = S.I.hold[x.id] || {};
+  if (knap) knap.hidden = !(typeof r[id] === "number" && Math.abs(r[id] - x.poster[id].std) >= 0.5);
+}
+
+/* ============================================================ del og fortryd */
+async function kopier(t) {
+  try { await navigator.clipboard.writeText(t); return true; }
+  catch (e) {
+    const ta = h("textarea", { style: "position:fixed;opacity:0" }); ta.value = t; document.body.append(ta); ta.select();
+    let ok = false; try { ok = document.execCommand("copy"); } catch (e2) { ok = false; }
+    ta.remove(); return ok;
+  }
+}
+function b64(s) { return btoa(unescape(encodeURIComponent(s))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
+function fraB64(s) { s = s.replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "="; return decodeURIComponent(escape(atob(s))); }
+async function delLink() {
+  const url = location.origin + location.pathname + "#s=" + b64(JSON.stringify({ hold: S.I.hold, valgt: S.hold }));
+  const ok = await kopier(url);
+  S.beskeder = [{ tekst: ok ? "Linket er kopieret. Den, der åbner det, ser dine justeringer – og skal også have koden." : "Kunne ikke kopiere. Linket er: " + url }];
+  tegnBannere();
+}
+function fortryd() {
+  let raa = null; try { raa = JSON.parse(laes(localStorage, NOEGLE.fortryd) || "null"); } catch (e) { raa = null; }
+  S.I = rensIndst(raa); gemIndst(); S.beskeder = []; tegn();
+}
+function laesDeltLink() {
+  const m = location.hash.match(/^#s=([\w-]+)$/);
+  if (!m) return false;
+  history.replaceState(null, "", location.pathname);
+  try {
+    const raa = JSON.parse(fraB64(m[1]));
+    gem(localStorage, NOEGLE.fortryd, JSON.stringify(S.I));
+    S.I = rensIndst(raa); gemIndst();
+    if (typeof raa.valgt === "string") S.hold = raa.valgt;
+    S.beskeder = [{ tekst: "Du ser justeringerne fra et delt link. Dine egne er gemt til side.", knap: { tekst: "Tilbage til mine", handling: fortryd } }];
+    return true;
+  } catch (e) { S.beskeder = [{ klasse: "gul", tekst: "Linket kunne ikke læses – du ser dine egne justeringer." }]; return false; }
+}
+
+/* ============================================================ skærme, lås og opstart */
+function vis(id) { ["#laeser", "#laas", "#ingen", "#app"].forEach(s => { $(s).hidden = s !== id; }); }
+async function hentSaeson(s, kode) { return bygData(await hentFraArk(s.url, kode)); }
+async function laasOp(kode, husk) {
+  const raekke = S.saesoner.slice().reverse();
+  const oensket = laes(localStorage, NOEGLE.saeson);
+  const foerst = raekke.find(s => s.label && s.label === oensket);
+  if (foerst) { raekke.splice(raekke.indexOf(foerst), 1); raekke.unshift(foerst); }
+  let fejl = null;
+  for (const s of raekke) {
+    try {
+      S.D = await hentSaeson(s, s === raekke[0] ? kode : (kodeTil(s) || kode));
+      S.valgt = s; S.kode = kode; S.hentet = new Date();
+      gem(sessionStorage, BUDGETNOEGLE.kode, kode);
+      if (husk) gem(localStorage, BUDGETNOEGLE.kode, kode);
+      return;
+    } catch (e) {
+      if (e.art === "lukket" || (e.art === "kode" && s === raekke[0])) throw e;
+      fejl = fejl || e;
+    }
+  }
+  throw fejl || new HentFejl("svar");
+}
+function visLaas(besked) {
+  vis("#laas");
+  $("#laasfejl").textContent = besked || "";
+  $("#kode").value = "";
+  setTimeout(() => $("#kode").focus(), 30);
+}
+function glemKode() {
+  S.kode = null;
+  [sessionStorage, localStorage].forEach(l => { gem(l, BUDGETNOEGLE.kode, null); gem(l, BUDGETNOEGLE.koder, null); });
+}
+async function hentIgen() {
+  const knap = $("#opdater");
+  knap.disabled = true; knap.textContent = "Henter …";
+  try {
+    const [D] = await Promise.all([hentSaeson(S.valgt, kodeTil(S.valgt) || S.kode), hentProgram()]);
+    S.D = D; S.hentet = new Date(); tegn();
+  } catch (e) {
+    if (e.art === "kode") { glemKode(); visLaas("Koden er skiftet. Skriv den nye kode."); }
+    else alert(e.art ? fejltekst(e) : "Svaret kunne ikke læses: " + e.message);
+  } finally { knap.disabled = false; knap.textContent = "Opdatér"; }
+}
+
+async function start() {
+  await findAdresser();
+  const programHentes = hentProgram();
+  laesIndst();
+  laesDeltLink();
+
+  $("#holdliste").addEventListener("click", e => {
+    const b = e.target.closest(".lr");
+    if (!b) return;
+    S.hold = b.dataset.hold;
+    gem(localStorage, NOEGLE.hold, S.hold);
+    tegnListe(); tegnHold();
+    if (window.innerWidth <= 900) $("#holdpanel").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  $("#saesonvalg").addEventListener("change", async e => {
+    const s = S.saesoner[+e.target.value];
+    if (!s) return;
+    try { S.D = await hentSaeson(s, kodeTil(s) || S.kode); S.valgt = s; S.hentet = new Date(); gem(localStorage, NOEGLE.saeson, s.label || null); tegn(); }
+    catch (err) { alert(fejltekst(err)); e.target.value = String(S.saesoner.indexOf(S.valgt)); }
+  });
+  $("#opdater").addEventListener("click", hentIgen);
+  $("#laas-igen").addEventListener("click", () => { glemKode(); S.D = null; visLaas(); });
+  $("#del").addEventListener("click", delLink);
+  window.addEventListener("hashchange", () => { if (/^#s=/.test(location.hash)) { laesDeltLink(); if (S.D) tegn(); } });
+  knytHold();
+
+  $("#laasform").addEventListener("submit", async e => {
+    e.preventDefault();
+    const knap = $("#laasknap");
+    knap.disabled = true; $("#laasfejl").textContent = "";
+    try { await laasOp($("#kode").value, $("#husk").checked); await programHentes; vis("#app"); tegn(); }
+    catch (err) { $("#laasfejl").textContent = fejltekst(err); }
+    finally { knap.disabled = false; }
+  });
+
+  if (!S.saesoner.length) { vis("#ingen"); return; }
+  const gemt = laes(sessionStorage, BUDGETNOEGLE.kode) || laes(localStorage, BUDGETNOEGLE.kode);
+  if (!gemt) { visLaas(); return; }
+  try { await laasOp(gemt, false); await programHentes; vis("#app"); tegn(); }
+  catch (e) {
+    if (e.art === "kode") { glemKode(); visLaas("Koden er skiftet. Skriv den nye kode."); }
+    else visLaas(fejltekst(e));
+  }
+}
+start();
+})();
+</script>
+</body>
+</html>

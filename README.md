@@ -12,7 +12,7 @@ fører videre til det enkelte projekt:
 | Kalender-feeds | `/feeds/*.ics` | Kalenderne til Holdsport | bygges af `tjans/scripts/build.py` |
 | Kørselsudligning | `/koerselsudligning/` | Forventet rejseudligning fra Volleyball Danmark | `koerselsudligning/` – se README dér |
 | Kontingent | `/kontingent/` | Forventet kontingent ud fra en Holdsport-eksport | `tjans/docs/kontingent/index.html` (fast fil) |
-| Kontingentmodel | `/kontingentmodel/` | Hvad burde kontingentet være pr. hold? En skyder og en fordelingsnøgle pr. budgetlinje, kørepenge efter km, fritagelser, gebyr og afrunding – forslaget pr. hold følger med. Kræver kode | `tjans/docs/kontingentmodel/index.html` (fast fil) og evt. `ramme.json` ved siden af – se *Kontingentmodellen* nedenfor |
+| Kontingentmodel | `/kontingentmodel/` | Hvad burde kontingentet være pr. hold? Vælg et hold og justér holdets egne poster med skydere – forslaget pr. rate følger med. Kræver kode | `tjans/docs/kontingentmodel/index.html` (fast fil) – se *Kontingentmodellen* nedenfor |
 | Budget | `/budget/` | Budget mod realiseret direkte fra budgetarket – alle posteringer pr. budgetpost, hold og arrangement. Kræver kode | `tjans/docs/budget/index.html` (fast fil) og `adresse.txt` ved siden af – se *Budgetsiden* nedenfor |
 | Turpris | `/turpris/` | Sæsonens udeture for alle hold – D1's ture til Sjælland i lejebiler (klubben betaler), alle andre i egne biler (spillerne betaler) – hvad en kørselsgodtgørelse ville koste klubben, og en regner til den enkelte tur | `tjans/docs/turpris/index.html` (fast fil; kampene hentes fra kørselsudligningen) |
 | Gammel adresse | `/Tjanser-i-Holdsport/` | Holdsports importer peger herhen – se nedenfor | bygges af `tjans/scripts/build.py` |
@@ -90,25 +90,25 @@ og man kan skifte sæson i overskriften og sammenligne to sæsoner på fanen *Sa
 `/kontingentmodel/` indeholder heller ingen tal. Den henter fanerne *Budget* (budgetlinjer, poster og
 KONTINGENTBUDGET) og *Hold - status* gennem **samme script og samme kode som budgetsiden** – adressen
 er den nederste linje i `tjans/docs/budget/adresse.txt`. Er budgettet låst op med «Husk koden», åbner
-modellen også. Udeturene og den forventede kørselsudligning kommer fra kørselsudligningens
-`status.json`, som natkørslen skriver.
+modellen også. Den forventede kørselsudligning kommer fra kørselsudligningens `status.json`.
 
-- **Forslaget pr. rate** = holdets andel af udgifterne minus holdets andel af indtægterne ÷ holdets
-  rater + fritagelser + gebyr og afgang, rundet af. Med standardindstillingerne giver alle hold
-  tilsammen præcis budgettets kontingent (før afrunding) – så viser siden, hvordan det burde fordeles.
-- **Fordelingsnøglerne** pr. budgetlinje: *Holdets egne* (posten følger holdet i kolonnen Hold – poster
-  på hold uden kontingent som Ungdom fælles deles pr. spiller i gruppen), *Pr. spiller*, *Pr.
-  træningstime*, *Lige pr. hold*, *Som kontingentet nu* og *Ikke i kontingentet*.
-- **Kørepenge** er en ny post, som ikke står i budgettet: km tur/retur pr. bil × biler × sats. D1's ture
-  over Storebælt i lejebiler tæller ikke (de står under Rejseomkostninger), og udekampe i egen hal heller
-  ikke. Antal biler følger turprisen, hvis de er rettet dér.
-- **Rammen** – nøgler, skydere i procent, timer, vægte, kørsel, fritagelser, gebyr og afrunding – gemmes
-  fra siden (fanen *Rammen*) i `tjans/docs/kontingentmodel/ramme.json`. Så starter alle derfra. Filen
-  indeholder ingen beløb; rettede poster og spillertal bliver i browseren.
-- **Dine ændringer** gemmes kun i din browser. *Del* kopierer et link med dem (#s=…) – modtageren skal
-  også have koden.
-- **Ny sæson:** intet at gøre. Modellen tager det nyeste budgetark fra `adresse.txt` og de nye hold fra
-  KONTINGENTBUDGET. Får en budgetlinje nyt navn, får den standardnøglen, til du gemmer rammen igen.
+- **Ét hold ad gangen.** Holdets poster er dets egne poster i budgettet plus dets andel pr. spiller af
+  klubbens poster (og af ungdommens fælles poster for ungdomsholdene). Hver post kan justeres for
+  holdet alene – en justering af D1 rører ikke de andre hold.
+- **Posterne:** halleje, turneringsgebyr, dommergebyr, rejseomkostninger, trænergodtgørelse og tøj
+  (nyt sæt hvert 3. år + huller mellem sæsonerne) – og indtægterne spiller egenbetaling,
+  sponsorater, støtte og tilskud, klubaktiviteter (efter indkøb til festerne) og kørselsudligning.
+  Resten af budgettet (klubdrift, trænertøj, kurser m.m.) står under «Ikke med endnu».
+- **Forslag pr. rate** = (udgifter − indtægter) ÷ (2 rater × alle holdets spillere) + gebyr og
+  afgang fra arket, rundet til 50 kr.
+- **Fritagne** (trænere og frivillige) tæller med som spillere, så deres gratis kontingent er en udgift
+  for klubben – holdkammeraterne betaler ikke for dem.
+- **Hold under divisionsniveau** (hold uden dommerbetaling i budgettet) beholder mindst den
+  nuværende takst.
+- **Dine justeringer** gemmes kun i din browser. *Del* kopierer et link med dem (#s=…) – modtageren
+  skal også have koden.
+- **Ny sæson:** intet at gøre. Modellen tager det nyeste budgetark fra `adresse.txt` og holdene fra
+  KONTINGENTBUDGET. Posterne findes ud fra budgetlinjernes navne.
 - **Udregningen** står mellem `MODEL-START` og `MODEL-END` i filen og kan testes for sig uden browser.
 
 ## Når natkørslen står stille
@@ -133,7 +133,7 @@ når det er gjort. Lukker du selv et issue, lader robotten det være.
 | Tjanser | Sæsonen i overskriften, kampprogrammer og holdkoder, kalenderne, flyttede kampe | Ny tjanseliste i Google-arket – se *Tjanselisten* i `tjans/README.md` | Når VD har lagt den nye sæsons kampprogram ud. Lukker sig selv |
 | Kørselsudligning | Sæson, hold, pokal og slutspil | Årets km-takst og bropris i `koerselsudligning/config.json` | 10. januar. Lukker sig selv |
 | Kontingent | Overskrifter, U17-årgang og budgetboks | `BUDGET_SAESON`, `HOLD` og `BUDGET_IALT` øverst i scriptet i `tjans/docs/kontingent/index.html` (fra fanen *Kontingent status*), og `MOENSTRE`/`ERMIX` ved nye holdnavne | 1. august. Lukker sig selv |
-| Kontingentmodel | Budgetlinjer, poster, hold, satser og antal fra det nyeste budgetark; udeture og km fra kørselsudligningen | Intet – se evt. rammen igennem, hvis budgetlinjerne har fået nye navne | – |
+| Kontingentmodel | Budgetlinjer, poster, hold, satser og antal fra det nyeste budgetark; forventet kørselsudligning fra natkørslen | Intet | – |
 | Turpris | Sæson, grundspillets udekampe, km og dobbeltweekender (D1: lørdag + søndag på Sjælland). Pokal og slutspil tæller ikke med | `PRISER_SAESON` og priserne (`STANDARD`, `SAESON`) øverst i scriptet i `tjans/docs/turpris/index.html` – og `EKSTRA_UDEKAMPE`, hvis VD's program mangler en udekamp | Når kampprogrammet for den nye sæson er ude. Lukker sig selv |
 | Try-out (Vercel) | – | Væk Supabase og følg [guiden](https://docs.google.com/document/d/19cpzGXU_s858MQe_A-r4YyGGtSu8ppPURRt6Rq8Q1bY/edit) | 1. juni. Luk den selv, når billederne er slettet |
 | Budgetarket | Budgetsidens udregning (den læser arkets faner og formler) og de tidligere sæsoner | Nyt budget, nyt ark og primosaldi pr. 1. juni – og budgetsidens script i det nye ark plus en ny linje i `adresse.txt`, se *Budgetsiden* | 1. juni. Luk den selv |
