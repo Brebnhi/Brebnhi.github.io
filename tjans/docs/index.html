@@ -10,7 +10,8 @@
   Filen er statisk og bygges IKKE af robotten.
   Den henter selv status fra status.json (tjanser) og koerselsudligning/status.json,
   når den åbnes. Tjansesiden ligger i tjanser/, kørselsudligningen i koerselsudligning/,
-  kontingentsiden i kontingent/, turprisen i turpris/ og budgetsiden i budget/.
+  kontingentsiden i kontingent/, kontingentmodellen i kontingentmodel/, turprisen i turpris/ og
+  budgetsiden i budget/.
   Bestyrelsens opgaver (/bestyrelse/) ligger i sit eget repo, Brebnhi/bestyrelse. Kortet
   henter antal åbne opgaver direkte fra repoets issues via GitHubs åbne API.
   Boksen "Til den nye sæson" kommer fra paamindelser.json, som robotten skriver hver nat
@@ -76,7 +77,7 @@ footer{margin-top:36px;color:var(--muted);font-size:12.5px;max-width:70ch}
   <header>
     <p class="eyebrow">Aalborg Volley</p>
     <h1>Klubbens værktøjer</h1>
-    <p class="sub">Tjanser, kørselsudligning, turpris, kontingent, budget og bestyrelsens opgaver samlet ét sted.
+    <p class="sub">Tjanser, kørselsudligning, turpris, kontingent, kontingentmodel, budget og bestyrelsens opgaver samlet ét sted.
       Tjanser og kørselsudligning opdateres af sig selv hver nat.</p>
   </header>
 
@@ -125,6 +126,14 @@ footer{margin-top:36px;color:var(--muted);font-size:12.5px;max-width:70ch}
       <span class="go">Åbn kontingentsiden →</span>
     </a>
 
+    <a class="card" href="kontingentmodel/">
+      <div class="top"><h2>Kontingentmodel</h2><span class="pil">Kræver kode</span></div>
+      <p class="linje">Hvad burde kontingentet være pr. hold? Skru på budgetposterne og fordelingen –
+        turnering, dommere, kørsel, halleje og klubdrift – og se forslaget pr. hold.</p>
+      <p class="meta" id="km-meta">Tallene kommer fra budgetarket – siden viser dem kun med koden.</p>
+      <span class="go">Åbn kontingentmodellen →</span>
+    </a>
+
     <a class="card" href="budget/">
       <div class="top"><h2>Budget</h2><span class="pil">Kræver kode</span></div>
       <p class="linje">Budget mod realiseret direkte fra budgetarket. Fold hver budgetpost, hvert hold og
@@ -150,15 +159,15 @@ footer{margin-top:36px;color:var(--muted);font-size:12.5px;max-width:70ch}
       <li><a href="https://github.com/Brebnhi/bestyrelse/issues">Bestyrelsens opgaver i GitHub</a>
         <span>her opretter og retter du opgaverne</span></li>
       <li><a href="https://github.com/Brebnhi/Brebnhi.github.io">Koden på GitHub</a>
-        <span>tjanser, kørselsudligning, turpris, kontingent, budget og denne side</span></li>
+        <span>tjanser, kørselsudligning, turpris, kontingent, kontingentmodel, budget og denne side</span></li>
       <li><a href="https://github.com/Brebnhi/Brebnhi.github.io/actions">Natkørslen</a>
         <span>GitHub Actions · her ser du, om robotten er kørt</span></li>
     </ul>
   </section>
 
   <footer>Siden ligger på GitHub Pages. Tallene hentes fra natkørslens statusfiler, hver gang
-    siden åbnes – bestyrelsens opgaver direkte fra GitHub. Kontingentsiden og turprisen gemmer
-    kun i din egen browser.</footer>
+    siden åbnes – bestyrelsens opgaver direkte fra GitHub. Kontingentsiden, kontingentmodellen og
+    turprisen gemmer kun i din egen browser.</footer>
 </div>
 
 <script>
@@ -357,6 +366,14 @@ footer{margin-top:36px;color:var(--muted);font-size:12.5px;max-width:70ch}
         el("ko-meta").textContent = "Senest indlæst " + dd +
           " (" + slags + ")" + (d.filnavn ? " · " + d.filnavn : "");
       }
+    }
+  } catch (e) { /* intet gemt eller lager slået fra */ }
+
+  // ------------------------------------------------------------- kontingentmodel
+  // Har du egne ændringer i modellen i denne browser, står det på kortet.
+  try {
+    if (localStorage.getItem("aav.kontingentmodel.indst")) {
+      el("km-meta").textContent = "Du har egne ændringer i modellen i denne browser.";
     }
   } catch (e) { /* intet gemt eller lager slået fra */ }
 
