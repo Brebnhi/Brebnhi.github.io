@@ -128,8 +128,8 @@ footer{margin-top:36px;color:var(--muted);font-size:12.5px;max-width:70ch}
 
     <a class="card" href="kontingentmodel/">
       <div class="top"><h2>Kontingentmodel</h2><span class="pil">Kræver kode</span></div>
-      <p class="linje">Hvad burde kontingentet være pr. hold? Skru på budgetposterne og fordelingen –
-        turnering, dommere, kørsel, halleje og klubdrift – og se forslaget pr. hold.</p>
+      <p class="linje">Hvad burde kontingentet være pr. hold? Vælg et hold, og justér holdets halleje,
+        turnering, dommere, rejser, trænere, tøj og indtægter – og se forslaget.</p>
       <p class="meta" id="km-meta">Tallene kommer fra budgetarket – siden viser dem kun med koden.</p>
       <span class="go">Åbn kontingentmodellen →</span>
     </a>
@@ -373,7 +373,7 @@ footer{margin-top:36px;color:var(--muted);font-size:12.5px;max-width:70ch}
   // Har du egne ændringer i modellen i denne browser, står det på kortet.
   try {
     if (localStorage.getItem("aav.kontingentmodel.indst")) {
-      el("km-meta").textContent = "Du har egne ændringer i modellen i denne browser.";
+      el("km-meta").textContent = "Du har justeret hold i modellen i denne browser.";
     }
   } catch (e) { /* intet gemt eller lager slået fra */ }
 
