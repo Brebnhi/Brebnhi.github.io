@@ -32,6 +32,11 @@ Tre slags udligning, hver med VD's egen metode:
     * Talentholdet selv har ingen udgifter og tæller ikke med i rækkens snit.
       Det har VD ikke sagt noget om — "talent" i config.json kan slå det til.
 
+  Andre rækker (fx Danmarksserien – config.json "andre_raekker")
+    * Ingen udligning fra VD, men klubbens udeture og km regnes med samme motor,
+      så kontingentmodellen kan regne kørepenge for holdene. Står i status.json
+      som "andre_hold" med holdkoder, der fortsætter efter divisionsholdene (H4, H5 …).
+
   km = vejafstand fra udeholdets hjemmebane til spillestedet.
   Plus = kreditnota (klubben får penge), minus = faktura (klubben betaler).
 
@@ -962,6 +967,73 @@ def klubhold_liste(resultat, kfg):
                                      if h["kode"][1:].isdigit() else 99))
 
 
+def holdnummer(navn):
+    """'Aalborg Volleyball.5 OB' → 5, 'Aalborg Volleyball' → 1 (det sidste tal i navnet)."""
+    m = re.search(r"(\d+)(?!.*\d)", navn or "")
+    return int(m.group(1)) if m else 1
+
+
+def andre_kfg(kfg):
+    """Rækker uden VD's kørselsudligning, hvor klubbens udeture alligevel regnes (config.json
+    "andre_raekker"): {rækkens navn eller begyndelse: {"koen": "H"/"D", "biler": n}}."""
+    return {k: v for k, v in (kfg.get("andre_raekker") or {}).items()
+            if not k.startswith("_") and isinstance(v, dict)}
+
+
+def andre_raekke(navn, kfg):
+    """Nøglen i andre_raekker, som rækkens navn begynder med (den længste) – eller None."""
+    for k in sorted(andre_kfg(kfg), key=len, reverse=True):
+        if norm(navn).startswith(norm(k)):
+            return k
+    return None
+
+
+def beregn_andre(andre, ktx, kfg, klubhold):
+    """Klubbens hold i rækker uden VD's kørselsudligning (fx Danmarksserien): udeturene og km, så
+    kontingentmodellen kan regne kørepenge for dem. Ingen udligning. Holdkoderne fortsætter efter
+    divisionsholdene af samme køn (H4, H5 …) – eller står under "hold_koder" i config.json.
+
+    andre: {raekke_id: {"navn", "noegle" (i andre_raekker), "hold": {klubbens holdnavne}}}"""
+    koder = {k: v for k, v in kfg.get("hold_koder", {}).items() if not k.startswith("_")}
+    hoejest = {}
+    for h in klubhold:
+        m = re.match(r"([HD])(\d+)$", h.get("kode") or "")
+        if m:
+            hoejest[m.group(1)] = max(hoejest.get(m.group(1), 0), int(m.group(2)))
+    brugt = {h.get("kode") for h in klubhold}
+    ud = []
+    for rid, info in sorted(andre.items(), key=lambda x: x[1]["navn"]):
+        rk = andre_kfg(kfg).get(info["noegle"], {})
+        biler = int(rk.get("biler") or 3)
+        try:
+            puljer = hent_raekke(rid, ktx.cache)
+            navne = klub_i([k for _, _, ks in puljer for k in ks], kfg, info["hold"])
+            r = beregn_pulje(info["navn"], puljer, ktx, biler, navne)
+        except IngenKampe:
+            continue                              # kampprogrammet er ikke lagt ud endnu
+        except Exception as exc:                  # noqa: BLE001 — resten skal regnes alligevel
+            advar(f"{info['navn']} (andre_raekker) kunne ikke regnes: {exc}")
+            continue
+        n = info["navn"].lower()
+        koen = (rk.get("koen") or ("H" if "herre" in n else "D" if ("kvinde" in n or "dame" in n) else "")).upper()
+        for h in sorted((h for h in r["hold"] if h["klub"]), key=lambda h: holdnummer(h["hold"])):
+            kode = koder.get(f"{info['navn']}|{h['hold']}")
+            if not kode and koen in ("H", "D"):
+                hoejest[koen] = hoejest.get(koen, 0) + 1
+                kode = f"{koen}{hoejest[koen]}"
+            if not kode or kode in brugt:
+                advar(f"{h['hold']} i {info['navn']} fik ingen holdkode – skriv \"koen\" under "
+                      "andre_raekker eller holdets kode under hold_koder i config.json.")
+                continue
+            brugt.add(kode)
+            ud.append({"kode": kode, "hold": h["hold"], "raekke": info["navn"], "biler": biler,
+                       "kampe": h["kampe"], "udekampe": h["udekampe"], "km": h["km"], "bro": h["bro"],
+                       "udligning": None,
+                       "ture": [{k: t[k] for k in ("dato", "modstander", "sted", "km", "bro")}
+                                for t in h["ture"]]})
+    return sorted(ud, key=lambda h: (h["kode"][0], int(h["kode"][1:]) if h["kode"][1:].isdigit() else 99))
+
+
 def kode_for(hold, raekke, klubhold):
     """Holdkode (D1, H2 ...) for et klubhold i pokal/slutspil ud fra køn + holdnavn."""
     koen = "H" if "herrer" in raekke.lower() else "D"
@@ -1161,7 +1233,7 @@ def main():
     status = None
     try:
         hold = klubbens_hold(kfg["forening_id"])
-        grund, klubnavne, pokal, slut_egne = {}, {}, {}, {}
+        grund, klubnavne, pokal, slut_egne, andre = {}, {}, {}, {}, {}
         for h in hold:
             navn = raekke_navn(h["raekke"], kfg)
             if navn and norm(navn) == norm(h["raekke"]):   # ikke "kvalifikation" o.l.
@@ -1174,6 +1246,10 @@ def main():
             elif (norm(h["raekke"]).startswith("volleyligaen")
                   and not any(u in h["raekke"].lower() for u in slutspil_undtag(kfg))):
                 slut_egne.setdefault(h["raekke_id"], h["raekke"])
+            elif andre_raekke(h["raekke"], kfg):          # fx Danmarksserien: kun km, ingen udligning
+                a = andre.setdefault(h["raekke_id"], {"navn": h["raekke"], "hold": set(),
+                                                      "noegle": andre_raekke(h["raekke"], kfg)})
+                a["hold"].add(h["hold"])
         if not grund:
             raise RuntimeError("fandt ingen af klubbens hold i Liga, 1. eller 2. division "
                                f"på foreningssiden (ForeningsId {kfg['forening_id']})")
@@ -1234,6 +1310,12 @@ def main():
         slutspil_total = round(sum(h["udligning"] for s in slutspil for h in s["hold"]
                                    if h["klub"]), 2)
 
+        # ---- klubbens hold i rækker uden VD's udligning (fx Danmarksserien): kun udeture og km
+        andre_hold = beregn_andre(andre, ktx, kfg, klubhold) if andre else []
+        if andre_hold:
+            print("  andre rækker: " + ", ".join(f"{h['kode']} {h['raekke']} {h['km']} km"
+                                                 for h in andre_hold))
+
         total = round(grundspil + pokal_total + slutspil_total, 2)
         historik = cache("historik")
         historik[res["saeson"]] = {"total": total, "grundspil": grundspil,
@@ -1252,6 +1334,7 @@ def main():
             "klub": kfg.get("klub"), "total": total, "grundspil": grundspil,
             "pokal_total": pokal_total, "slutspil_total": slutspil_total,
             "klubhold": klubhold,
+            "andre_hold": andre_hold,
             "talent": talent,
             "raekker": [{**let(r), "kampe": []} for r in res["raekker"]],
             "pokal": [let(r) for r in runder],

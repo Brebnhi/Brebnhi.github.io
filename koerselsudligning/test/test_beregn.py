@@ -37,6 +37,11 @@ for _rid, (_pid, _kampe) in TALENT.items():
     FX["saesoner"]["2026/27"]["raekker"][_rid]["puljer"][str(_pid)] = {
         "navn": "Talent", "hold": {"Talenthold": "Hyldgårdsskolens Hal", **{k[0]: None for k in _kampe}},
         "kampe": [("Talenthold", *k) for k in _kampe]}
+# Danmarksserien Nord (config.json "andre_raekker"): ingen udligning, men klubbens udeture og km regnes,
+# så kontingentmodellen kan regne kørepenge. H4 og H5 (OB) spiller begge i Aalborg Stadionhal.
+FX["saesoner"]["2026/27"]["raekker"]["2387"] = {"navn": "Danmarksserien Nord", "puljer": {"4144": {
+    "navn": "Pulje 1", "hold": {"Aalborg Volleyball.4": "Aalborg Stadionhal", "Aalborg Volleyball.5 OB": "Aalborg Stadionhal",
+                                "Randers VK 2": "Randers Arena", "VK Vendsyssel.2": "Toftegårdshallen"}}}}
 # Vendsyssel → Hyldgårdsskolen mangler i fixtures (skøn: fugleflugt 140,8 km × 1,12)
 _a, _h = FX["steder"]["Toftegårdshallen"], FX["steder"]["Hyldgårdsskolens Hal"]
 _ka, _kh = f"{_a['lat']:.5f},{_a['lon']:.5f}", f"{_h['lat']:.5f},{_h['lon']:.5f}"
@@ -97,7 +102,7 @@ def hjem_for(hold):
 
 
 def klub_af(hold):
-    return re.sub(r"[ .]?\d+$", "", re.sub(r"\s*\(T\)$", "", hold))
+    return re.sub(r"[ .]?\d+( OB)?$", "", re.sub(r"\s*\(T\)$", "", hold))
 
 
 FID = {}
@@ -170,8 +175,6 @@ def side_forening(fid):
                     if forening_id(klub_af(h)) == fid:
                         rows.append(raekke_html(h, pid, rid, r["navn"], p["navn"]))
     if fid == 156:                                # rækker der IKKE er med
-        rows.append(raekke_html("Aalborg Volleyball.4", 4144, 2387, "Danmarksserien Nord",
-                                "Pulje 1"))
         rows.append(raekke_html(KLUB, 9998, 9999, "Volleyligaen Kvinder kvalifikation", "Øst"))
     return ('<html><body><table class="grid"><tr><th>Hold</th><th>Række</th><th>Pulje</th></tr>'
             + "".join(rows) + "</table></body></html>")
@@ -448,8 +451,21 @@ def main():
          f"km-rettelse: H1 til Årre = {[t['km'] for t in aarre]} km (VD's tal)")
     tjek(koder["D1"]["bro"] == 6 and koder["H1"]["bro"] == 0, "broture: D1 = 6, H1 = 0")
     tjek(koder["D1"]["udekampe"] == 9 and len(koder["D1"]["ture"]) == 9, "D1 har 9 udeture")
-    tjek(all("kvalifikation" not in r["raekke"] for r in st["raekker"]),
+    tjek(all("kvalifikation" not in r["raekke"] and "Danmarksserien" not in r["raekke"] for r in st["raekker"]),
          "kvalifikation/pokal/DS er ikke regnet som grundspil")
+    andre = {h["kode"]: h for h in st.get("andre_hold", [])}
+    ds_km = 2 * (km("Aalborg Stadionhal", "Randers Arena") + km("Aalborg Stadionhal", "Toftegårdshallen"))
+    tjek(sorted(andre) == ["H4", "H5"] and andre["H4"]["hold"] == "Aalborg Volleyball.4"
+         and andre["H5"]["hold"] == "Aalborg Volleyball.5 OB",
+         f"Danmarksserien: andre hold {[(k, h['hold']) for k, h in andre.items()]}")
+    tjek(all(h["udekampe"] == 3 and h["km"] == ds_km and h["biler"] == 3 and h["udligning"] is None
+             and h["raekke"] == "Danmarksserien Nord" and len(h["ture"]) == 3
+             and sorted(t["km"] for t in h["ture"])[0] == 0 for h in andre.values()),
+         f"H4 og H5: 3 udeture, {ds_km} km tur/retur (den ene i egen hal), ingen udligning: "
+         f"{[(k, h['udekampe'], h['km']) for k, h in andre.items()]}")
+    tjek(naer(st["grundspil"], sum(h["udligning"] for h in st["klubhold"]), 0.01)
+         and all(h["kode"] in ("D1", "D2", "D3", "H1", "H2", "H3") for h in st["klubhold"]),
+         "Danmarksserien ændrer ikke udligningen eller divisionsholdenes koder")
     for r in st["raekker"]:
         tjek(abs(sum(h["udligning"] for h in r["hold"])) < 0.5,
              f"{r['raekke']}: nulsum over {r['antal_hold']} hold")

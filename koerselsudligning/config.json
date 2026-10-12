@@ -11,6 +11,10 @@
     "2. Division Kvinder": 2,
     "2. Division Herrer": 2
   },
+  "andre_raekker": {
+    "_om": "Klubbens hold i rækker uden VD's kørselsudligning – fx Danmarksserien. Natkørslen regner deres udeture og km (ingen udligning), så kontingentmodellen kan regne kørepenge for dem. Holdkoderne fortsætter efter divisionsholdene (H4, H5 …). «koen»: H eller D, når rækkens navn ikke siger det. «biler»: biler pr. udekamp.",
+    "Danmarksserien": {"koen": "H", "biler": 3}
+  },
   "km_takst": {
     "_om": "Statens laveste km-takst (over 20.000 km/år). VD bruger taksten pr. 1. oktober i sæsonens første år. Tilføj næste års takst hver januar.",
     "2020": 1.96,

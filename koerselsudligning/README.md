@@ -58,7 +58,12 @@ division, for hver runde i pokalturneringen og for slutspillet i Volleyligaen.
    - står et (T)-hold ikke i rækkens andre puljer, kan dets kamp ikke placeres. Den
      springes over, og siden viser en advarsel.
 
-5. Lægger resultatet på siden og holder ét GitHub-issue pr. sæson opdateret.
+5. Regner også klubbens udeture i rækker uden VD's udligning – fx Danmarksserien
+   (`andre_raekker` i `config.json`). Der er ingen udligning, men km'ene står i
+   `status.json` under `andre_hold` (H4, H5 …), så kontingentmodellen kan regne
+   kørepenge for holdene. Rækker, der ikke står dér, er ikke med.
+
+6. Lægger resultatet på siden og holder ét GitHub-issue pr. sæson opdateret.
    GitHub sender en mail, når en ny sæson er regnet, og når beløbet flytter
    sig mere end 500 kr — fx når en pokalrunde er trukket, eller et hold
    trækker sig. Kommentaren siger, hvilken del der har flyttet sig.
