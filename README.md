@@ -103,7 +103,7 @@ kørselsudligningens `status.json`.
   afgang) − udgifterne + indtægterne. Taksten er den nuværende fra KONTINGENTBUDGET, men du kan
   skrive **et hårdt tal** i stedet under **Justér**. Dér kan rejser, trænere, andre udgifter,
   egenbetaling, tilskud, SIFA, bolde, klubaktiviteter og kørselsudligning også justeres for holdet
-  alene – og du vælger, hvor ofte holdet får nyt tøj. **Halleje, turnerings- og dommergebyr er faste** – klubben kan ikke betale mindre.
+  alene – og du vælger, hvor ofte holdet får nyt tøj, og hvor mange sæt. **Halleje, turnerings- og dommergebyr er faste** – klubben kan ikke betale mindre.
 - **Klik på en linje** i regnskabet for at se, hvad der ligger i den: budgettets poster og det, der er
   bogført i sæsonen (*Aktuel sæson* = Ja), delt op i udgifter og indtægter – delte poster med holdets
   andel. Kontingentet viser udregningen, og *Klubben dækker*, *Mangler* og *Overskud til klubben*
@@ -126,7 +126,7 @@ kørselsudligningens `status.json`.
   nyt** – på fanen Klubben (kortet *Nyt tøj*, også for alle hold på én gang) eller under Justér på
   holdet. Holdet betaler så prisen delt med årene hver sæson, og kortet viser, hvad klubben skal lægge
   til side pr. sæson. Et sæt pr. spiller + 2 (HU 20 og DU 20: 14 sæt hver – deres tøj ligger på
-  klubben). H1 og D1 får spillertøj, træningsdragt og opvarmningstrøjer (D1 også strømper), de andre
+  klubben); **antallet af sæt kan rettes for hvert hold** samme steder (tomt felt giver standarden). H1 og D1 får spillertøj, træningsdragt og opvarmningstrøjer (D1 også strømper), de andre
   spillertøj. Priserne pr. sæt er fra D1's faktura og kun det print, klubben ikke kan fakturere til
   sponsorerne: spillertøj 554 kr., opvarmningstrøje 178 kr., træningsdragt 618 kr. – strømper har ingen
   pris endnu. Budgettets eget tøj (D1's 3.000 kr.) er altid med. «Alle hold på én gang» springer H5, D5
