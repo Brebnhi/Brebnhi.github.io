@@ -122,7 +122,7 @@ kørselsudligningens `status.json`.
   (DU 15 og HU15/17). **Ungdommens fælles poster** deles pr. spiller i ungdommen – rejserne ligeligt
   pr. hold. **Dame 5 og Kids** har ingen del i opstilling, rejser og SIFA, Kids heller ikke i
   egenbetaling, og ingen af dem får spillertøj (`RAMME.undtag`, `RAMME.toej.ingen`).
-- **Spillertøj:** et nyt sæt hvert 3. år + huller mellem sæsonerne – efter priserne på D1's faktura:
+- **Spillertøj:** et nyt sæt hvert 4. år + huller mellem sæsonerne – efter priserne på D1's faktura:
   et sæt pr. spiller + 2 med shorts og to trøjer (Core Poly-tee kun til 1.-holdene) og kun det print,
   klubben ikke kan fakturere til sponsorerne.
 - **SIFA:** TV-bingo/SIFA på klubben går 2/3 til D1 og 1/3 til H1, og SIFA's 6.000 kr. til ungdommens
@@ -143,9 +143,13 @@ kørselsudligningens `status.json`.
 - **Kørsel** (fanen): kørepenge til spillere i egne biler med en skyder for satsen pr. km. Hvert hold
   betaler sine egne – km fra kampprogrammet, biler fra turprisen (ellers natkørslens), og ekstra ture
   kan skrives ind. D1's ture til Sjælland i lejebil står under rejseomkostninger. *Pr. rate* er, hvad
-  kørepengene svarer til på holdets kontingent. **VD giver** er det, VD's kørselsudligning til holdet
-  (natkørslens forventning) minus holdets egne rejser rækker til pr. km i egne biler (km × biler) –
-  højst statens laveste takst. Knappen *Det, VD giver pr. hold* giver hvert hold den sats.
+  kørepengene svarer til på holdets kontingent. **Grænsen** er, hvor langt væk kampen skal være (km
+  én vej), før der er kørepenge – enten *kun km ud over grænsen* (de første km hver vej er spillerens
+  egne) eller *hele turen, når kampen er længere væk*. Den gælder også ekstra ture. **VD giver** er
+  det, VD's kørselsudligning til holdet (natkørslens forventning) minus holdets egne rejser rækker til
+  pr. km, der giver kørepenge (km × biler) – højst statens laveste takst. Knappen *Det, VD giver pr.
+  hold* giver hvert hold den sats; med en grænse bliver satsen højere, og når den rammer statens takst,
+  bliver resten af udligningen i klubben.
 - **Fritagne** (trænere og frivillige) tæller med som spillere, så deres gratis kontingent er en udgift
   for klubben – holdkammeraterne betaler ikke for dem.
 - **Holdets egen takst** – den takst, der lige dækker holdets egne tal uden hjælp fra klubben –
