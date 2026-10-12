@@ -101,9 +101,9 @@ kørselsudligningens `status.json`.
   poster, der hører til bestemte hold.
 - **Holdets resultat** = kontingentet med holdets takst (2 rater × alle spillere, minus gebyr og
   afgang) − udgifterne + indtægterne. Taksten er den nuværende fra KONTINGENTBUDGET, men du kan
-  skrive **et hårdt tal** i stedet under **Justér**. Dér kan rejser, trænere, tøj, andre udgifter,
+  skrive **et hårdt tal** i stedet under **Justér**. Dér kan rejser, trænere, andre udgifter,
   egenbetaling, tilskud, SIFA, bolde, klubaktiviteter og kørselsudligning også justeres for holdet
-  alene. **Halleje, turnerings- og dommergebyr er faste** – klubben kan ikke betale mindre.
+  alene – og du vælger, hvor ofte holdet får nyt tøj. **Halleje, turnerings- og dommergebyr er faste** – klubben kan ikke betale mindre.
 - **Klik på en linje** i regnskabet for at se, hvad der ligger i den: budgettets poster og det, der er
   bogført i sæsonen (*Aktuel sæson* = Ja), delt op i udgifter og indtægter – delte poster med holdets
   andel. Kontingentet viser udregningen, og *Klubben dækker*, *Mangler* og *Overskud til klubben*
@@ -120,16 +120,17 @@ kørselsudligningens `status.json`.
 - **Poster til bestemte hold:** kørselsudligningen til pokalen deles ligeligt på H1, H2, D1 og D2,
   Volley-TV og Datavolley er D1's (under *Andre udgifter*), og Hørby-campen hører til U15-holdene
   (DU 15 og HU15/17). **Ungdommens fælles poster** deles pr. spiller i ungdommen – rejserne ligeligt
-  pr. hold. **Dame 5 og Kids** har ingen del i opstilling, rejser og SIFA, Kids heller ikke i
-  egenbetaling, og ingen af dem får spillertøj (`RAMME.undtag`, `RAMME.toej.ingen`).
-- **Spillertøj** følger **tøjplanen** (`RAMME.toej.plan`): hvad hvert hold får hvilken sæson –
-  spillertøj, opvarmningstrøjer, træningsdragt, strømper eller at lukke huller. Planen gentager sig hvert
-  4. år, og holdet betaler **snittet pr. sæson**. Et sæt pr. spiller + 2 (HU 20 og DU 20: 14 sæt hver –
-  deres tøj ligger på klubben). Priserne pr. sæt er fra D1's faktura og kun det print, klubben ikke kan
-  fakturere til sponsorerne: spillertøj 554 kr., opvarmningstrøje 178 kr., træningsdragt 618 kr. –
-  strømper har ingen pris endnu. At lukke huller koster 3.000 kr. pr. sæson for H1 og D1; for D1 er det
-  budgettets tøj til D1 (de samme penge). **Tøjkassen** på fanen Klubben viser, hvad der købes hver
-  sæson, og hvad klubben skal lægge til side, for at planen går op. Tøjet kan rettes pr. hold under Justér.
+  pr. hold. **Dame 5 og Kids** har ingen del i opstilling, rejser og SIFA, og Kids heller ikke i
+  egenbetaling (`RAMME.undtag`).
+- **Nyt tøj** er ikke med i beregningen, før du vælger, **hvor mange år der går, før hvert hold får
+  nyt** – på fanen Klubben (kortet *Nyt tøj*, også for alle hold på én gang) eller under Justér på
+  holdet. Holdet betaler så prisen delt med årene hver sæson, og kortet viser, hvad klubben skal lægge
+  til side pr. sæson. Et sæt pr. spiller + 2 (HU 20 og DU 20: 14 sæt hver – deres tøj ligger på
+  klubben). H1 og D1 får spillertøj, træningsdragt og opvarmningstrøjer (D1 også strømper), de andre
+  spillertøj. Priserne pr. sæt er fra D1's faktura og kun det print, klubben ikke kan fakturere til
+  sponsorerne: spillertøj 554 kr., opvarmningstrøje 178 kr., træningsdragt 618 kr. – strømper har ingen
+  pris endnu. Budgettets eget tøj (D1's 3.000 kr.) er altid med. «Alle hold på én gang» springer H5, D5
+  og Kids over (`RAMME.toej`).
 - **SIFA:** TV-bingo/SIFA på klubben går 2/3 til D1 og 1/3 til H1, og SIFA's 6.000 kr. til ungdommens
   kørsel til Scandinavian Masters går til holdene med stævnet i budgettet. **Bolde:** D1 får 12 bolde
   à 700 kr. gennem ligaen – en indtægt for D1.
@@ -141,7 +142,7 @@ kørselsudligningens `status.json`.
   fritagelserne − overskuddet dækker holdenes underskud, **med samme procentdel til alle hold med
   underskud**. Det, der ikke er dækket, **mangler** og skal skaffes ad andre veje – eller lægges på
   holdets kontingent. Fanen viser også **vejen fra budgettets resultat til sidens** (fanen *Budget*:
-  indtægter i alt − udgifter i alt; tøj, halleje, SIFA og bolde efter rammen – og dine justeringer) og
+  indtægter i alt − udgifter i alt; halleje, SIFA og bolde efter rammen – og nyt tøj og dine justeringer) og
   **klubbens egne poster**: alt, der ikke kan lægges præcist på et hold eller mellem bestemte hold – IT,
   abonnementer, trænertøj, kurser, porto, bestyrelse, gaver, bøder, festerne, Bambusa og holdene uden
   kontingent (DU 20, HU 20). Klik på en linje for posterne.
