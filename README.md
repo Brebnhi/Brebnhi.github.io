@@ -12,7 +12,7 @@ fører videre til det enkelte projekt:
 | Kalender-feeds | `/feeds/*.ics` | Kalenderne til Holdsport | bygges af `tjans/scripts/build.py` |
 | Kørselsudligning | `/koerselsudligning/` | Forventet rejseudligning fra Volleyball Danmark | `koerselsudligning/` – se README dér |
 | Kontingent | `/kontingent/` | Forventet kontingent ud fra en Holdsport-eksport | `tjans/docs/kontingent/index.html` (fast fil) |
-| Kontingentmodel | `/kontingentmodel/` | Hvad giver hvert hold i over- eller underskud, dækker kontingentet holdets faste udgifter, og hvad mangler, når klubbens indtægter og holdenes overskud har dækket deres del? Vælg et hold, justér posterne og taksten, se klubbens egne poster under Faste udgifter, skru på sponsorater, frivilligindtægt og overskud på fanen Klubben, og prøv kørepenge på fanen Kørsel. Kræver kode | `tjans/docs/kontingentmodel/index.html` (fast fil) – se *Kontingentmodellen* nedenfor |
+| Kontingentmodel | `/kontingentmodel/` | Hvad bruger hvert hold, og hvor kommer pengene fra – kontingentet, holdets egne indtægter og det, klubben lægger til? Hvert hold er et lille regnskab, og listen har en søjle pr. hold. Fanen Klubben viser, hvordan holdenes underskud dækkes, vejen fra budgettets resultat til sidens og klubbens egne poster; fanen Kørsel prøver kørepenge – også det, VD's kørselsudligning giver pr. km. Kræver kode | `tjans/docs/kontingentmodel/index.html` (fast fil) – se *Kontingentmodellen* nedenfor |
 | Budget | `/budget/` | Budget mod realiseret direkte fra budgetarket – alle posteringer pr. budgetpost, hold og arrangement. Kræver kode | `tjans/docs/budget/index.html` (fast fil) og `adresse.txt` ved siden af – se *Budgetsiden* nedenfor |
 | Turpris | `/turpris/` | Sæsonens udeture for alle hold – D1's ture til Sjælland i lejebiler (klubben betaler), alle andre i egne biler (spillerne betaler) – hvad en kørselsgodtgørelse ville koste klubben, og en regner til den enkelte tur | `tjans/docs/turpris/index.html` (fast fil; kampene hentes fra kørselsudligningen) |
 | Gammel adresse | `/Tjanser-i-Holdsport/` | Holdsports importer peger herhen – se nedenfor | bygges af `tjans/scripts/build.py` |
@@ -93,15 +93,21 @@ som budgetsiden** – adressen er den nederste linje i `tjans/docs/budget/adress
 op med «Husk koden», åbner modellen også. Udeture, km og den forventede kørselsudligning kommer fra
 kørselsudligningens `status.json`.
 
-- **Ét hold ad gangen.** Holdets poster er dets egne poster i budgettet og dets del af poster, der hører
-  til bestemte hold. Rejser, trænere, tøj, andre udgifter, egenbetaling, tilskud, SIFA, bolde,
-  klubaktiviteter og kørselsudligning kan justeres for holdet alene. **Halleje, turnerings- og
-  dommergebyr er faste** – klubben kan ikke betale mindre.
+- **Hvert hold er et regnskab** i to kolonner: det, holdet **bruger**, og det, holdet **får ind** –
+  kontingentet fra spillerne, de fritagnes kontingent (som klubben betaler) og holdets egne indtægter.
+  Under dem står, hvad **klubben dækker**, og hvad der **mangler** – eller holdets **overskud til
+  klubben**. **Listen** viser det samme som en søjle pr. hold: længden er det, holdet bruger, og
+  farverne er, hvor pengene kommer fra. Holdets poster er dets egne poster i budgettet og dets del af
+  poster, der hører til bestemte hold.
 - **Holdets resultat** = kontingentet med holdets takst (2 rater × alle spillere, minus gebyr og
   afgang) − udgifterne + indtægterne. Taksten er den nuværende fra KONTINGENTBUDGET, men du kan
-  skrive **et hårdt tal** i stedet (feltet øverst ved holdet).
-- **Klik på en post** for at se, hvad der ligger i den: budgettets poster og det, der er bogført i
-  sæsonen (*Aktuel sæson* = Ja), delt op i udgifter og indtægter – delte poster med holdets andel.
+  skrive **et hårdt tal** i stedet under **Justér**. Dér kan rejser, trænere, tøj, andre udgifter,
+  egenbetaling, tilskud, SIFA, bolde, klubaktiviteter og kørselsudligning også justeres for holdet
+  alene. **Halleje, turnerings- og dommergebyr er faste** – klubben kan ikke betale mindre.
+- **Klik på en linje** i regnskabet for at se, hvad der ligger i den: budgettets poster og det, der er
+  bogført i sæsonen (*Aktuel sæson* = Ja), delt op i udgifter og indtægter – delte poster med holdets
+  andel. Kontingentet viser udregningen, og *Klubben dækker*, *Mangler* og *Overskud til klubben*
+  forklarer klubbens del.
 - **Halleje** er sæsonens bookinger i Fritidsportalen (uden Skipper Clement) – de erstatter budgettets
   halleje. Træningstiden deles efter holdenes **banetimer** i træningsplanen (baner × timer – hele
   hallen i to timer er 6 banetimer, så et hold med én af tre baner betaler en tredjedel). Kampe og
@@ -122,24 +128,28 @@ kørselsudligningens `status.json`.
 - **SIFA:** TV-bingo/SIFA på klubben går 2/3 til D1 og 1/3 til H1, og SIFA's 6.000 kr. til ungdommens
   kørsel til Scandinavian Masters går til holdene med stævnet i budgettet. **Bolde:** D1 får 12 bolde
   à 700 kr. gennem ligaen – en indtægt for D1.
-- **Faste udgifter** (fanen): dækker kontingentet hvert holds faste udgifter – halleje, turnering og
-  dommere? Fanen viser også **klubbens egne poster**: alt, der ikke kan lægges præcist på et hold eller
-  mellem bestemte hold – IT, abonnementer, trænertøj, kurser, porto, bestyrelse, gaver, bøder,
-  festerne, Bambusa og holdene uden kontingent (DU 20, HU 20). Klik på en linje for posterne.
+- **Faste udgifter:** under holdets regnskab står, om kontingentet dækker holdets faste udgifter –
+  halleje, turnering og dommere.
 - **Klubben** (fanen): **sponsorater** og **det, klubben tjener ved at stille frivillige hjælpere**
   (Frivilligarrangement – indtægt) har hver sin skyder. Det samme har **overskuddet pr. sæson**
   (10.000 kr. i rammen). Klubbens indtægter − klubbens egne udgifter + holdenes overskud −
   fritagelserne − overskuddet dækker holdenes underskud, **med samme procentdel til alle hold med
   underskud**. Det, der ikke er dækket, **mangler** og skal skaffes ad andre veje – eller lægges på
-  holdets kontingent (*Pr. rate*). Fanen viser regnestykket og en søjle pr. hold.
+  holdets kontingent. Fanen viser også **vejen fra budgettets resultat til sidens** (fanen *Budget*:
+  indtægter i alt − udgifter i alt; tøj, halleje, SIFA og bolde efter rammen – og dine justeringer) og
+  **klubbens egne poster**: alt, der ikke kan lægges præcist på et hold eller mellem bestemte hold – IT,
+  abonnementer, trænertøj, kurser, porto, bestyrelse, gaver, bøder, festerne, Bambusa og holdene uden
+  kontingent (DU 20, HU 20). Klik på en linje for posterne.
 - **Kørsel** (fanen): kørepenge til spillere i egne biler med en skyder for satsen pr. km. Hvert hold
-  betaler sine egne – km fra kampprogrammet, biler fra turprisen, og ekstra ture kan skrives ind.
-  D1's ture til Sjælland i lejebil står under rejseomkostninger. *Pr. rate* er, hvad kørepengene
-  svarer til på holdets kontingent.
+  betaler sine egne – km fra kampprogrammet, biler fra turprisen (ellers natkørslens), og ekstra ture
+  kan skrives ind. D1's ture til Sjælland i lejebil står under rejseomkostninger. *Pr. rate* er, hvad
+  kørepengene svarer til på holdets kontingent. **VD giver** er det, VD's kørselsudligning til holdet
+  (natkørslens forventning) minus holdets egne rejser rækker til pr. km i egne biler (km × biler) –
+  højst statens laveste takst. Knappen *Det, VD giver pr. hold* giver hvert hold den sats.
 - **Fritagne** (trænere og frivillige) tæller med som spillere, så deres gratis kontingent er en udgift
   for klubben – holdkammeraterne betaler ikke for dem.
 - **Holdets egen takst** – den takst, der lige dækker holdets egne tal uden hjælp fra klubben –
-  står under udregningen ved holdet, rundet til 50 kr.
+  står ved kontingentet og under Justér, rundet til 50 kr.
 - **Rammen** – bookingerne og træningsplanen (banetimer pr. hold), hjemmekampe og hjemmedage,
   vægtløftningen, tøjpriserne, SIFA, boldene, klubbens indtægter og overskud, poster til bestemte hold
   og undtagelserne – står i `RAMME` øverst i scriptet. Ret dér, når noget ændrer sig. Bookingerne
