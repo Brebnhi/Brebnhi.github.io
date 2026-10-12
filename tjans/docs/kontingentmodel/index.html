@@ -34,12 +34,13 @@
                      Dame 5 og Kids er undtaget fra nogle af dem (RAMME.undtag). Kørselsudligningen til
                      pokalen deles ligeligt på H1, H2, D1 og D2, Volley-TV og Datavolley er D1's, og
                      Hørby-campen hører til U15-holdene (RAMME.fordeling).
-    Spillertøj       et nyt sæt hvert 3. år + huller mellem sæsonerne – efter D1's priser (RAMME.toej).
+    Spillertøj       et nyt sæt hvert 4. år + huller mellem sæsonerne – efter D1's priser (RAMME.toej).
                      Dame 5 og Kids får ikke tøj.
     Kørepenge        satsen pr. km × km i egne biler × biler (fanen Kørsel). D1's ture til Sjælland
-                     køres i lejebiler og står under rejseomkostninger. «Det, VD giver»: hvert hold får det,
-                     VD's kørselsudligning (natkørslens forventning) minus holdets egne rejser giver pr. km
-                     i egne biler – højst statens laveste takst.
+                     køres i lejebiler og står under rejseomkostninger. Grænsen: kørepenge først, når kampen
+                     er mere end så mange km væk (én vej) – kun km ud over grænsen eller hele turen.
+                     «Det, VD giver»: hvert hold får det, VD's kørselsudligning (natkørslens forventning)
+                     minus holdets egne rejser giver pr. km med kørepenge – højst statens laveste takst.
     SIFA             TV-bingo/SIFA på klubben går til D1 og H1; SIFA til ungdommens kørsel til
                      Scandinavian Masters går til holdene med stævnet (RAMME.sifa).
     Bolde            de bolde, D1 skaffer klubben gennem ligaen (RAMME.bolde).
@@ -350,6 +351,8 @@ footer{margin:22px 0 40px;color:var(--muted);font-size:12px;line-height:1.6}
 .satsrk{display:flex;align-items:center;gap:10px 12px;flex-wrap:wrap}
 .satsrk input[type=range]{flex:1 1 240px;width:auto;max-width:520px}
 .satsrk.vd input{opacity:.45}
+.kafsnit{margin:16px 0 8px;padding-top:12px;border-top:1px solid var(--line);font-size:11px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+#graensevalg{margin:10px 0 0}
 .ksum{margin:10px 0 0;font-size:13.5px}
 .ktab{margin-top:12px;background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .ktab>*+*{border-top:1px solid var(--line)}
@@ -565,7 +568,7 @@ function kodeFor(navn) {
   return m ? (m[1] === "dame" ? "D" : "H") + m[2] : "";
 }
 const AFRUNDING = 50;      // satserne rundes til nærmeste 50 kr.
-const TOEJ_AAR = 3;        // spillertøjet skiftes hvert 3. år
+const TOEJ_AAR = 4;        // spillertøjet skiftes hvert 4. år
 
 /* RAMMEN – klubbens faste regler. Ret her, når de ændrer sig.
    Holdene skrives som deres navn uden mellemrum med små bogstaver: «Dame 1» = dame1, «HU15/17» = hu15/17. */
@@ -1043,17 +1046,19 @@ function lavProgram(k, turBiler) {
       .sort((a, b) => a.dato && b.dato ? a.dato - b.dato : a.dato ? -1 : b.dato ? 1 : 0);
     const lejer = RAMME.koersel.lejebil.indexOf(x.kode) >= 0;
     let egne = 0, km = 0, lejebil = 0, egenHal = 0;
+    const kmTure = [];                       // km én vej for hver udekamp i egne biler
+
     for (let i = 0; i < ture.length; i++) {
       const a = ture[i], b = ture[i + 1];
       if (lejer && b && a.dato && b.dato && a.dato.getDay() === 6 && Math.round((b.dato - a.dato) / 864e5) === 1 && (a.bro || b.bro)) { lejebil += 2; i++; continue; }
       if (lejer && a.bro) { lejebil++; continue; }
       if (a.km === 0) { egenHal++; continue; }
-      egne++; km += 2 * a.km;
+      egne++; km += 2 * a.km; kmTure.push(a.km);
     }
     const b = turBiler && typeof turBiler[x.kode] === "number" && isFinite(turBiler[x.kode]) && turBiler[x.kode] >= 0 ? Math.round(turBiler[x.kode])
       : typeof x.biler === "number" && x.biler > 0 ? Math.round(x.biler) : null;          // turprisen – ellers natkørslen (som VD regner)
     hold[x.kode] = { raekke: tekst(x.raekke), udligning: typeof x.udligning === "number" ? x.udligning : null,
-      ture: ture.length, egne, lejebil, egenHal, km, biler: b };
+      ture: ture.length, egne, lejebil, egenHal, km, kmTure, biler: b };
   });
   return { saeson: tekst(k.saeson), opdateret: tekst(k.opdateret), takst: typeof k.takst === "number" && k.takst > 0 ? k.takst : null, hold };
 }
@@ -1166,28 +1171,37 @@ function klubDel(D, T, x) {
 const klubKategori = x => x.udenKontingent ? x.holdNavn : x.gruppe || (erKlubHalleje(x) ? "Resten af hallejen" :
   !x.linje || /halleje|tøj|toej/.test(lav(x.linje)) ? x.navn : x.linje);
 
-/* Kørepenge pr. hold: satsen × km tur/retur pr. bil × biler. Km = udekampene i egne biler + ekstra ture. */
+/* Kørepenge pr. hold: satsen × de km tur/retur pr. bil, der giver kørepenge × biler. Km = udekampene i egne biler
+   + ekstra ture. Grænsen er km én vej til kampen: under den er der ingen kørepenge. «alle» = hele turen giver kørepenge,
+   når kampen er længere væk end grænsen – ellers kun km ud over grænsen (de første km hver vej er spillerens egne). */
 function koersel(D, I, P) {
   const K = I.koersel, sats = num(K.sats, 0), hold = {};
   const statens = P && P.takst ? P.takst : (RAMME.koersel.satser.find(s => s.statens) || { sats: 2.28 }).sats;
+  const graense = Math.max(0, num(K.graense, 0)), alle = K.alle === true;
+  const betalt = d => graense <= 0 ? 2 * d : alle ? (d > graense ? 2 * d : 0) : 2 * Math.max(0, d - graense);   // km tur/retur, der giver kørepenge
   D.betalere.forEach(h => {
     const p = P && h.kode && P.hold[h.kode] ? P.hold[h.kode] : null;
     const e = K.ekstra[h.id] || {};
     const ekstraTure = num(e.ture, 0), ekstraKm = num(e.km, 0);
-    const kmProgram = p ? p.km : 0, km = kmProgram + 2 * ekstraTure * ekstraKm;
+    const ture = p ? (p.kmTure || []) : [];
+    const kmKoert = (p ? p.km : 0) + 2 * ekstraTure * ekstraKm;                 // alle km tur/retur pr. bil
+    const kmProgram = p ? (p.kmTure ? sum(ture, betalt) : p.km) : 0, km = kmProgram + ekstraTure * betalt(ekstraKm);
+    const kampe = ture.length + ekstraTure, kampeMed = ture.filter(d => d > graense).length + (ekstraKm > graense ? ekstraTure : 0);
     const bilerStd = p && p.biler != null ? p.biler : RAMME.koersel.biler;
     const biler = num(K.biler[h.id], bilerStd);
-    hold[h.id] = { p, ekstraTure, ekstraKm, kmProgram, km, biler, bilerStd, kmIalt: km * biler, sats, beloeb: sats * km * biler };
+    hold[h.id] = { p, ekstraTure, ekstraKm, kmProgram, km, kmKoert, kampe, kampeMed, biler, bilerStd, kmIalt: km * biler, sats, beloeb: sats * km * biler };
   });
   const v = Object.values(hold);
   // i VD-tilstand sætter beregn hvert holds sats og beløb (VD's udligning pr. km) og regner i alt om
-  return { sats, vd: K.vd === true, statens, hold, ialt: sum(v, x => x.beloeb), km: sum(v, x => x.kmIalt) };
+  return { sats, vd: K.vd === true, statens, graense, alle, hold, ialt: sum(v, x => x.beloeb), km: sum(v, x => x.kmIalt),
+    kmKoert: sum(v, x => x.kmKoert * x.biler), kampe: sum(v, x => x.kampe), kampeMed: sum(v, x => x.kampeMed) };
 }
 
 /* Dine justeringer:
    { hold: { [hold]: { [post]: kr. pr. sæson, saet: kr., huller: kr., takst: kr. pr. rate } }, hal: { uger, opstilling },
      klub: { sponsor: kr., frivillig: kr., maal: kr. },
-     koersel: { sats, vd: true = det, VD's udligning giver pr. hold, biler: { [hold]: antal }, ekstra: { [hold]: { ture, km } } } } */
+     koersel: { sats, vd: true = det, VD's udligning giver pr. hold, graense: km én vej, før der er kørepenge,
+       alle: true = hele turen giver kørepenge, når kampen er længere væk, biler: { [hold]: antal }, ekstra: { [hold]: { ture, km } } } } */
 const STANDARD = { hold: {}, hal: {}, klub: {}, koersel: { biler: {}, ekstra: {} } };
 const FELTER = JUSTERBAR.concat(["saet", "huller"]);
 const TAKST_MAKS = 20000;  // højeste takst pr. rate, du kan skrive
@@ -1216,6 +1230,8 @@ function rensIndst(raa) {
   if (erObj(k)) {
     if (ok(k.sats)) I.koersel.sats = clamp(Math.round(k.sats * 100) / 100, 0, 10);
     if (k.vd === true) I.koersel.vd = true;
+    if (ok(k.graense) && k.graense > 0) I.koersel.graense = clamp(Math.round(k.graense), 0, 1000);
+    if (k.alle === true) I.koersel.alle = true;
     if (erObj(k.biler)) Object.keys(k.biler).forEach(id => { if (ok(k.biler[id])) I.koersel.biler[id] = clamp(Math.round(k.biler[id]), 0, 20); });
     if (erObj(k.ekstra)) Object.keys(k.ekstra).forEach(id => {
       const e = k.ekstra[id];
@@ -1288,7 +1304,8 @@ function beregn(D, I, P) {
       poster[Q.id] = { std: s[Q.id], v, rettet: just && typeof r[Q.id] === "number" && Math.abs(v - s[Q.id]) >= 0.5 };
     });
     // VD's kørselsudligning pr. km: natkørslens forventede udligning (ellers holdets udligning i budgettet) − holdets egne
-    // rejser, som klubben betaler (lejebiler, færger), delt med km i egne biler × biler – højst statens laveste takst
+    // rejser, som klubben betaler (lejebiler, færger), delt med de km i egne biler, der giver kørepenge (efter grænsen),
+    // × biler – højst statens laveste takst
     const k = K.hold[h.id], pp = k.p, natUdl = pp && typeof pp.udligning === "number" ? pp.udligning : null;
     const udl = pp ? (natUdl != null ? natUdl : poster.udligning.v) : 0, bilKm = k.km * k.biler, til = Math.max(0, udl - poster.rejse.v);
     k.vd = { med: !!pp, udligning: udl, kilde: natUdl != null ? "natkørslen" : "budgettet", rejse: poster.rejse.v, til, bilKm,
@@ -1425,7 +1442,7 @@ const S = { saesoner: [], valgt: null, kode: null, D: null, P: null, R: null, I:
   aaben: null, juster: false, aabneKlub: new Set(), aabneKat: new Set(), beskeder: [], hentet: null };
 let gemTimer = null;
 const tomIndst = I => !Object.keys(I.hold).length && !Object.keys(I.hal).length && !Object.keys(I.klub).length && I.koersel.sats == null &&
-  !I.koersel.vd && !Object.keys(I.koersel.biler).length && !Object.keys(I.koersel.ekstra).length;
+  !I.koersel.vd && I.koersel.graense == null && !I.koersel.alle && !Object.keys(I.koersel.biler).length && !Object.keys(I.koersel.ekstra).length;
 function gemIndst() {
   clearTimeout(gemTimer);
   gemTimer = setTimeout(() => gem(localStorage, NOEGLE.indst, tomIndst(S.I) ? null : JSON.stringify(S.I)), 250);
@@ -1653,11 +1670,12 @@ function kildeTekst(x, P) {
     if (dele.length) return dele.join(" · ") + bogfTekst(x, P);
   }
   if (P.id === "koerepenge") {
-    const k = x.koersel;
-    if (R.K.vd) return k.beloeb >= 0.5 ? "Det, VD giver: " + kr(k.sats, 2) + " kr./km × " + kr(k.km) + " km × " + flere(k.biler, "bil", "biler") + "."
+    const k = x.koersel, gr = graenseTekst(R.K);
+    if (R.K.vd) return k.beloeb >= 0.5 ? "Det, VD giver: " + kr(k.sats, 2) + " kr./km × " + kr(k.km) + " km × " + flere(k.biler, "bil", "biler") + gr + "."
       : "VD's kørselsudligning giver intet til kørepenge for " + x.h.kort + ".";
     if (R.K.sats <= 0) return "Ingen kørepenge – som i år. Satsen sætter du under Kørsel.";
-    return k.km ? kr(R.K.sats, 2) + " kr./km × " + kr(k.km) + " km × " + flere(k.biler, "bil", "biler") + " – ret under Kørsel." : "Ingen udeture i egne biler. Ekstra ture skriver du under Kørsel.";
+    return k.km ? kr(R.K.sats, 2) + " kr./km × " + kr(k.km) + " km × " + flere(k.biler, "bil", "biler") + gr + " – ret under Kørsel."
+      : k.kmKoert ? "Ingen af holdets udekampe er mere end " + kr(R.K.graense) + " km væk." : "Ingen udeture i egne biler. Ekstra ture skriver du under Kørsel.";
   }
   if (P.id === "toej") {
     return p.intet ? x.h.kort + " får ikke spillertøj." + bogfTekst(x, P) : p.ramme
@@ -1888,6 +1906,8 @@ function koerepengeEl(x) {
     (p.egenHal ? " · " + flere(p.egenHal, "udekamp", "udekampe") + " i egen hal" : "") + ".");
   else linjer.push(x.h.kort + " er ikke i kørselsudligningens kampprogram.");
   if (k.ekstraTure) linjer.push("Ekstra: " + flere(k.ekstraTure, "tur", "ture") + " × " + kr(k.ekstraKm) + " km én vej = " + kr(2 * k.ekstraTure * k.ekstraKm) + " km tur/retur.");
+  if (K.graense > 0) linjer.push(k.kampeMed + " af " + flere(k.kampe, "tur", "ture") + " er mere end " + kr(K.graense) + " km væk. " +
+    (K.alle ? "Hele turen giver kørepenge" : "Kun km ud over " + kr(K.graense) + " km hver vej giver kørepenge") + ": " + kr(k.km) + " af " + kr(k.kmKoert) + " km pr. bil.");
   if (k.vd.med) linjer.push(vdTekst(x));
   linjer.push(k.beloeb >= 0.5 ? kr(k.sats, 2) + " kr. × " + kr(k.km) + " km × " + flere(k.biler, "bil", "biler") + " = " + kr(k.beloeb) + " kr." + (K.vd ? " – det, VD giver." : "")
     : K.vd ? "VD's kørselsudligning giver intet til kørepenge for " + x.h.kort + "." : "Ingen kørepenge – som i år.");
@@ -1901,10 +1921,14 @@ function vdTekst(x) {
   const udl = "VD's kørselsudligning: " + kr(v.udligning) + " kr. (" + (v.kilde === "natkørslen" ? "natkørslens forventning" : "budgettet") + ")";
   if (v.til < 0.5) return udl + (v.rejse >= 0.5 ? " – mindre end holdets rejser på " + kr(v.rejse) + " kr., som klubben betaler (lejebiler, færger). Der er intet til kørepenge."
     : ". Der er intet til kørepenge.");
-  if (!(v.bilKm > 0)) return udl + " – men holdet har ingen km i egne biler.";
+  if (!(v.bilKm > 0)) return udl + (k.kmKoert > 0 ? " – men ingen af holdets km giver kørepenge med grænsen." : " – men holdet har ingen km i egne biler.");
   return udl + (v.rejse >= 0.5 ? " − holdets rejser " + kr(v.rejse) + " kr., som klubben betaler, = " + kr(v.til) + " kr." : "") +
-    " ÷ " + kr(k.km) + " km × " + flere(k.biler, "bil", "biler") + " = " + kr(v.fri, 2) + " kr. pr. km" +
+    " ÷ " + kr(k.km) + " km" + (K.graense > 0 ? " med kørepenge" : "") + " × " + flere(k.biler, "bil", "biler") + " = " + kr(v.fri, 2) + " kr. pr. km" +
     (v.fri > K.statens + 1e-9 ? " – men højst statens " + kr(K.statens, 2) + " kr." : ".");
+}
+/* « (km ud over 50 km hver vej)» eller « (kampe mere end 50 km væk)» – tom uden grænse */
+function graenseTekst(K) {
+  return K.graense > 0 ? (K.alle ? " (kampe mere end " + kr(K.graense) + " km væk)" : " (km ud over " + kr(K.graense) + " km hver vej)") : "";
 }
 function sifaEl(x) {
   const D = S.D, su = RAMME.sifa.ungdom, linjer = [], d = detaljer(D, S.R, x.id, "sifa").budget;
@@ -1980,7 +2004,7 @@ function regnskabLinjer(x) {
   const under = P => {
     const p = x.poster[P.id];
     if (FASTE.indexOf(P.id) >= 0) return "fast";
-    if (P.id === "koerepenge") return K.vd ? "det, VD giver" : kr(x.koersel.sats, 2) + " kr. pr. km";
+    if (P.id === "koerepenge") return (K.vd ? "det, VD giver" : kr(x.koersel.sats, 2) + " kr. pr. km") + (K.graense > 0 ? " · over " + kr(K.graense) + " km" : "");
     if (P.id === "toej") return p.intet ? "" : "et nyt sæt hvert " + TOEJ_AAR + ". år";
     if (NAVNE_UNDER.indexOf(P.id) >= 0) {
       const navne = [...new Set(detaljer(S.D, R, x.id, P.id).budget.sort((a, b) => Math.abs(b.v) - Math.abs(a.v)).map(r => r.x.fordelingNavn || r.x.navn))];
@@ -2183,7 +2207,7 @@ function broLinje(d) {
     case "toej": return ["Spillertøj", "et nyt sæt hvert " + TOEJ_AAR + ". år efter D1's priser: " + kr(da.model) + " kr. om året – budgettet har " + kr(da.budget) + " kr."];
     case "halleje": return ["Halleje", "sæsonens bookinger: " + kr(da.model) + " kr. – budgettet har " + kr(da.budget) + " kr."];
     case "ramme": return [d.navn, "ikke i budgettet – fra rammen"];
-    case "koerepenge": return ["Kørepenge", R.K.vd ? "det, VD giver – fanen Kørsel" : kr(R.K.sats, 2) + " kr. pr. km – fanen Kørsel"];
+    case "koerepenge": return ["Kørepenge", (R.K.vd ? "det, VD giver" : kr(R.K.sats, 2) + " kr. pr. km") + graenseTekst(R.K) + " – fanen Kørsel"];
     case "takster": return ["Dine takster", "kontingentet med dine takster – budgettet har " + kr(R.provenuNu) + " kr."];
     case "poster": return ["Dine justeringer af holdenes poster", "under «Justér» på holdene"];
     case "klub": return ["Sponsorater og frivillige", "dine tal – budgettet har " + kr(sum(KL.indtaegter, k => k.std)) + " kr."];
@@ -2275,13 +2299,13 @@ function tegnKoersel() {
     const under = p ? flere(p.egne, "udekamp", "udekampe") + " i egne biler" + (p.lejebil ? " · " + p.lejebil + " i lejebil" : "") + (p.egenHal ? " · " + p.egenHal + " i egen hal" : "")
       : "ikke i kampprogrammet";
     return h("div", { class: "krk", "data-k": x.id },
-      h("div", { class: "kn" }, h("button", { type: "button", class: "lnk", "data-tilhold": x.id, title: "Se " + x.h.kort }, x.h.kort), h("small", null, under)),
+      h("div", { class: "kn" }, h("button", { type: "button", class: "lnk", "data-tilhold": x.id, title: "Se " + x.h.kort }, x.h.kort), h("small", { "data-kk": "under", title: under }, under)),
       h("div", { class: "ke" },
         h("input", { class: "felt-lille smal num", inputmode: "numeric", "data-ekstra": "ture", "data-id": x.id, value: e.ture ? String(e.ture) : "", placeholder: "0", "aria-label": "Ekstra udeture for " + x.h.kort }),
         h("span", null, "×"),
         h("input", { class: "felt-lille num", inputmode: "decimal", "data-ekstra": "km", "data-id": x.id, value: e.km ? kr(e.km) : "", placeholder: "0", "aria-label": "Km én vej pr. ekstra tur for " + x.h.kort }),
         h("span", null, "km")),
-      h("div", { class: "kv num", "data-kol": "km", "data-lbl": "km pr. bil" }, h("span", { "data-kk": "km" })),
+      h("div", { class: "kv num", "data-kol": "km", "data-lbl": "km pr. bil" }, h("span", { "data-kk": "km" }), h("small", { "data-kk": "koert" })),
       h("div", { class: "kv", "data-kol": "biler", "data-lbl": "biler" }, h("input", { class: "felt-lille num", inputmode: "numeric", "data-biler": x.id, value: String(k.biler),
         "aria-label": "Biler pr. udekamp for " + x.h.kort, title: k.biler === k.bilerStd && k.p && k.p.biler != null ? "Fra turprisen" : null })),
       h("div", { class: "kv num vd", "data-kol": "vd", "data-lbl": "VD giver", "data-kk": "vd" }),
@@ -2302,6 +2326,16 @@ function tegnKoersel() {
         h("input", { type: "range", id: "sats-skyder", min: "0", max: "4", step: "0.05", value: String(Math.min(4, K.sats)), "aria-label": "Kørepenge i kr. pr. km pr. bil" }),
         h("input", { class: "belob num", id: "sats-felt", inputmode: "decimal", value: kr(K.sats, 2), "aria-label": "Kr. pr. km pr. bil" }),
         h("span", { class: "stille" }, "kr. pr. km pr. bil")),
+      h("div", { class: "kafsnit" }, "Hvilke km giver kørepenge?"),
+      h("div", { class: "satsrk" },
+        h("input", { type: "range", id: "graense-skyder", min: "0", max: "300", step: "5", value: String(Math.min(300, K.graense)),
+          "aria-label": "Kørepenge først, når kampen er mere end så mange km væk (én vej)" }),
+        h("input", { class: "belob num", id: "graense-felt", inputmode: "numeric", value: kr(K.graense), "aria-label": "Km én vej til kampen, før der er kørepenge" }),
+        h("span", { class: "stille" }, "km væk (én vej), før der er kørepenge")),
+      h("div", { class: "hurtig", id: "graensevalg", role: "group", "aria-label": "Hvilke km giver kørepenge, når kampen er længere væk" },
+        h("button", { type: "button", "data-alle": "0", "aria-pressed": String(!K.alle) }, "Kun km ud over grænsen"),
+        h("button", { type: "button", "data-alle": "1", "aria-pressed": String(K.alle) }, "Hele turen, når kampen er længere væk")),
+      h("p", { class: "ksum", id: "gsum" }),
       h("p", { class: "ksum", id: "ksum" })),
     h("div", { class: "ktab", id: "ktab" },
       h("div", { class: "kh", "aria-hidden": "true" }, h("span", null, "Hold"), h("span", null, "Ekstra ture × km én vej"), h("span", null, "Km pr. bil"), h("span", null, "Biler"),
@@ -2313,7 +2347,8 @@ function tegnKoersel() {
           h("span", { class: "num", id: "ktot-mangler" }), h("small", { id: "ktot-mangler-lbl" })))),
     h("p", { class: "knote" },
       "VD giver er kroner pr. km i egne biler: den kørselsudligning, VD forventes at betale holdet (natkørslen – ellers budgettet), minus holdets egne rejser, som " +
-      "klubben betaler (lejebiler, færger), delt med km × biler – højst statens laveste takst på " + kr(K.statens, 2) + " kr. Hold musen over tallet for at se regnestykket. " +
+      "klubben betaler (lejebiler, færger), delt med de km, der giver kørepenge, × biler – højst statens laveste takst på " + kr(K.statens, 2) + " kr. " +
+      "Hold musen over tallet for at se regnestykket. " +
       "Km kommer fra kørselsudligningens kampprogram" + (S.P && S.P.opdateret ? " (opdateret " + S.P.opdateret + ")" : "") + " – grundspillets udekampe, tur/retur pr. bil. " +
       "Ekstra ture er dem, programmet ikke kender: Danmarksserien, pokal, stævner. Antal biler kommer fra turprisen, hvis du har rettet dem dér – ellers " +
       RAMME.koersel.biler + ". Pr. rate er, hvad kørepengene svarer til på holdets kontingent.",
@@ -2326,25 +2361,44 @@ function tegnKoerselTal() {
   document.querySelectorAll("#ktab .krk").forEach(rk => {
     const x = R.hold.find(y => y.id === rk.dataset.k);
     if (!x) return;
-    const k = x.koersel, v = k.vd, prRate = k.beloeb / (x.rater * R.g), vd = rk.querySelector('[data-kk="vd"]');
+    const k = x.koersel, v = k.vd, p = k.p, prRate = k.beloeb / (x.rater * R.g), vd = rk.querySelector('[data-kk="vd"]');
     rk.querySelector('[data-kk="km"]').textContent = k.km ? kr(k.km) : "–";
+    rk.querySelector('[data-kk="koert"]').textContent = K.graense > 0 && k.kmKoert > k.km + 0.5 ? "af " + kr(k.kmKoert) : "";
+    const under = p ? flere(p.egne, "udekamp", "udekampe") + " i egne biler" + (K.graense > 0 ? " · " + k.kampeMed + " over " + kr(K.graense) + " km" : "") +
+      (p.lejebil ? " · " + p.lejebil + " i lejebil" : "") + (p.egenHal ? " · " + p.egenHal + " i egen hal" : "") : "ikke i kampprogrammet";
+    const u = rk.querySelector('[data-kk="under"]'); u.textContent = under; u.title = under;
     vd.textContent = v.med && v.bilKm > 0 ? kr(v.sats, 2) : "–";
     vd.title = vdTekst(x);
     rk.querySelector('[data-kk="beloeb"]').textContent = kr(k.beloeb);
     rk.querySelector('[data-kk="prrate"]').textContent = prRate >= 0.5 ? kr(prRate, 0, true) + " kr." : "–";
   });
-  $("#ktot-km").textContent = kr(K.km) + " km";
+  const kmMed = sum(R.hold, x => x.koersel.kmIalt);
+  $("#ktot-km").textContent = kr(K.vd ? K.km : kmMed) + " km";
   $("#ktot-beloeb").textContent = kr(K.ialt);
   const dM = K.ialt >= 0.5 ? R.klub.mangler - regnUdenKoersel().klub.mangler : 0;
   $("#ktot-mangler").textContent = dM >= 0.5 ? kr(dM, 0, true) + " kr." : K.ialt >= 0.5 ? "dækkes" : "";
   $("#ktot-mangler-lbl").textContent = dM >= 0.5 ? "mere mangler" : K.ialt >= 0.5 ? "af klubben" : "";
   const dTekst = dM >= 0.5 ? "Det, der mangler, stiger med " + kr(dM) + " kr." : "Klubbens indtægter og holdenes overskud dækker dem.";
+  const vdTil = sum(R.hold, x => x.koersel.vd.til), vdRest = vdTil - K.ialt;
   $("#ksum").textContent = K.vd
-    ? "Hvert hold får det, VD's kørselsudligning giver pr. km – " + kr(K.ialt) + " kr. i alt for " + kr(K.km) + " km. Udligningen står allerede i budgettet som " +
-      "holdenes indtægt, så de penge dækker ikke længere andre udgifter. " + dTekst
+    ? "Hvert hold får det, VD's kørselsudligning giver pr. km – " + kr(K.ialt) + " kr. i alt for " + kr(K.km) + " km. " +
+      (vdRest >= 0.5 ? "Resten af udligningen til kørepenge, " + kr(vdRest) + " af " + kr(vdTil) + " kr., bliver i klubben, fordi satsen højst er statens " +
+        kr(K.statens, 2) + " kr. " : "") +
+      "Udligningen står allerede i budgettet som holdenes indtægt, så de penge dækker ikke længere andre udgifter. " + dTekst
     : K.sats > 0
-      ? kr(K.sats, 2) + " kr. pr. km pr. bil · " + kr(K.km) + " km i egne biler · " + kr(K.ialt) + " kr. i alt – holdenes egne udgifter. " + dTekst
+      ? kr(K.sats, 2) + " kr. pr. km pr. bil × " + kr(kmMed) + " km = " + kr(K.ialt) + " kr. i alt – holdenes egne udgifter. " + dTekst
       : "Ingen kørepenge – som i år. Vælg en sats – eller det, VD giver – for at se, hvad det betyder for hvert hold.";
+  // grænsen: hvor langt væk kampen skal være – og hvilke km, der så giver kørepenge
+  $("#gsum").textContent = K.graense > 0
+    ? (K.alle ? "Kampe mere end " + kr(K.graense) + " km væk giver kørepenge for hele turen: "
+      : "De første " + kr(K.graense) + " km hver vej er spillernes egne – kun km ud over dem giver kørepenge: ") +
+      K.kampeMed + " af " + K.kampe + " udekampe i egne biler er længere væk, og " + kr(kmMed) + " af " + kr(K.kmKoert) + " km giver kørepenge." +
+      (K.vd ? " Jo færre km, jo højere sats rækker VD's udligning til." : "")
+    : "Alle km i egne biler giver kørepenge. Sæt en grænse, hvis spillerne selv skal klare de korte ture.";
+  const gf = $("#graense-felt"), gs = $("#graense-skyder");
+  if (gf && document.activeElement !== gf) gf.value = kr(K.graense);
+  if (gs && document.activeElement !== gs) gs.value = String(Math.min(300, K.graense));
+  document.querySelectorAll("#graensevalg [data-alle]").forEach(b => b.setAttribute("aria-pressed", String((b.dataset.alle === "1") === K.alle)));
   document.querySelectorAll("#satsvalg [data-sats]").forEach(b => b.setAttribute("aria-pressed", String(!K.vd && Math.abs(K.sats - +b.dataset.sats) < 0.005)));
   const vb = document.querySelector("#satsvalg [data-vd]");
   if (vb) vb.setAttribute("aria-pressed", String(K.vd));
@@ -2501,10 +2555,14 @@ function knytKlub() {
 }
 function knytKoersel() {
   const el = $("#koerselpanel");
-  el.addEventListener("input", e => { if (e.target.id === "sats-skyder") saetSats(+e.target.value, "skyder"); });
+  el.addEventListener("input", e => {
+    if (e.target.id === "sats-skyder") saetSats(+e.target.value, "skyder");
+    else if (e.target.id === "graense-skyder") { saetGraense(+e.target.value); $("#graense-felt").value = kr(S.I.koersel.graense || 0); }
+  });
   el.addEventListener("change", e => {
     const t = e.target, K = S.I.koersel;
     if (t.id === "sats-felt") { saetSats(tekst(t.value) ? Math.max(0, tal(t.value)) : 0, "felt"); t.value = kr(S.I.koersel.sats, 2); }
+    else if (t.id === "graense-felt") { saetGraense(tekst(t.value) ? tal(t.value) : 0); t.value = kr(S.I.koersel.graense || 0); }
     else if (t.dataset.biler) {
       const id = t.dataset.biler;
       if (tekst(t.value)) K.biler[id] = clamp(Math.round(tal(t.value)), 0, 20); else delete K.biler[id];
@@ -2524,6 +2582,7 @@ function knytKoersel() {
     if (!b) return;
     if (b.dataset.sats != null) saetSats(+b.dataset.sats, "knap");
     else if (b.dataset.vd) { S.I.koersel.vd = true; opdaterTal(); }
+    else if (b.dataset.alle != null) { if (b.dataset.alle === "1") S.I.koersel.alle = true; else delete S.I.koersel.alle; opdaterTal(); }
     else if (b.dataset.tilhold) visHold(b.dataset.tilhold);
     else if (b.dataset.nulkoersel) {
       gem(localStorage, NOEGLE.fortryd, JSON.stringify(S.I));
@@ -2532,6 +2591,12 @@ function knytKoersel() {
     }
   });
   el.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("input:not([type=range])")) e.target.blur(); });
+}
+/* Hvor langt væk kampen skal være (km én vej), før der er kørepenge – 0 = alle km */
+function saetGraense(v) {
+  const g = clamp(Math.round(isFinite(v) ? v : 0), 0, 1000);
+  if (g > 0) S.I.koersel.graense = g; else delete S.I.koersel.graense;
+  opdaterTal();
 }
 function saetSats(v, fra) {
   delete S.I.koersel.vd;                       // en fast sats til alle hold i stedet for VD's satser
