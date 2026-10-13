@@ -12,7 +12,7 @@ fører videre til det enkelte projekt:
 | Kalender-feeds | `/feeds/*.ics` | Kalenderne til Holdsport | bygges af `tjans/scripts/build.py` |
 | Kørselsudligning | `/koerselsudligning/` | Forventet rejseudligning fra Volleyball Danmark | `koerselsudligning/` – se README dér |
 | Kontingent | `/kontingent/` | Forventet kontingent ud fra en Holdsport-eksport | `tjans/docs/kontingent/index.html` (fast fil) |
-| Kontingentmodel | `/kontingentmodel/` | Hvad bruger hvert hold, og hvor kommer pengene fra – kontingentet, holdets egne indtægter og det, klubben lægger til? Siden åbner på et enkelt overblik over holdenes udgifter, indtægter og resultat; fanen Ret tal retter takster, fritagne, tøj og aktivitetstilskud for alle hold. Hvert hold er et lille regnskab, og listen har en søjle pr. hold. Fanen Klubben viser, hvordan holdenes underskud dækkes, vejen fra budgettets resultat til sidens og klubbens egne poster; fanen Kørsel prøver kørepenge – også det, VD's kørselsudligning giver pr. km. Kræver kode | `tjans/docs/kontingentmodel/index.html` (fast fil) – se *Kontingentmodellen* nedenfor |
+| Kontingentmodel | `/kontingentmodel/` | Hvad bruger hvert hold, og hvor kommer pengene fra – kontingentet, holdets egne indtægter og det, klubben lægger til? Siden åbner på et enkelt overblik over holdenes udgifter, indtægter og resultat – og den takst, hvor kontingentet alene dækker halleje, turnering og dommere; fanen Ret tal retter takster, fritagne, hvad kontingentet skal dække, tøj og aktivitetstilskud for alle hold. Hvert hold er et lille regnskab, og listen har en søjle pr. hold. Fanen Klubben viser, hvordan holdenes underskud dækkes, vejen fra budgettets resultat til sidens og klubbens egne poster; fanen Kørsel prøver kørepenge – også det, VD's kørselsudligning giver pr. km. Kræver kode | `tjans/docs/kontingentmodel/index.html` (fast fil) – se *Kontingentmodellen* nedenfor |
 | Budget | `/budget/` | Budget mod realiseret direkte fra budgetarket – alle posteringer pr. budgetpost, hold og arrangement. Kræver kode | `tjans/docs/budget/index.html` (fast fil) og `adresse.txt` ved siden af – se *Budgetsiden* nedenfor |
 | Turpris | `/turpris/` | Sæsonens udeture for alle hold – D1's ture til Sjælland i lejebiler (klubben betaler), alle andre i egne biler (spillerne betaler) – hvad en kørselsgodtgørelse ville koste klubben, og en regner til den enkelte tur | `tjans/docs/turpris/index.html` (fast fil; kampene hentes fra kørselsudligningen) |
 | Gammel adresse | `/Tjanser-i-Holdsport/` | Holdsports importer peger herhen – se nedenfor | bygges af `tjans/scripts/build.py` |
@@ -95,17 +95,26 @@ kørselsudligningens `status.json`.
 
 - **Overblik** (forsiden – siden åbner altid her): holdenes udgifter, indtægter og resultat i én enkel
   tabel, grupperet i divisionshold, øvrige hold og ungdom, med klubbens egne poster og i alt (= klubbens
-  resultat). Ingen knapper eller skydere – klik på et hold for detaljerne.
-- **Ret tal** (fanen): alt, der rettes for alle hold på én gang – **takst og fritagne rater**, **tøj** (antal
-  sæt, hvor ofte holdet får nyt, og hvad det koster at lukke huller) og **aktivitetstilskuddets** medlemmer
-  pr. aldersgruppe. Et rettet felt bliver blåt; tomt felt giver tallet fra budgettet igen.
+  resultat). Ingen knapper eller skydere – klik på et hold for detaljerne. Kolonnen **Takst for faste** er
+  den takst pr. rate, hvor kontingentet alene dækker holdets halleje, turnering og dommere (efter gebyret,
+  med de fritagne – posterne ÷ (rater × 99 %), rundet op); den står med rødt, når den er højere end
+  taksten nu. På mobilen står den under holdnavnet.
+- **Ret tal** (fanen): alt, der rettes for alle hold på én gang – **takst og fritagne rater**, **hvad
+  kontingentet skal dække**, **tøj** (antal sæt, hvor ofte holdet får nyt, og hvad det koster at lukke huller)
+  og **aktivitetstilskuddets** medlemmer pr. aldersgruppe. Et rettet felt bliver blåt; tomt felt giver
+  tallet fra budgettet igen.
+- **Hvad skal kontingentet dække?** (kortet under Ret tal) bestemmer forsidens takst-kolonne: kryds flere
+  af holdets poster af (udgifter lægges til, indtægter trækkes fra), læg klubbens poster ud på holdene –
+  *alle hold pr. spiller*, *alle hold ligeligt* eller *ét hold* – og skriv **egne poster** (udgift eller
+  indtægt, beløb pr. sæson og hvor de lægges ud). Kolonnen hedder så *Takst for valgte*. Det ændrer kun
+  den takst – ikke holdenes regnskab eller klubbens resultat. Kommer et hold under nul, er taksten 0.
 - **Hvert hold er et regnskab** (fanen Hold) i to kolonner: det, holdet **bruger**, og det, holdet **får ind** –
   kontingentet fra spillerne, de fritagnes kontingent (som klubben betaler) og holdets egne indtægter.
   Under dem står, hvad **klubben dækker**, og hvad der **mangler** – eller holdets **overskud til
   klubben**. **Listen** viser det samme som en søjle pr. hold: længden er det, holdet bruger, og
   farverne er, hvor pengene kommer fra. Holdets poster er dets egne poster i budgettet og dets del af
   poster, der hører til bestemte hold.
-- **Holdets resultat** = kontingentet med holdets takst (2 rater × alle spillere, minus gebyr og
+- **Holdets resultat** = kontingentet med holdets takst (2 rater × alle spillere, minus 1 % gebyr og
   afgang) − udgifterne + indtægterne. Taksten er den nuværende fra KONTINGENTBUDGET, men du kan
   skrive **et hårdt tal** i stedet under **Justér** (eller Ret tal) – det samme med antallet af
   **fritagne rater** (KONTINGENTBUDGET's trænerkomp. + bestyrelseskomp.). Dér kan rejser, trænere, andre udgifter,
@@ -169,6 +178,9 @@ kørselsudligningens `status.json`.
   bliver resten af udligningen i klubben.
 - **Fritagne** (trænere og frivillige) tæller med som spillere, så deres gratis kontingent er en udgift
   for klubben – holdkammeraterne betaler ikke for dem.
+- **Gebyr og afgang:** siden trækker kun den 1 %, der reelt går til gebyrer (`RAMME.gebyr`). Budgettet
+  regner med 5 % – de 4 % ekstra er en buffer mod dem, der ikke betaler – så kontingentet her er større
+  end budgettets, og forskellen står som en linje i broen.
 - **Holdets egen takst** – den takst, der lige dækker holdets egne tal uden hjælp fra klubben –
   står ved kontingentet og under Justér, rundet til 50 kr.
 - **Rammen** – bookingerne og træningsplanen (banetimer pr. hold), hjemmekampe og hjemmedage,
