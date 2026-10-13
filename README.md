@@ -12,7 +12,7 @@ fører videre til det enkelte projekt:
 | Kalender-feeds | `/feeds/*.ics` | Kalenderne til Holdsport | bygges af `tjans/scripts/build.py` |
 | Kørselsudligning | `/koerselsudligning/` | Forventet rejseudligning fra Volleyball Danmark | `koerselsudligning/` – se README dér |
 | Kontingent | `/kontingent/` | Forventet kontingent ud fra en Holdsport-eksport | `tjans/docs/kontingent/index.html` (fast fil) |
-| Kontingentmodel | `/kontingentmodel/` | Hvad bruger hvert hold, og hvor kommer pengene fra – kontingentet, holdets egne indtægter og det, klubben lægger til? Hvert hold er et lille regnskab, og listen har en søjle pr. hold. Fanen Klubben viser, hvordan holdenes underskud dækkes, vejen fra budgettets resultat til sidens og klubbens egne poster; fanen Kørsel prøver kørepenge – også det, VD's kørselsudligning giver pr. km. Kræver kode | `tjans/docs/kontingentmodel/index.html` (fast fil) – se *Kontingentmodellen* nedenfor |
+| Kontingentmodel | `/kontingentmodel/` | Hvad bruger hvert hold, og hvor kommer pengene fra – kontingentet, holdets egne indtægter og det, klubben lægger til? Siden åbner på et enkelt overblik over holdenes udgifter, indtægter og resultat; fanen Ret tal retter takster, fritagne, tøj og aktivitetstilskud for alle hold. Hvert hold er et lille regnskab, og listen har en søjle pr. hold. Fanen Klubben viser, hvordan holdenes underskud dækkes, vejen fra budgettets resultat til sidens og klubbens egne poster; fanen Kørsel prøver kørepenge – også det, VD's kørselsudligning giver pr. km. Kræver kode | `tjans/docs/kontingentmodel/index.html` (fast fil) – se *Kontingentmodellen* nedenfor |
 | Budget | `/budget/` | Budget mod realiseret direkte fra budgetarket – alle posteringer pr. budgetpost, hold og arrangement. Kræver kode | `tjans/docs/budget/index.html` (fast fil) og `adresse.txt` ved siden af – se *Budgetsiden* nedenfor |
 | Turpris | `/turpris/` | Sæsonens udeture for alle hold – D1's ture til Sjælland i lejebiler (klubben betaler), alle andre i egne biler (spillerne betaler) – hvad en kørselsgodtgørelse ville koste klubben, og en regner til den enkelte tur | `tjans/docs/turpris/index.html` (fast fil; kampene hentes fra kørselsudligningen) |
 | Gammel adresse | `/Tjanser-i-Holdsport/` | Holdsports importer peger herhen – se nedenfor | bygges af `tjans/scripts/build.py` |
@@ -93,7 +93,13 @@ som budgetsiden** – adressen er den nederste linje i `tjans/docs/budget/adress
 op med «Husk koden», åbner modellen også. Udeture, km og den forventede kørselsudligning kommer fra
 kørselsudligningens `status.json`.
 
-- **Hvert hold er et regnskab** i to kolonner: det, holdet **bruger**, og det, holdet **får ind** –
+- **Overblik** (forsiden – siden åbner altid her): holdenes udgifter, indtægter og resultat i én enkel
+  tabel, grupperet i divisionshold, øvrige hold og ungdom, med klubbens egne poster og i alt (= klubbens
+  resultat). Ingen knapper eller skydere – klik på et hold for detaljerne.
+- **Ret tal** (fanen): alt, der rettes for alle hold på én gang – **takst og fritagne rater**, **tøj** (antal
+  sæt, hvor ofte holdet får nyt, og hvad det koster at lukke huller) og **aktivitetstilskuddets** medlemmer
+  pr. aldersgruppe. Et rettet felt bliver blåt; tomt felt giver tallet fra budgettet igen.
+- **Hvert hold er et regnskab** (fanen Hold) i to kolonner: det, holdet **bruger**, og det, holdet **får ind** –
   kontingentet fra spillerne, de fritagnes kontingent (som klubben betaler) og holdets egne indtægter.
   Under dem står, hvad **klubben dækker**, og hvad der **mangler** – eller holdets **overskud til
   klubben**. **Listen** viser det samme som en søjle pr. hold: længden er det, holdet bruger, og
@@ -101,7 +107,8 @@ kørselsudligningens `status.json`.
   poster, der hører til bestemte hold.
 - **Holdets resultat** = kontingentet med holdets takst (2 rater × alle spillere, minus gebyr og
   afgang) − udgifterne + indtægterne. Taksten er den nuværende fra KONTINGENTBUDGET, men du kan
-  skrive **et hårdt tal** i stedet under **Justér**. Dér kan rejser, trænere, andre udgifter,
+  skrive **et hårdt tal** i stedet under **Justér** (eller Ret tal) – det samme med antallet af
+  **fritagne rater** (KONTINGENTBUDGET's trænerkomp. + bestyrelseskomp.). Dér kan rejser, trænere, andre udgifter,
   egenbetaling, tilskud, SIFA, bolde, klubaktiviteter og kørselsudligning også justeres for holdet
   alene – og du vælger, hvor ofte holdet får nyt tøj, og hvor mange sæt. **Halleje, turnerings- og dommergebyr er faste** – klubben kan ikke betale mindre.
 - **Klik på en linje** i regnskabet for at se, hvad der ligger i den: budgettets poster og det, der er
@@ -123,14 +130,17 @@ kørselsudligningens `status.json`.
   pr. hold. **Dame 5 og Kids** har ingen del i opstilling, rejser og SIFA, og Kids heller ikke i
   egenbetaling (`RAMME.undtag`).
 - **Nyt tøj** er ikke med i beregningen, før du vælger, **hvor mange år der går, før hvert hold får
-  nyt** – på fanen Klubben (kortet *Nyt tøj*, også for alle hold på én gang) eller under Justér på
-  holdet. Holdet betaler så prisen delt med årene hver sæson, og kortet viser, hvad klubben skal lægge
+  nyt** – på fanen Ret tal (også for alle hold på én gang) eller under Justér på holdet. Holdet betaler så prisen delt med årene hver sæson, og kortet viser, hvad klubben skal lægge
   til side pr. sæson. Et sæt pr. spiller + 2 (HU 20 og DU 20: 14 sæt hver – deres tøj ligger på
   klubben); **antallet af sæt kan rettes for hvert hold** samme steder (tomt felt giver standarden). H1 og D1 får spillertøj, træningsdragt og opvarmningstrøjer (D1 også strømper), de andre
   spillertøj. Priserne pr. sæt er fra D1's faktura og kun det print, klubben ikke kan fakturere til
   sponsorerne: spillertøj 554 kr., opvarmningstrøje 178 kr., træningsdragt 618 kr. – strømper har ingen
-  pris endnu. Budgettets eget tøj (D1's 3.000 kr.) er altid med. «Alle hold på én gang» springer H5, D5
-  og Kids over (`RAMME.toej`).
+  pris endnu. **At lukke huller** er et beløb pr. sæson for hvert hold – budgettets tøj til holdet (D1's
+  3.000 kr.), til du retter det. «Alle hold på én gang» springer H5, D5 og Kids over (`RAMME.toej`).
+- **Aktivitetstilskuddet** fra kommunen deles efter kommunens point: 7-17 år 10 point, 18-24 år 2 point og
+  0-6 år 1 point pr. medlem (2025: 370, 74 og 37 kr.). Ungdomsholdenes spillere regnes som 7-17 år; de
+  andre holds 18-24-årige skriver du under Ret tal. HU 20 og DU 20's andel bliver på klubben
+  (`RAMME.aktivitet`).
 - **SIFA:** TV-bingo/SIFA på klubben går 2/3 til D1 og 1/3 til H1, og SIFA's 6.000 kr. til ungdommens
   kørsel til Scandinavian Masters går til holdene med stævnet i budgettet. **Bolde:** D1 får 12 bolde
   à 700 kr. gennem ligaen – en indtægt for D1.
