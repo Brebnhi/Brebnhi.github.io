@@ -17,7 +17,10 @@
   ../budget/adresse.txt – nyeste sæson nederst). Kampe og km kommer fra ../koerselsudligning/status.json,
   som natkørslen skriver.
 
-  Hvert hold er et lille regnskab: det, holdet bruger, og det, holdet får ind – kontingentet fra spillerne, de fritagnes
+  Siden åbner altid på Overblik: holdenes udgifter, indtægter og resultat i én enkel tabel – grupperet i divisionshold, øvrige hold
+  og ungdom – med klubbens egne poster og i alt (= klubbens resultat). Fanen «Ret tal» samler det, der rettes for alle hold på
+  én gang: takst og fritagne rater, tøjet (sæt, hvor ofte, lukke huller) og aktivitetstilskuddets medlemmer pr. aldersgruppe.
+  Fanen Hold: hvert hold er et lille regnskab: det, holdet bruger, og det, holdet får ind – kontingentet fra spillerne, de fritagnes
   kontingent (som klubben betaler) og holdets egne indtægter. Under dem står, hvad klubben dækker, og hvad der mangler –
   eller holdets overskud til klubben. Listen viser det samme som en søjle pr. hold: længden er det, holdet bruger, og
   farverne er, hvor pengene kommer fra. Klik på en linje for at se, hvad der ligger i den; «Justér» viser taksten og
@@ -34,10 +37,13 @@
                      Dame 5 og Kids er undtaget fra nogle af dem (RAMME.undtag). Kørselsudligningen til
                      pokalen deles ligeligt på H1, H2, D1 og D2, Volley-TV og Datavolley er D1's, og
                      Hørby-campen hører til U15-holdene (RAMME.fordeling).
-    Spillertøj       budgettets tøj til holdet (D1) + nyt tøj, når du har valgt, hvor mange år der går, før holdet
-                     får nyt (fanen Klubben eller Justér, RAMME.toej): sæt × prisen for holdets pakke ÷ årene pr.
-                     sæson. Sæt = spillere + 2 (HU 20 og DU 20: 14) – eller dit antal. Uden et valg er nyt tøj ikke
-                     med. HU 20 og DU 20's nye tøj ligger på klubben.
+    Spillertøj       at lukke huller (kr. pr. sæson – budgettets tøj til holdet, D1, eller dit beløb) + nyt tøj, når du
+                     har valgt, hvor mange år der går, før holdet får nyt (fanen Ret tal eller Justér, RAMME.toej): sæt ×
+                     prisen for holdets pakke ÷ årene pr. sæson. Sæt = spillere + 2 (HU 20 og DU 20: 14) – eller dit
+                     antal. Uden et valg er nyt tøj ikke med. HU 20 og DU 20's tøj ligger på klubben.
+    Aktivitetstilskud  budgettets aktivitetstilskud deles efter kommunens point (RAMME.aktivitet): 7-17 år 10 point,
+                     18-24 år 2 point, 0-6 år 1 point pr. medlem. Ungdomsholdenes spillere regnes som 7-17 år, de andre
+                     holds medlemmer pr. aldersgruppe skriver du under Ret tal. HU 20 og DU 20's andel bliver på klubben.
     Kørepenge        satsen pr. km × km i egne biler × biler (fanen Kørsel). Km for divisionerne og Danmarksserien
                      kommer fra natkørslen (status.json: klubhold og andre_hold). D1's ture til Sjælland
                      køres i lejebiler og står under rejseomkostninger. Grænsen: kørepenge først, når kampen
@@ -49,7 +55,8 @@
     Bolde            de bolde, D1 skaffer klubben gennem ligaen (RAMME.bolde).
   Holdets resultat = kontingentet med holdets takst (den nuværende – eller et tal, du skriver) − holdets
   udgifter + holdets indtægter. Fritagne (trænere og frivillige) regnes med som spillere, så deres gratis
-  kontingent er en udgift for klubben – ikke noget, holdkammeraterne betaler.
+  kontingent er en udgift for klubben – ikke noget, holdkammeraterne betaler. Antallet af fritagne rater er
+  KONTINGENTBUDGET's trænerkomp. + bestyrelseskomp. – eller dit tal.
 
   Klubben: sponsorater og indtægten fra frivilligarrangementer kan skrues op og ned (RAMME.klub). Klubbens egne
   poster er alt det andet, der ikke kan lægges på et hold: IT, abonnementer, trænertøj, kurser, porto, bestyrelse,
@@ -57,8 +64,8 @@
   udgifter + holdenes overskud − fritagelserne − overskuddet pr. sæson dækker holdenes underskud, med samme
   procentdel til alle hold med underskud. Det, der ikke er dækket, mangler og skal skaffes ad andre veje (eller
   lægges på holdets kontingent). Ved hvert hold står, om kontingentet dækker holdets faste udgifter. Fanen Klubben
-  har også nyt tøj til alle hold og vejen fra budgettets resultat (fanen Budget: indtægter i alt − udgifter i alt) til
-  sidens: halleje, SIFA og bolde efter rammen – og nyt tøj og dine justeringer.
+  viser også vejen fra budgettets resultat (fanen Budget: indtægter i alt − udgifter i alt) til sidens: halleje, SIFA
+  og bolde efter rammen – og tøj, takster, fritagne og dine justeringer.
 
   Klik på en post for at se, hvad der ligger i den: budgettets poster og det, der er bogført i sæsonen
   (Aktuel sæson = Ja). Klubbens poster og posteringer vises med holdets andel.
@@ -406,14 +413,35 @@ footer{margin:22px 0 40px;color:var(--muted);font-size:12px;line-height:1.6}
   background-position:calc(100% - 13px) 55%,calc(100% - 8px) 55%;background-size:5px 5px;background-repeat:no-repeat}
 .aarvalg:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
 .aarvalg.valgt{border-color:var(--accent);color:var(--accent);font-weight:600}
+.oversigt{width:100%;max-width:760px;border-collapse:collapse;margin-top:12px;font-size:14.5px}
+.oversigt th{font-size:10.5px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:2px 0 6px;border-bottom:1.5px solid var(--line-strong)}
+.oversigt th.v,.oversigt td.v{text-align:right;padding-left:14px;white-space:nowrap}
+.oversigt td{padding:7px 0;border-bottom:1px solid var(--line);vertical-align:top}
+.oversigt tr.gr td{padding:14px 0 5px;font-size:11px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-bottom:1.5px solid var(--line-strong)}
+.oversigt tr.gr td.v{font-size:12.5px;letter-spacing:0;text-transform:none}
+.oversigt tr.t td{border-top:1.5px solid var(--line-strong);border-bottom:0;font-weight:650;padding-top:9px}
+.oversigt td small{display:block;color:var(--muted);font-size:12px;font-weight:400}
+.oversigt .tag{margin-left:6px;vertical-align:1px}
+.holdlink{font-weight:600;color:var(--ink)!important;text-decoration:none!important;font-size:inherit;text-align:left}
+.holdlink:hover{color:var(--accent)!important;text-decoration:underline!important}
+.rt-intro{margin:14px 2px 0}
+.rettab td small+small{margin-top:3px}
+.rettab td.v .felt-lille{width:74px}
+.rettab td.v .felt-lille.smal{width:46px}
+.felt-lille.huller,.toejtab td small .felt-lille.huller,.toejrk .felt-lille.huller{width:78px;font-size:12.5px;padding:1px 6px}
+.akttab td.v{padding-left:8px}
+.akttab td.v .felt-lille.smal{width:42px}
 .toejrk{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin-top:4px;font-size:13px;color:var(--muted)}
 .toejalle{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin:12px 0 4px;font-size:14px}
 .toejalle label{font-weight:600}
 .toejalle small{color:var(--muted);font-size:12px}
 .toejtab td.v .aarvalg{text-align:left}
 .toejtab td small .felt-lille{font-size:12.5px;padding:1px 6px;width:46px}
-.toejtab th{font-size:10.5px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:2px 0 4px;border-bottom:1.5px solid var(--line-strong)}
-.toejtab th.v{text-align:right;padding-left:12px}
+.toejtab th,.rettab th{font-size:10.5px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:2px 0 4px;border-bottom:1.5px solid var(--line-strong)}
+.toejtab th.v,.rettab th.v{text-align:right;padding-left:12px}
+.rettab tbody tr+tr td{border-top:1px solid var(--line)}
+.rettab tbody td{padding:5px 0}
+.akttab th.v{padding-left:8px}
 .toejtab tbody tr+tr td{border-top:1px solid var(--line)}
 .toejtab tbody td{padding:5px 0}
 .flow tr.sub td:first-child{padding-left:14px}
@@ -441,7 +469,7 @@ footer{margin:22px 0 40px;color:var(--muted);font-size:12px;line-height:1.6}
   .faner::-webkit-scrollbar{display:none}
   .faner button{flex:none}
 }
-@media (max-width:480px){.faner small{display:none}}
+@media (max-width:480px){.faner small{display:none}.faner{gap:0}.faner button{padding:7px 8px 8px;font-size:14px}}
 @media print{.top,footer,.bannere,.holdliste,.faner{display:none}.layout{display:block}}
 </style>
 </head>
@@ -496,11 +524,16 @@ footer{margin:22px 0 40px;color:var(--muted);font-size:12px;line-height:1.6}
     <section class="kpi" id="kpi" aria-label="Nøgletal"></section>
     <p class="lead" id="lead"></p>
     <div class="faner" role="tablist" aria-label="Visning">
+      <button type="button" role="tab" id="tab-overblik" aria-controls="fane-overblik" data-fane="overblik">Overblik</button>
       <button type="button" role="tab" id="tab-hold" aria-controls="fane-hold" data-fane="hold">Hold</button>
       <button type="button" role="tab" id="tab-klub" aria-controls="fane-klub" data-fane="klub">Klubben <small id="fanetal-klub"></small></button>
       <button type="button" role="tab" id="tab-koersel" aria-controls="fane-koersel" data-fane="koersel">Kørsel <small id="fanetal-koersel"></small></button>
+      <button type="button" role="tab" id="tab-rettal" aria-controls="fane-rettal" data-fane="rettal">Ret tal</button>
     </div>
-    <div id="fane-hold" role="tabpanel" aria-labelledby="tab-hold">
+    <div id="fane-overblik" role="tabpanel" aria-labelledby="tab-overblik">
+      <section id="overblikpanel" aria-label="Overblik over holdenes udgifter og indtægter"></section>
+    </div>
+    <div id="fane-hold" role="tabpanel" aria-labelledby="tab-hold" hidden>
       <div class="layout">
         <section class="holdliste" aria-label="Holdene">
           <div class="lh" aria-hidden="true"><span>Hold</span><span>Bruger</span><span>Resultat</span></div>
@@ -515,6 +548,9 @@ footer{margin:22px 0 40px;color:var(--muted);font-size:12px;line-height:1.6}
     </div>
     <div id="fane-koersel" role="tabpanel" aria-labelledby="tab-koersel" hidden>
       <section id="koerselpanel" aria-label="Kørepenge"></section>
+    </div>
+    <div id="fane-rettal" role="tabpanel" aria-labelledby="tab-rettal" hidden>
+      <section id="rettalpanel" aria-label="Ret tallene for alle hold"></section>
     </div>
     <footer id="fod"></footer>
   </main>
@@ -646,18 +682,19 @@ const RAMME = {
     standard: 4,
     uger: 33
   },
-  // NYT TØJ: du vælger, hvor mange år der går, før hvert hold får nyt tøj (fanen Klubben – eller under Justér på holdet).
-  // Holdet betaler så prisen for det nye tøj delt med årene hver sæson, og klubben lægger pengene til side, til der købes.
-  // Uden et valg er nyt tøj ikke med i beregningen – kun det, budgettet selv har til tøj (D1). «aar» er et standardvalg pr.
-  // hold (tomt: ingen hold, før du vælger). Et sæt pr. spiller + «ekstra» – eller antallet i «saet». Holdene uden
-  // kontingent i «uden» (HU 20, DU 20) kan også få nyt tøj; det ligger på klubben. «pakke» er det, holdet får, når det får
-  // nyt – ellers spillertøj. Holdene i «ingen» springes over, når du vælger for alle hold på én gang. Priserne pr. sæt er fra
-  // D1's faktura: kun det print, klubben selv betaler – logoprint til sponsorerne faktureres videre.
+  // Hold uden kontingent, som kan få nyt tøj og aktivitetstilskud – det ligger på klubben
+  uden: ["hu20", "du20"],
+  // TØJ: at lukke huller (kr. pr. sæson – uden dit tal budgettets tøj til holdet, D1) + nyt tøj, når du har valgt, hvor mange
+  // år der går, før holdet får nyt (fanen Ret tal – eller under Justér på holdet). Holdet betaler prisen for det nye tøj
+  // delt med årene hver sæson, og klubben lægger pengene til side, til der købes. Uden et valg er nyt tøj ikke med.
+  // «aar» er et standardvalg pr. hold (tomt). Et sæt pr. spiller + «ekstra» – eller antallet i «saet» – eller dit antal.
+  // «pakke» er det, holdet får, når det får nyt – ellers spillertøj. Holdene i «ingen» springes over, når du vælger for alle
+  // hold på én gang. Priserne pr. sæt er fra D1's faktura: kun det print, klubben selv betaler – logoprint til sponsorerne
+  // faktureres videre.
   toej: {
     kilde: "D1's faktura fra Holdsport 18.09.2025",
     ekstra: 2,
     saet: { hu20: 14, du20: 14 },
-    uden: ["hu20", "du20"],
     ingen: ["herre5", "dame5", "kids"],
     aar: {},
     valg: [1, 2, 3, 4, 5, 6, 8, 10],
@@ -671,6 +708,10 @@ const RAMME = {
       "strømper": { navn: "Strømper", dele: [] }          // ingen pris endnu – skriv den som de andre dele
     }
   },
+  // AKTIVITETSTILSKUD fra kommunen gives efter medlemmernes alder: 0-6 år 1 point, 7-17 år 10 point og 18-24 år 2 point
+  // (2025: 37, 370 og 74 kr. om året – beløbet pr. point skifter fra år til år; 25+ giver intet). Budgettets aktivitets-
+  // tilskud deles efter holdenes point. Uden dit tal er ungdomsholdenes spillere 7-17 år og de andre holds 25+.
+  aktivitet: { match: /aktivitetstilskud/, point: { "7-17": 10, "18-24": 2, "0-6": 1 }, kr2025: { "7-17": 370, "18-24": 74, "0-6": 37 } },
   // Bolde, D1 skaffer klubben ved at spille i ligaen – en indtægt for D1
   bolde: { hold: "dame1", antal: 12, pris: 700 },
   sifa: {
@@ -999,6 +1040,8 @@ function bygData(svar) {
   function tilpas(x) {
     if (x.hold || x.erstattet || x.fordeling) return;
     const t = lav([x.navn, x.linje, x.under2].filter(Boolean).join(" "));
+    // aktivitetstilskuddet deles efter holdenes point (beregn) – også seniorholdenes 18-24-årige
+    if (x.post === "tilskud" && RAMME.aktivitet && RAMME.aktivitet.match.test(t)) { x.point = true; x.fordelingNavn = "Aktivitetstilskuddet efter kommunens point"; return; }
     const klubbens = x.pulje === "Alle" && !x.udenKontingent;
     if (klubbens) {
       const k = RAMME.klub.indtaegter.find(k => k.post === x.post && (!k.match || k.match.test(t)) && !(k.ikke && k.ikke.test(t)) && (!k.kunIndtaegt || x.cash > 0));
@@ -1021,8 +1064,8 @@ function bygData(svar) {
     }
     if (klubbens || x.udenKontingent) x.klub = "poster";
   }
-  // Holdene uden kontingent, der kan få nyt tøj (HU 20, DU 20) – tøjet regnes i beregn og ligger på klubben
-  const toejUden = (RAMME.toej.uden || []).filter(id => !efterId[id]).map(id =>
+  // Holdene uden kontingent (HU 20, DU 20), som kan få nyt tøj og aktivitetstilskud – det regnes i beregn og ligger på klubben
+  const uden = (RAMME.uden || []).filter(id => !efterId[id]).map(id =>
     ({ id, navn: (budget.find(x => x.holdNavn && holdId(x.holdNavn) === id) || {}).holdNavn || id.toUpperCase() }));
   budget.forEach(tilpas);
 
@@ -1060,7 +1103,7 @@ function bygData(svar) {
   const bInd = sum(B.poster.filter(p => bPost(p) > 0), bPost), bUd = -sum(B.poster.filter(p => bPost(p) < 0), bPost);
   const budgetIalt = { ind: num(B.ialt.ind, bInd), ud: num(B.ialt.ud, bUd), resultat: num(B.ialt.resultat, bInd - bUd), fraArket: B.ialt.resultat != null };
   return { saeson: B.saeson, ark: (svar && svar.ark) || "", hold, betalere, gebyr, fejl: B.fejl, budget, konto, harKonto, budgetIalt,
-    sifaAndel, puljeAntal, opstFordeling, kontingentBudget: sum(betalere, h => h.netto || 0), halBooking, toejUden,
+    sifaAndel, puljeAntal, opstFordeling, kontingentBudget: sum(betalere, h => h.netto || 0), halBooking, uden,
     halPulje: -sum(budget.filter(erKlubHalleje), x => x.cash) };     // klubbens halleje i budgettet (uden bookingerne)
 }
 /* Klubbens halleje i budgettet eller på kontoen, som deles efter haltimer eller som bookingerne – ikke bookingernes egne dele */
@@ -1097,10 +1140,26 @@ function lavProgram(k, turBiler) {
   return { saeson: tekst(k.saeson), opdateret: tekst(k.opdateret), takst: typeof k.takst === "number" && k.takst > 0 ? k.takst : null, hold };
 }
 
+/* AKTIVITETSTILSKUD: holdenes medlemmer pr. aldersgruppe og point. Dit tal – ellers er ungdomsholdenes spillere 7-17 år og
+   de andre holds 25+ (ingen point). HU 20 og DU 20 har ingen spillere i arket; deres andel bliver på klubben. */
+function aktivitetPoint(D, I) {
+  const A = RAMME.aktivitet, grupper = Object.keys(A.point), valg = (I && I.aktivitet) || {};
+  const hold = D.betalere.map(h => ({ id: h.id, navn: h.kort, kode: h.kode || h.kort, antal: h.antal, ungdom: h.gruppe === "Ungdom", uden: false }))
+    .concat((D.uden || []).map(u => ({ id: u.id, navn: u.navn, kode: u.navn, antal: 0, ungdom: false, uden: true })));
+  hold.forEach(t => {
+    const v = valg[t.id] || {};
+    t.std = Object.fromEntries(grupper.map(g => [g, g === "7-17" && t.ungdom ? t.antal : 0]));
+    t.n = Object.fromEntries(grupper.map(g => [g, typeof v[g] === "number" ? v[g] : t.std[g]]));
+    t.point = sum(grupper, g => t.n[g] * A.point[g]);
+    t.rettet = grupper.some(g => t.n[g] !== t.std[g]);
+  });
+  return { grupper, hold, ialt: sum(hold, t => t.point), point: Object.fromEntries(hold.map(t => [t.id, t.point])) };
+}
 /* NYT TØJ. Pris for ét sæt af en ting (spillertøj, opvarmning …) – 0, når prisen mangler */
 const tingPris = t => sum(((RAMME.toej.ting || {})[t] || {}).dele || [], d => (d.prSaet || 1) * (d.pris + (d.print || 0)));
-/* Dit valg for holdets nye tøj: { aar, saet } – aar = år mellem nyt tøj (0 = ikke med), saet = antal sæt. Uden et valg
-   gælder rammens år (ingen) og sæt (spillere + ekstra – eller rammens antal). */
+/* Dit valg for holdets tøj: { aar, saet, huller } – aar = år mellem nyt tøj (0 = ikke med), saet = antal sæt, huller = kr. pr.
+   sæson til at lukke huller. Uden et valg gælder rammens år (ingen), sæt (spillere + ekstra – eller rammens antal) og
+   budgettets tøj til holdet som huller. */
 const toejAarStd = id => num((RAMME.toej.aar || {})[id], 0);
 const toejValg = (I, id) => ((I && I.toej) || {})[id] || {};
 const toejAar = (I, id) => num(toejValg(I, id).aar, toejAarStd(id));
@@ -1172,6 +1231,7 @@ function puljensHold(D, x) {
 function andelFor(D, T, x, id) {
   if (x.klub) return 0;
   if (x.hold) return x.hold === id ? 1 : 0;
+  if (x.point && T && T.point) return T.pointIalt > 0 ? (T.point[id] || 0) / T.pointIalt : 0;
   if (x.fordeling) return x.fordeling[id] || 0;
   if (erKlubHalleje(x)) return T ? T.andel[id] || 0 : 0;
   const med = puljensHold(D, x), h = med.find(y => y.id === id);
@@ -1238,12 +1298,13 @@ function koersel(D, I, P) {
 }
 
 /* Dine justeringer:
-   { hold: { [hold]: { [post]: kr. pr. sæson, takst: kr. pr. rate } }, hal: { uger, opstilling },
+   { hold: { [hold]: { [post]: kr. pr. sæson, takst: kr. pr. rate, fritaget: fritagne rater } }, hal: { uger, opstilling },
      klub: { sponsor: kr., frivillig: kr., maal: kr. },
      koersel: { sats, vd: true = det, VD's udligning giver pr. hold, graense: km én vej, før der er kørepenge,
        alle: true = hele turen giver kørepenge, når kampen er længere væk, biler: { [hold]: antal }, ekstra: { [hold]: { ture, km } } },
-     toej: { [hold]: { aar: år mellem nyt tøj – 0 = ikke med, saet: antal sæt } } } */
-const STANDARD = { hold: {}, hal: {}, klub: {}, koersel: { biler: {}, ekstra: {} }, toej: {} };
+     toej: { [hold]: { aar: år mellem nyt tøj – 0 = ikke med, saet: antal sæt, huller: kr. pr. sæson } },
+     aktivitet: { [hold]: { "7-17": medlemmer, "18-24": medlemmer, "0-6": medlemmer } } } */
+const STANDARD = { hold: {}, hal: {}, klub: {}, koersel: { biler: {}, ekstra: {} }, toej: {}, aktivitet: {} };
 const FELTER = JUSTERBAR;
 const TAKST_MAKS = 20000;  // højeste takst pr. rate, du kan skrive
 function rensIndst(raa) {
@@ -1256,6 +1317,7 @@ function rensIndst(raa) {
     const ud = {};
     FELTER.forEach(f => { if (ok(r[f])) ud[f] = clamp(r[f], -1e7, 1e7); });
     if (ok(r.takst)) ud.takst = clamp(Math.round(r.takst), 0, TAKST_MAKS);
+    if (ok(r.fritaget)) ud.fritaget = clamp(Math.round(r.fritaget), 0, 1000);
     if (Object.keys(ud).length) I.hold[id] = ud;
   });
   if (erObj(raa.hal)) {
@@ -1287,8 +1349,14 @@ function rensIndst(raa) {
     else if (erObj(v)) {
       if (ok(v.aar)) ud.aar = clamp(Math.round(v.aar), 0, 20);
       if (ok(v.saet)) ud.saet = clamp(Math.round(v.saet), 0, 200);
+      if (ok(v.huller)) ud.huller = clamp(Math.round(v.huller), 0, 1e6);
     }
     if (Object.keys(ud).length) I.toej[id] = ud;
+  });
+  if (erObj(raa.aktivitet)) Object.keys(raa.aktivitet).forEach(id => {
+    const v = raa.aktivitet[id], ud = {};
+    if (erObj(v)) Object.keys(RAMME.aktivitet.point).forEach(gr => { if (ok(v[gr])) ud[gr] = clamp(Math.round(v[gr]), 0, 1000); });
+    if (Object.keys(ud).length) I.aktivitet[id] = ud;
   });
   return I;
 }
@@ -1337,6 +1405,8 @@ function daekning(D, I, hold, poster) {
    den nuværende, eller den du har skrevet. Fritagne tæller med som spillere: deres gratis kontingent er klubbens udgift. */
 function beregn(D, I, P) {
   const g = 1 - D.gebyr, T = haltimer(D, I), K = koersel(D, I, P), N = D.betalere.length;
+  const AP = aktivitetPoint(D, I);
+  T.point = AP.point; T.pointIalt = AP.ialt;               // aktivitetstilskuddet deles efter point (andelFor)
   const nul = () => Object.fromEntries(POSTER.map(Q => [Q.id, 0]));
   const std = {}, bogf = {};
   D.betalere.forEach(h => {
@@ -1362,35 +1432,54 @@ function beregn(D, I, P) {
       fri: bilKm > 0 ? til / bilKm : 0, sats: bilKm > 0 ? Math.min(K.statens, til / bilKm) : 0 };
     if (K.vd) { k.sats = k.vd.sats; k.beloeb = k.vd.sats * bilKm; }
     poster.koerepenge = { std: k.beloeb, v: k.beloeb, rettet: false };
-    // Spillertøj: budgettets tøj til holdet (D1) + nyt tøj delt med de år, du har valgt. Uden et valg kun budgettets.
-    const tn = toejHold(h.id, h.antal, toejAar(I, h.id), toejValg(I, h.id).saet);
-    poster.toej = { std: s.toej + tn.prSaeson, budget: s.toej, v: s.toej + tn.prSaeson, nyt: tn, rettet: tn.aar !== toejAarStd(h.id) || tn.saet !== tn.saetStd };
+    // Tøj: at lukke huller (dit beløb – ellers budgettets tøj til holdet, D1) + nyt tøj delt med de år, du har valgt
+    const tv = toejValg(I, h.id), tn = toejHold(h.id, h.antal, toejAar(I, h.id), tv.saet);
+    const huller = typeof tv.huller === "number" ? Math.max(0, tv.huller) : s.toej;
+    tn.huller = huller; tn.hullerStd = s.toej;
+    poster.toej = { std: huller + tn.prSaeson, budget: s.toej, v: huller + tn.prSaeson, nyt: tn, huller,
+      rettet: tn.aar !== toejAarStd(h.id) || tn.saet !== tn.saetStd || Math.abs(huller - s.toej) >= 0.5 };
     const ud = sum(POSTER.filter(Q => Q.art === "ud"), Q => poster[Q.id].v);
     const ind = sum(POSTER.filter(Q => Q.art === "ind"), Q => poster[Q.id].v);
     const netto = ud - ind, rater = 2 * h.antal;
-    const fritaget = Math.min(h.komp, rater), betalende = rater - fritaget;
+    // fritagne rater (trænere og frivillige): dit tal – ellers KONTINGENTBUDGET's komp.
+    const fritagetStd = Math.min(h.komp, rater), fritaget = typeof r.fritaget === "number" ? clamp(Math.round(r.fritaget), 0, rater) : fritagetStd;
+    const betalende = rater - fritaget;
     const overstyret = typeof r.takst === "number" && Math.abs(r.takst - h.takst) >= 0.5;
     const takst = overstyret ? r.takst : h.takst;
     const kontingent = takst * rater * g;                      // alle rater – de fritagnes betaler klubben
     const egenPrecis = netto / rater / g;                      // den takst, der lige dækker holdets egne tal
     const faste = sum(POSTER.filter(Q => FASTE.indexOf(Q.id) >= 0), Q => poster[Q.id].v);
-    return { h, id: h.id, poster, bogf: bogf[h.id], timer: T.hold[h.id], koersel: k, ud, ind, netto, rater, fritaget, betalende, faste,
+    return { h, id: h.id, poster, bogf: bogf[h.id], timer: T.hold[h.id], koersel: k, ud, ind, netto, rater, fritaget, fritagetStd, betalende, faste,
       nu: h.takst, takst, overstyret, kontingent, gebyrBeloeb: takst * rater * D.gebyr, resultat: kontingent - netto,
       egenPrecis, egen: Math.max(0, Math.round(egenPrecis / AFRUNDING) * AFRUNDING),
-      provenu: takst * betalende * g, fritagelser: takst * fritaget * g, rettet: overstyret || POSTER.some(Q => poster[Q.id].rettet) };
+      provenu: takst * betalende * g, fritagelser: takst * fritaget * g, fritagetRettet: fritaget !== fritagetStd,
+      rettet: overstyret || fritaget !== fritagetStd || POSTER.some(Q => poster[Q.id].rettet) };
   });
   if (K.vd) {                      // VD-tilstand: holdenes egne satser – i alt regnes om
     K.ialt = sum(hold, x => x.koersel.beloeb);
     K.km = sum(hold, x => x.koersel.beloeb > 0 ? x.koersel.kmIalt : 0);
   }
-  // Nyt tøj til holdene uden kontingent (HU 20, DU 20) ligger på klubben – under holdets egne poster
-  const toejUden = (D.toejUden || []).map(u => Object.assign(toejHold(u.id, 0, toejAar(I, u.id), toejValg(I, u.id).saet), { navn: u.navn, kode: u.navn, uden: true, budget: 0 }));
-  toejUden.filter(t => t.prSaeson >= 0.005).forEach(t => klubBudget.push({ cash: -t.prSaeson, x: { kilde: "toej", post: "toej", navn: "Nyt tøj hvert " +
-    (t.aar === 1 ? "år" : t.aar + ". år"), linje: "", cash: -t.prSaeson, bem: "", toej: t, hold: null, pulje: "Alle", holdNavn: t.navn, udenKontingent: true, klub: "poster" } }));
-  // Nyt tøj: alle hold – også dem uden kontingent – og det, klubben skal lægge til side pr. sæson
+  // Tøj til holdene uden kontingent (HU 20, DU 20) ligger på klubben – under holdets egne poster
+  const toejUden = (D.uden || []).map(u => {
+    const tv = toejValg(I, u.id), t = toejHold(u.id, 0, toejAar(I, u.id), tv.saet);
+    return Object.assign(t, { navn: u.navn, kode: u.navn, uden: true, budget: 0, huller: typeof tv.huller === "number" ? Math.max(0, tv.huller) : 0, hullerStd: 0 });
+  });
+  const klubToej = (t, navn, beloeb) => klubBudget.push({ cash: -beloeb, x: { kilde: "toej", post: "toej", navn, linje: "", cash: -beloeb, bem: "", toej: t,
+    hold: null, pulje: "Alle", holdNavn: t.navn, udenKontingent: true, klub: "poster" } });
+  toejUden.forEach(t => {
+    if (t.prSaeson >= 0.005) klubToej(t, "Nyt tøj hvert " + (t.aar === 1 ? "år" : t.aar + ". år"), t.prSaeson);
+    if (t.huller >= 0.005) klubToej(Object.assign({}, t, { kunHuller: true }), "Lukke huller i tøj", t.huller);
+  });
+  // Tøjet: alle hold – også dem uden kontingent – og det, klubben skal lægge til side pr. sæson til nyt tøj
   const tHold = hold.map(x => Object.assign({}, x.poster.toej.nyt, { navn: x.h.kort, kode: x.h.kode || x.h.kort, uden: false, budget: x.poster.toej.budget }))
     .concat(toejUden);
-  const toej = { hold: tHold, ialt: sum(tHold, t => t.prSaeson), klub: sum(toejUden, t => t.prSaeson), valgt: tHold.filter(t => t.aar > 0).length };
+  const toej = { hold: tHold, ialt: sum(tHold, t => t.prSaeson), huller: sum(tHold, t => t.huller), klub: sum(toejUden, t => t.prSaeson + t.huller),
+    valgt: tHold.filter(t => t.aar > 0).length };
+  // Aktivitetstilskuddet: holdenes point og andel af budgettets tilskud – HU 20 og DU 20's andel bliver på klubben
+  const aktBeloeb = sum(D.budget.filter(x => x.point && !x.erstattet), vAf);
+  AP.hold.forEach(t => { t.andel = AP.ialt > 0 ? aktBeloeb * t.point / AP.ialt : 0; });
+  const aktivitet = { grupper: AP.grupper, hold: AP.hold, ialt: AP.ialt, beloeb: aktBeloeb, prPoint: AP.ialt > 0 ? aktBeloeb / AP.ialt : 0,
+    klub: AP.ialt > 0 ? sum(AP.hold.filter(t => t.uden), t => t.andel) : aktBeloeb };
   const klub = daekning(D, I, hold, klubBudget);
   klub.konto = klubKonto;
   klub.budget = klubBudget;
@@ -1400,7 +1489,7 @@ function beregn(D, I, P) {
   klub.udIalt = sum(hold, x => x.ud) + klub.udg;
   klub.bro = bro(D, hold, klub, K, provenu - provenuNu, toej.klub);
   const HP = D.halPulje || 0, HB = D.halBooking;
-  return { hold, g, gebyr: D.gebyr, T, K, klub, toej,
+  return { hold, g, gebyr: D.gebyr, T, K, klub, toej, aktivitet,
     hal: HB
       ? { booking: true, ialt: HB.ialt, budget: HB.budget, kilde: HB.kilde, pulje: HP,
           klub: -sum(D.budget.filter(x => x.kilde === "booking" && x.klub), x => x.cash),
@@ -1421,7 +1510,10 @@ function bro(D, hold, klub, K, dKontingent, toejKlub) {
   D.budget.filter(x => x.kilde === "ramme").forEach(x => ramme.set(x.navn, (ramme.get(x.navn) || 0) + x.cash));
   ramme.forEach((v, n) => til("ramme", n, v));
   til("koerepenge", "Kørepenge", -K.ialt);
-  til("takster", "Dine takster", dKontingent);
+  // kontingentet: dine takster – og dine fritagne (flere fritagne = mindre fra spillerne, klubben betaler resten)
+  const dFrit = -sum(hold, x => x.takst * (x.fritaget - x.fritagetStd)) * (1 - D.gebyr);
+  til("takster", "Dine takster", dKontingent - dFrit);
+  til("fritagne", "Dine fritagne", dFrit);
   let poster = 0;
   hold.forEach(x => JUSTERBAR.forEach(id => { poster += (POST[id].art === "ind" ? 1 : -1) * (x.poster[id].v - x.poster[id].std); }));
   til("poster", "Dine justeringer af holdenes poster", poster);
@@ -1492,15 +1584,15 @@ const og = l => l.length > 1 ? l.slice(0, -1).join(", ") + " og " + l[l.length -
 const smaat = t => t.length > 1 && t[1] === t[1].toLowerCase() && t[0] !== t[0].toLowerCase() ? t[0].toLowerCase() + t.slice(1) : t;
 
 /* ============================================================ tilstand */
-const FANER_PAA_SIDEN = ["hold", "klub", "koersel"];
+const FANER_PAA_SIDEN = ["overblik", "hold", "klub", "koersel", "rettal"];
 /* aaben = den linje i holdets regnskab, der er foldet ud; juster = om «Justér holdet» er åben */
 const S = { saesoner: [], valgt: null, kode: null, D: null, P: null, R: null, I: rensIndst(null), hold: laes(localStorage, NOEGLE.hold),
-  fane: FANER_PAA_SIDEN.indexOf(laes(localStorage, NOEGLE.fane)) >= 0 ? laes(localStorage, NOEGLE.fane) : "hold",
+  fane: "overblik",                 // siden åbner altid på det enkle overblik
   aaben: null, juster: false, aabneKlub: new Set(), aabneKat: new Set(), beskeder: [], hentet: null };
 let gemTimer = null;
 const tomIndst = I => !Object.keys(I.hold).length && !Object.keys(I.hal).length && !Object.keys(I.klub).length && I.koersel.sats == null &&
   !I.koersel.vd && I.koersel.graense == null && !I.koersel.alle && !Object.keys(I.koersel.biler).length && !Object.keys(I.koersel.ekstra).length &&
-  !Object.keys(I.toej).length;
+  !Object.keys(I.toej).length && !Object.keys(I.aktivitet).length;
 function gemIndst() {
   clearTimeout(gemTimer);
   gemTimer = setTimeout(() => gem(localStorage, NOEGLE.indst, tomIndst(S.I) ? null : JSON.stringify(S.I)), 250);
@@ -1594,12 +1686,13 @@ const valgtX = () => S.R.hold.find(x => x.id === S.hold) || S.R.hold[0];
 function tegn() {
   regn();
   if (!S.R.hold.some(x => x.id === S.hold)) S.hold = (S.R.hold.find(x => x.h.kode === "D1") || S.R.hold[0] || {}).id || null;
-  tegnTop(); tegnKpi(); tegnBannere(); tegnFaner(); tegnListe(); tegnHold(); tegnKlub(); tegnKoersel(); tegnFod();
+  tegnTop(); tegnKpi(); tegnBannere(); tegnFaner(); tegnOverblik(); tegnListe(); tegnHold(); tegnKlub(); tegnKoersel(); tegnRetTal(); tegnFod();
 }
 function opdaterTal() {           // efter en skyder: kun tallene tegnes om, så skyderen beholder grebet
   regn();
   tegnKpi(); tegnListe();
-  if (S.fane === "koersel") tegnKoerselTal(); else if (S.fane === "klub") tegnKlubTal(); else tegnHoldTal();
+  if (S.fane === "koersel") tegnKoerselTal(); else if (S.fane === "klub") tegnKlubTal(); else if (S.fane === "overblik") tegnOverblik();
+  else if (S.fane === "rettal") tegnRetTalTal(); else tegnHoldTal();
   gemIndst();
 }
 
@@ -1612,8 +1705,8 @@ function tegnTop() {
   } else { sel.hidden = true; $("#saesontekst").textContent = S.D.saeson || S.valgt.label || ""; }
   document.title = "Kontingentmodel " + (S.D.saeson || "") + " · Aalborg Volley";
   toppensHoejde();
-  $("#lead").textContent = "Hvad hvert hold bruger, og hvor pengene kommer fra: kontingentet, holdets egne indtægter og det, klubben lægger til. " +
-    "Klik på et hold – og på en linje for at se, hvad der ligger i den. Intet ændres i arket.";
+  $("#lead").textContent = "Hvad hvert hold koster, og hvor pengene kommer fra – kontingentet, holdenes egne indtægter og det, klubben lægger til. " +
+    "Intet ændres i arket.";
 }
 /* Den faste top er så høj – så «Justér»-linjen med holdets tal kan stå lige under den */
 function toppensHoejde() { const t = document.querySelector(".top"); if (t) document.documentElement.style.setProperty("--toph", t.offsetHeight + "px"); }
@@ -1649,10 +1742,10 @@ function tegnFaner() {
   FANER_PAA_SIDEN.forEach(f => { $("#fane-" + f).hidden = S.fane !== f; });
 }
 function skiftFane(f, fokus) {
-  S.fane = FANER_PAA_SIDEN.indexOf(f) >= 0 ? f : "hold";
-  gem(localStorage, NOEGLE.fane, S.fane);
+  S.fane = FANER_PAA_SIDEN.indexOf(f) >= 0 ? f : "overblik";
   tegnFaner();
-  if (S.fane === "hold") { tegnListe(); tegnHold(); } else if (S.fane === "klub") tegnKlub(); else tegnKoersel();
+  if (S.fane === "hold") { tegnListe(); tegnHold(); } else if (S.fane === "klub") tegnKlub(); else if (S.fane === "koersel") tegnKoersel();
+  else if (S.fane === "rettal") tegnRetTal(); else tegnOverblik();
   if (fokus) $("#tab-" + S.fane).focus();
 }
 function visHold(id) {
@@ -1737,11 +1830,11 @@ function kildeTekst(x, P) {
   }
   if (P.id === "toej") {
     const n = p.nyt, nyt = n.saet + " sæt × " + kr(n.prSaet) + " kr. = " + kr(n.pris) + " kr.";
-    const budget = p.budget >= 0.5 ? "budgettets tøj til " + (x.h.kode || x.h.kort) + " " + kr(p.budget) + " kr." : "";
-    if (!(n.pris > 0)) return (budget ? "Kun " + budget : "Intet tøj.") + bogfTekst(x, P);
-    return (n.aar ? "Nyt tøj " + hvertAar(n.aar) + ": " + nyt + (n.aar > 1 ? " ÷ " + n.aar + " år = " + kr(n.prSaeson) + " kr." : "") + " pr. sæson" +
-        (budget ? " + " + budget : ".")
-      : (budget ? "Kun " + budget + " " : "") + "Nyt tøj er ikke med – det koster " + nyt + " hver gang.") + bogfTekst(x, P);
+    const kilde = Math.abs(p.huller - p.budget) < 0.5 ? (p.budget >= 0.5 ? " (budgettets tøj til " + (x.h.kode || x.h.kort) + ")" : "") : " (dit beløb – budgettet har " + kr(p.budget) + " kr.)";
+    const huller = p.huller >= 0.5 || Math.abs(p.huller - p.budget) >= 0.5 ? "Lukke huller " + kr(p.huller) + " kr. pr. sæson" + kilde + "." : "";
+    const nytT = n.aar ? "Nyt tøj " + hvertAar(n.aar) + ": " + nyt + (n.aar > 1 ? " ÷ " + n.aar + " år = " + kr(n.prSaeson) + " kr." : "") + " pr. sæson."
+      : "Nyt tøj er ikke med" + (n.pris > 0 ? " – det koster " + nyt + " hver gang." : ".");
+    return (n.aar ? nytT + (huller ? " " + huller : "") : (huller ? huller + " " : "") + nytT) + bogfTekst(x, P);
   }
   const d = detaljer(S.D, R, x.id, P.id).budget;
   if (!d.length) return "Intet i budgettet for holdet." + bogfTekst(x, P);
@@ -1804,7 +1897,7 @@ function sektionEl(titel, raekker, tom) {
 }
 function budgetRaekker(rk) {
   return rk.map(r => {
-    const x = r.x, pulje = !x.hold ? puljeTekst(x) + " " + kr(Math.abs(x.cash)) : x.fordelingNavn ? "på klubben i budgettet" : "";
+    const x = r.x, pulje = x.point ? "efter point – i alt " + kr(Math.abs(x.cash)) : !x.hold ? puljeTekst(x) + " " + kr(Math.abs(x.cash)) : x.fordelingNavn ? "på klubben i budgettet" : "";
     let meta = "";
     if (x.kilde === "ramme") meta = (pulje ? pulje + " · " : "") + "ikke i budgettet – fra rammen";
     else meta = [pulje, x.bem].filter(Boolean).join(" · ");
@@ -1841,6 +1934,12 @@ function andelNoter(x, d) {
       ? x.h.kort + " betaler for sine " + tim(x.timer.ialt) + " haltimer à " + pris + (x.timer.vaegt ? " og " + kr(x.timer.vaegt) + " kr. til vægtløftning" : "") +
         ". Forskellen til budgettets halleje ligger på klubben."
       : "Klubbens halleje deles efter haltimer: " + x.h.kort + " har " + tim(x.timer.ialt) + " af " + tim(T.ialt) + " timer.");
+    else if (y.point) {
+      const A = R.aktivitet, t = A.hold.find(z => z.id === x.id) || { point: 0, n: {} };
+      const med = A.grupper.filter(g => t.n[g] > 0).map(g => t.n[g] + " medlemmer " + g + " år");
+      noter.add("Aktivitetstilskuddet deles efter kommunens point: " + x.h.kort + " har " + kr(t.point) + " af " + kr(A.ialt) + " point (" + pct(A.ialt ? t.point / A.ialt : 0) +
+        ")" + (med.length ? " – " + og(med) : " – ingen medlemmer under 25 år") + ". Medlemmerne pr. aldersgruppe retter du under «Ret tal».");
+    }
     else if (y.fordeling) noter.add(y.fordelingNavn + " deles " + (y.fordelingMaade === "spiller" ? "pr. spiller " : y.fordelingMaade === "ligeligt" ? "ligeligt " : "") +
       "mellem " + og(Object.keys(y.fordeling).map(holdKode)) + ": " + pct(y.fordeling[x.id] || 0) + " til " + x.h.kort + ".");
     else {
@@ -1950,12 +2049,13 @@ function toejEl(x) {
       r("Nyt tøj hver gang", n.saet !== n.saetStd ? n.saet + " sæt – dit antal (ellers " + n.saetStd + ")"
         : n.saet + " sæt = " + (T.saet && T.saet[x.id] != null ? "rammens antal" : x.h.antal + " spillere + " + (T.ekstra || 0)), kr(n.pris), "t"),
       n.aar > 1 ? r("Pr. sæson", kr(n.pris) + " kr. ÷ " + n.aar + " år", kr(n.prSaeson)) : null,
-      p.budget >= 0.5 ? r("Budgettets tøj til " + (x.h.kode || x.h.kort), "står i budgettet – med uanset dit valg", kr(p.budget)) : null,
+      p.huller >= 0.5 || p.budget >= 0.5 ? r("Lukke huller", Math.abs(p.huller - p.budget) < 0.5 ? "budgettets tøj til " + (x.h.kode || x.h.kort) + " – pr. sæson"
+        : "dit beløb pr. sæson – budgettet har " + kr(p.budget) + " kr.", kr(p.huller)) : null,
       r("Tøj pr. sæson", n.aar ? null : "nyt tøj er ikke med", kr(p.v), "t"))),
     h("p", { class: "dnote" }, (n.aar ? "Holdet betaler " + kr(n.prSaeson) + " kr. hver sæson, og klubben lægger pengene til side, til der købes nyt. "
       : "Nyt tøj er ikke med i beregningen, før du vælger, hvor ofte holdet får nyt. ") +
-      "Priserne er fra " + T.kilde + " – kun det print, klubben selv betaler. Vælg under «Justér " + x.h.kort + "» – eller for alle hold på fanen Klubben."),
-    h("button", { type: "button", class: "knap sekundaer lille", "data-tilfane": "klub", "data-rul": "toejkort" }, "Nyt tøj til alle hold"));
+      "Priserne er fra " + T.kilde + " – kun det print, klubben selv betaler. Ret under «Justér " + x.h.kort + "» – eller for alle hold under «Ret tal»."),
+    h("button", { type: "button", class: "knap sekundaer lille", "data-tilfane": "rettal", "data-rul": "toejkort" }, "Tøj for alle hold"));
 }
 /* Hvor ofte et hold får nyt tøj – en vælger */
 function aarValg(id, aar, label) {
@@ -1981,6 +2081,8 @@ function visToejValg(rod, t) {
     if (f !== document.activeElement) f.value = String(t.saet);
     f.classList.toggle("fast", t.saet !== t.saetStd);
   }
+  const hf = rod.querySelector("[data-toejhuller]");
+  if (hf) feltVis(hf, kr(t.huller), Math.abs(t.huller - t.hullerStd) >= 0.5, "Budgettet: " + kr(t.hullerStd) + " kr.");
 }
 /* Tøjet under Justér: antal sæt og hvor ofte holdet får nyt – og hvad det giver pr. sæson */
 function toejRaekke(x) {
@@ -1988,10 +2090,12 @@ function toejRaekke(x) {
   return h("div", { class: "pr", "data-post": "toej" },
     h("div", { class: "pr-top" }, h("span", { class: "pr-navn uden" }, POST.toej.navn), h("span", { class: "tag", "data-tag": "toej", hidden: !p.rettet }, "justeret"),
       h("span", { class: "spacer" }), h("span", { class: "fastbeloeb num" }, kr(p.v)),
-      h("button", { type: "button", class: "nulstil", "data-nul": "toej", title: "Tilbage til " + (std ? hvertAar(std) : "nyt tøj ikke med") + " og " + p.nyt.saetStd + " sæt",
+      h("button", { type: "button", class: "nulstil", "data-nul": "toej", title: "Tilbage til " + (std ? hvertAar(std) : "nyt tøj ikke med") + ", " + p.nyt.saetStd +
+        " sæt og budgettets " + kr(p.nyt.hullerStd) + " kr. til huller",
         hidden: !p.rettet }, "×")),
     h("div", { class: "toejrk" }, h("span", null, "Nyt tøj:"), saetFelt(p.nyt, "Antal sæt til " + x.h.kort), h("span", null, "sæt"),
       aarValg(x.id, p.nyt.aar, "Hvor ofte " + x.h.kort + " får nyt tøj")),
+    h("div", { class: "toejrk" }, h("span", null, "Lukke huller:"), hullerFelt(p.nyt, "Lukke huller i tøj for " + x.h.kort + ", kr. pr. sæson"), h("span", null, "kr. pr. sæson")),
     h("p", { class: "pr-kilde" }, kildeTekst(x, POST.toej)));
 }
 /* … og skrevet om på stedet efter en ændring */
@@ -2081,7 +2185,8 @@ function forklarEl(x, id) {
       r("− " + kr(R.gebyr * 100, 1) + " % gebyr og afgang", null, kr(-x.gebyrBeloeb) + " kr."),
       r(x.fritaget ? "Kontingent i alt" : "Kontingent", null, kr(x.kontingent) + " kr.", "t"),
       x.fritaget ? r("heraf fra spillerne", flere(x.betalende, "rate", "rater"), kr(x.provenu) + " kr.", "sub") : null,
-      x.fritaget ? r("heraf for de fritagne – klubben betaler", flere(x.fritaget, "rate", "rater") + " (trænere og frivillige)", kr(x.fritagelser) + " kr.", "sub") : null))),
+      x.fritaget ? r("heraf for de fritagne – klubben betaler", flere(x.fritaget, "rate", "rater") + " (trænere og frivillige)" +
+        (x.fritagetRettet ? " · dit tal – KONTINGENTBUDGET har " + x.fritagetStd : ""), kr(x.fritagelser) + " kr.", "sub") : null))),
     h("p", { class: "dnote" }, (x.fritaget ? "De fritagne tæller med som spillere, så holdkammeraterne ikke betaler for dem – deres kontingent er klubbens udgift. " : "") +
       "Budgettet regner med " + kr(x.h.netto) + " kr. fra holdet. " +
       (x.netto > 0 ? "Skal holdet selv betale alt det, det bruger ud over sine egne indtægter, skal taksten være " + kr(x.egen) + " kr. pr. rate. "
@@ -2112,7 +2217,7 @@ function regnskabLinjer(x) {
     const p = x.poster[P.id];
     if (FASTE.indexOf(P.id) >= 0) return "fast";
     if (P.id === "koerepenge") return (K.vd ? "det, VD giver" : kr(x.koersel.sats, 2) + " kr. pr. km") + (K.graense > 0 ? " · over " + kr(K.graense) + " km" : "");
-    if (P.id === "toej") return p.nyt && p.nyt.aar ? "nyt " + hvertAar(p.nyt.aar) + (p.budget >= 0.5 ? " + budgettets" : "") : p.budget >= 0.5 ? "budgettets" : "";
+    if (P.id === "toej") return p.nyt && p.nyt.aar ? "nyt " + hvertAar(p.nyt.aar) + (p.huller >= 0.5 ? " + huller" : "") : p.huller >= 0.5 ? "lukke huller" : "";
     if (NAVNE_UNDER.indexOf(P.id) >= 0) {
       const navne = [...new Set(detaljer(S.D, R, x.id, P.id).budget.sort((a, b) => Math.abs(b.v) - Math.abs(a.v)).map(r => r.x.fordelingNavn || r.x.navn))];
       return navne.length ? navne.slice(0, 2).join(", ") + (navne.length > 2 ? " m.fl." : "") : "";
@@ -2122,7 +2227,8 @@ function regnskabLinjer(x) {
   const linje = P => ({ id: P.id, navn: P.navn, under: under(P), v: x.poster[P.id].v, rettet: x.poster[P.id].rettet });
   const bruger = POSTER.filter(P => P.art === "ud" && med(P)).map(linje);
   const faar = [{ id: "kontingent", navn: x.fritagelser >= 0.5 ? "Kontingent fra spillerne" : "Kontingent", under: "takst " + kr(x.takst) + " kr. pr. rate" + (x.overstyret ? " – din" : ""), v: x.provenu, rettet: x.overstyret }];
-  if (x.fritagelser >= 0.5) faar.push({ id: "fritagne", navn: "Fritagne – klubben betaler", under: flere(x.fritaget, "rate", "rater") + " · trænere og frivillige", v: x.fritagelser });
+  if (x.fritagelser >= 0.5) faar.push({ id: "fritagne", navn: "Fritagne – klubben betaler", under: flere(x.fritaget, "rate", "rater") + " · trænere og frivillige", v: x.fritagelser,
+    rettet: x.fritagetRettet });
   POSTER.filter(P => P.art === "ind" && med(P)).forEach(P => faar.push(linje(P)));
   const balB = [], balF = [];
   if (x.daekket >= 0.5) balF.push({ id: "daekket", navn: "Klubben dækker", under: pct(KL.andel) + " af underskuddet", v: x.daekket, klasse: "daekket" });
@@ -2181,6 +2287,13 @@ function tegnHold() {
           title: "Skriv holdets takst pr. rate. Tomt felt eller × giver den nuværende." }),
         h("button", { type: "button", class: "nulstil", "data-nultakst": "1", title: "Tilbage til den nuværende takst på " + kr(x.nu) + " kr.", hidden: !x.overstyret }, "×")),
       h("p", { class: "pr-kilde", id: "hp-takstnote" }),
+      h("div", { class: "jtakst" },
+        h("label", { class: "pr-navn uden", for: "hp-fritaget" }, "Fritagne rater"),
+        h("span", { class: "spacer" }),
+        h("input", { id: "hp-fritaget", class: "storfelt num" + (x.fritagetRettet ? " fast" : ""), inputmode: "numeric", value: String(x.fritaget), "data-fritagetfor": x.id,
+          title: "Trænere og frivillige – klubben betaler deres kontingent. Tomt felt eller × giver tallet fra KONTINGENTBUDGET." }),
+        h("button", { type: "button", class: "nulstil", "data-nulfritaget": "1", title: "Tilbage til " + x.fritagetStd + " fra KONTINGENTBUDGET", hidden: !x.fritagetRettet }, "×")),
+      h("p", { class: "pr-kilde", id: "hp-fritagetnote" }),
       just.map(P => postRaekke(x, P))));
   tegnHoldTal();
 }
@@ -2223,6 +2336,13 @@ function tegnHoldTal() {
     h("b", { class: klasse }, (x.resultat <= -0.5 ? "underskud " : x.resultat >= 0.5 ? "overskud " : "") + tal));
   const kn = document.querySelector("[data-nulhold]");
   if (kn) kn.hidden = !x.rettet;
+  const ff = $("#hp-fritaget");
+  if (ff) {
+    feltVis(ff, String(x.fritaget), x.fritagetRettet);
+    const nf = document.querySelector("[data-nulfritaget]"); if (nf) nf.hidden = !x.fritagetRettet;
+    $("#hp-fritagetnote").textContent = x.betalende + " af " + x.rater + " rater betaler. Klubben betaler " + kr(x.fritagelser) + " kr. for " +
+      flere(x.fritaget, "fritaget rate", "fritagne rater") + " (trænere og frivillige)" + (x.fritagetRettet ? " – KONTINGENTBUDGET har " + x.fritagetStd : "") + ".";
+  }
   visToejRaekke(x);
 }
 
@@ -2232,7 +2352,8 @@ function klubKatEl(navn) {
   const KL = S.R.klub, D = S.D;
   const b = KL.budget.filter(r => klubKategori(r.x) === navn).map(r => ({ navn: r.x.navn, meta: [r.x.udenKontingent ? "" : r.x.holdNavn && r.x.holdNavn !== "klubben" ? r.x.holdNavn : "",
     Math.abs(r.cash - r.x.cash) >= 0.5 ? "resten af " + kr(Math.abs(r.x.cash)) : "",
-    r.x.toej ? r.x.toej.saet + " sæt × " + kr(r.x.toej.prSaet) + " kr. = " + kr(r.x.toej.pris) + " kr. – dit valg under «Nyt tøj»" : r.x.bem].filter(Boolean).join(" · "), cash: r.cash, v: r.cash }))
+    r.x.toej ? (r.x.toej.kunHuller ? "dit beløb under «Ret tal»" : r.x.toej.saet + " sæt × " + kr(r.x.toej.prSaet) + " kr. = " + kr(r.x.toej.pris) + " kr. – dit valg under «Ret tal»")
+      : r.x.bem].filter(Boolean).join(" · "), cash: r.cash, v: r.cash }))
     .sort((p, q) => Math.abs(q.cash) - Math.abs(p.cash));
   const k = kontoRaekker(KL.konto.filter(r => klubKategori(r.x) === navn).map(r => ({ x: r.x, cash: r.cash, v: r.cash })), true);
   return h("div", { class: "pr-detalje", "data-katdetalje": navn },
@@ -2296,20 +2417,6 @@ function tegnKlub() {
       h("h2", null, "Sådan dækkes holdenes underskud"),
       h("table", { class: "flow" }, h("tbody", { id: "klubflow" })),
       h("p", { class: "stille", id: "klubnote", style: "margin:10px 0 0" })),
-    h("div", { class: "kkort", id: "toejkort" },
-      h("h2", null, "Nyt tøj"),
-      h("p", { class: "stille" }, "Vælg, hvor mange år der går, før hvert hold får nyt tøj – og ret antallet af sæt, hvis holdet skal have flere eller færre " +
-        "end spillerne + 2. Holdet betaler så prisen delt med årene hver sæson, og klubben lægger pengene til side, til der købes. Uden et valg er nyt tøj " +
-        "ikke med i beregningen."),
-      h("div", { class: "toejalle" },
-        h("label", { for: "toejalle" }, "Alle hold på én gang"),
-        h("select", { id: "toejalle", class: "aarvalg", "data-toejalle": "1" }, h("option", { value: "" }, "vælg …"), h("option", { value: "0" }, "ikke med"),
-          (RAMME.toej.valg || []).map(v => h("option", { value: String(v) }, hvertAar(v)))),
-        (RAMME.toej.ingen || []).length ? h("small", null, "ikke " + og(RAMME.toej.ingen.map(id => (S.R.hold.find(x => x.id === id) || { h: { kort: id } }).h.kort))) : null),
-      h("table", { class: "flow toejtab" },
-        h("thead", null, h("tr", null, h("th", null, "Hold"), h("th", { class: "v" }, "Hvor ofte"), h("th", { class: "v" }, "Pr. sæson"))),
-        h("tbody", { id: "toejliste" })),
-      h("p", { class: "stille", id: "toejnote", style: "margin:10px 0 0" })),
     h("div", { class: "kkort", id: "brokort" },
       h("h2", null, "Fra budgettets resultat til sidens"),
       h("p", { class: "stille" }, "Siden regner ikke helt som budgettet: halleje, SIFA og bolde følger rammens regler – og nyt tøj og dine justeringer kommer oveni. Her er forskellen."),
@@ -2327,9 +2434,13 @@ function broLinje(d) {
   const R = S.R, KL = R.klub, da = d.data || {};
   switch (d.id) {
     case "toej": {
-      const v = R.toej ? R.toej.hold.filter(t => t.aar > 0) : [];
-      return ["Nyt tøj", (v.length > 3 ? flere(v.length, "hold", "hold") : og(v.map(t => t.kode + " " + hvertAar(t.aar)))) + " – dit valg under «Nyt tøj» ovenfor"];
+      const v = R.toej ? R.toej.hold.filter(t => t.aar > 0) : [], hu = R.toej ? R.toej.hold.filter(t => Math.abs(t.huller - t.hullerStd) >= 0.5) : [];
+      const dele = [];
+      if (v.length) dele.push("nyt tøj: " + (v.length > 3 ? flere(v.length, "hold", "hold") : og(v.map(t => t.kode + " " + hvertAar(t.aar)))));
+      if (hu.length) dele.push("huller: " + (hu.length > 3 ? flere(hu.length, "hold", "hold") : og(hu.map(t => t.kode + " " + kr(t.huller)))));
+      return ["Tøj", dele.join(" · ") + " – dit valg under «Ret tal»"];
     }
+    case "fritagne": return ["Dine fritagne", "flere eller færre fritagne rater – klubben betaler deres kontingent"];
     case "halleje": return ["Halleje", "sæsonens bookinger: " + kr(da.model) + " kr. – budgettet har " + kr(da.budget) + " kr."];
     case "ramme": return [d.navn, "ikke i budgettet – fra rammen"];
     case "koerepenge": return ["Kørepenge", (R.K.vd ? "det, VD giver" : kr(R.K.sats, 2) + " kr. pr. km") + graenseTekst(R.K) + " – fanen Kørsel"];
@@ -2381,38 +2492,6 @@ function tegnKlubTal() {
       "Der mangler " + kr(KL.mangler) + " kr. Skaffes de, når klubben et overskud på " + kr(KL.maal) + " kr. – ellers bliver resultatet " + kr(KL.resultat, 0, true) + " kr."
     : "Alle underskud er dækket" + (KL.antalUnderskud ? ", så kontingentet behøver ikke stige på nogen hold" : "") + ". Klubbens resultat bliver " + kr(KL.resultat, 0, true) +
       " kr." + (KL.ekstra >= 0.5 ? " – " + kr(KL.ekstra) + " kr. mere end overskuddet pr. sæson." : "");
-  // nyt tøj: hvor ofte hvert hold får nyt, og hvad klubben skal lægge til side pr. sæson
-  const TJ = R.toej, liste = $("#toejliste");
-  if (TJ && liste) {
-    const ids = TJ.hold.map(t => t.id).join(",");
-    if (liste.dataset.ids !== ids) {           // rækkerne bygges én gang – vælgere og felter beholder fokus, når tallene skifter
-      fyld(liste, TJ.hold.map(t => h("tr", { "data-toejhold": t.id },
-          h("td", null, t.navn, h("small", null, saetFelt(t, "Antal sæt til " + t.navn), h("span", { "data-toejtekst": "1" }))),
-          h("td", { class: "v" }, aarValg(t.id, t.aar, "Hvor ofte " + t.navn + " får nyt tøj")),
-          h("td", { class: "v num", "data-toejpr": "1" }))),
-        h("tr", { class: "t" }, h("td", null, "Til side pr. sæson", h("small", { id: "toejantal" })), h("td"), h("td", { class: "v num", id: "toejialt" })));
-      liste.dataset.ids = ids;
-    }
-    TJ.hold.forEach(t => {
-      const tr = liste.querySelector('[data-toejhold="' + t.id + '"]');
-      if (!tr) return;
-      visToejValg(tr, t);
-      tr.querySelector("[data-toejtekst]").textContent = " sæt × " + kr(t.prSaet) + " kr. = " + kr(t.pris) + " kr." +
-        (t.pakke.length > 1 ? " – " + og(t.pakke.map(z => lav(z.navn))) : "") + (t.uden ? " · intet kontingent – klubben betaler" : "") +
-        (t.budget >= 0.5 ? " · budgettet har " + kr(t.budget) + " kr. til tøj oveni" : "");
-      tr.querySelector("[data-toejpr]").textContent = t.aar ? kr(t.prSaeson) : "–";
-    });
-    $("#toejantal").textContent = TJ.valgt ? flere(TJ.valgt, "hold", "hold") + " får nyt tøj" : "intet hold endnu";
-    $("#toejialt").textContent = kr(TJ.ialt);
-    const udenKont = TJ.hold.filter(t => t.uden && t.aar > 0), udenPris = TJ.hold.filter(t => t.aar > 0 && t.udenPris.length);
-    const iBudget = TJ.hold.filter(t => t.budget >= 0.5);
-    $("#toejnote").textContent = (TJ.valgt
-      ? "For at det går op, skal klubben lægge " + kr(TJ.ialt) + " kr. til side hver sæson. Holdene betaler dem gennem deres udgifter" +
-        (udenKont.length ? " – " + og(udenKont.map(t => t.navn)) + "'s " + kr(TJ.klub) + " kr. betaler klubben" : "") + ". Pengene bruges, når holdene får nyt."
-      : "Intet hold har nyt tøj med i beregningen.") +
-      (iBudget.length ? " Budgettets eget tøj (" + og(iBudget.map(t => t.kode + " " + kr(t.budget) + " kr.")) + ") er med uanset dit valg." : "") +
-      (udenPris.length ? " Uden pris og ikke med: " + og(udenPris.map(t => og(t.udenPris.map(lav)) + " til " + t.kode)) + "." : "");
-  }
   // fra budgettets resultat til sidens
   const B = KL.bro, overs = B.model - KL.maal;
   fyld($("#bro"),
@@ -2439,6 +2518,175 @@ function tegnKlubTal() {
     r("Indtægter i alt", null, kr(KL.indt + KL.andreInd, 0, true), "t"),
     r("Klubbens egne poster i alt", "indtægter minus udgifter – før holdenes overskud, fritagelserne og overskuddet pr. sæson", kr(KL.indt + KL.egne, 0, true),
       "t " + (KL.indt + KL.egne >= 0 ? "overs" : "mangler")));
+}
+
+/* ------------------------------------------------------------ overblik */
+/* Forsiden: hvad hvert hold koster, og hvad det får ind – uden knapper og skydere. Holdene i grupper, klubbens egne poster
+   og i alt = klubbens resultat. Klik på et hold for detaljerne under Hold. */
+const OVERBLIK_GRUPPER = [["Divisionshold", x => x.h.division], ["Øvrige hold", x => !x.h.division && x.h.gruppe !== "Ungdom"],
+  ["Ungdom", x => !x.h.division && x.h.gruppe === "Ungdom"]];
+function tegnOverblik() {
+  const el = $("#overblikpanel");
+  if (!el || !S.R) return;
+  const R = S.R, KL = R.klub;
+  const tal = (n, k) => h("td", { class: "v num" + (k ? " " + k : "") }, n);
+  const res = n => tal(kr(n, 0, true), n >= 0.5 ? "pos" : n <= -0.5 ? "neg" : "");
+  const faar = x => x.kontingent + x.ind;
+  const raekke = x => h("tr", { "data-hold": x.id },
+    h("td", null, h("button", { type: "button", class: "lnk holdlink", "data-tilhold": x.id, title: "Se " + x.h.kort + " i detaljer" }, x.h.kort),
+      x.rettet ? [" ", h("span", { class: "tag lys" }, "justeret")] : null),
+    tal(kr(x.ud)), tal(kr(faar(x))), res(x.resultat));
+  const klubUd = KL.udg + KL.fritagelser, klubInd = KL.indt + KL.andreInd;
+  fyld(el, h("div", { class: "kkort" },
+    h("h2", null, "Holdenes udgifter og indtægter"),
+    h("p", { class: "stille" }, "Hvad hvert hold koster, og hvad det får ind pr. sæson – kontingentet og holdets egne indtægter. Klik på et hold for at se, " +
+      "hvad tallene består af. Tallene retter du under «Ret tal»."),
+    h("table", { class: "oversigt" },
+      h("thead", null, h("tr", null, h("th", null, "Hold"), h("th", { class: "v" }, "Udgifter"), h("th", { class: "v" }, "Indtægter"), h("th", { class: "v" }, "Resultat"))),
+      h("tbody", null,
+        OVERBLIK_GRUPPER.map(([navn, f]) => {
+          const l = R.hold.filter(f);
+          return l.length ? [h("tr", { class: "gr" }, h("td", null, navn), tal(kr(sum(l, x => x.ud))), tal(kr(sum(l, faar))), res(sum(l, x => x.resultat))), l.map(raekke)] : null;
+        }),
+        h("tr", { class: "gr" }, h("td", { colspan: "4" }, "Klubben")),
+        h("tr", { "data-hold": "klub" },
+          h("td", null, h("button", { type: "button", class: "lnk holdlink", "data-tilfane": "klub" }, "Klubbens egne poster"),
+            h("small", null, "sponsorater, frivillige, fester, IT, fritagne …")),
+          tal(kr(klubUd)), tal(kr(klubInd)), res(klubInd - klubUd)),
+        h("tr", { class: "t" }, h("td", null, "I alt", h("small", null, "klubbens resultat")),
+          tal(kr(sum(R.hold, x => x.ud) + klubUd)), tal(kr(sum(R.hold, faar) + klubInd)), res(KL.resultat)))),
+    h("p", { class: "stille", style: "margin:10px 0 0" }, KL.mangler >= 0.5
+      ? "Klubbens indtægter rækker ikke til alle holdenes underskud – der mangler " + kr(KL.mangler) + " kr. (se Klubben)."
+      : "Klubben dækker alle holdenes underskud" + (KL.ekstra >= 0.5 ? " og har " + kr(KL.ekstra) + " kr. til overs ud over overskuddet pr. sæson på " + kr(KL.maal) + " kr." : ".") +
+        " Nyt tøj kommer med, når du vælger det under «Ret tal».")));
+}
+
+/* ------------------------------------------------------------ ret tal */
+/* Alle tal, der rettes for alle hold på én gang: kontingentet (takst og fritagne), tøjet og aktivitetstilskuddet.
+   Tabellerne bygges én gang og skrives om på stedet, så felterne beholder fokus. */
+function tegnRetTal() {
+  const el = $("#rettalpanel");
+  if (!el || !S.R) return;
+  const R = S.R, A = RAMME.aktivitet, grupper = R.aktivitet.grupper;
+  const th = (t, v) => h("th", v ? { class: "v" } : null, t);
+  fyld(el,
+    h("p", { class: "stille rt-intro" }, "Her retter du tallene for alle hold på én gang. Et rettet felt bliver blåt – tøm feltet for at få tallet fra budgettet igen. " +
+      "Holdets egne poster (rejser, trænere …) retter du under «Hold» → «Justér»."),
+    h("div", { class: "kkort", id: "kontkort" },
+      h("h2", null, "Kontingent"),
+      h("p", { class: "stille" }, "Taksten pr. rate og de fritagne rater for hvert hold. De fritagne er trænere og frivillige – klubben betaler deres kontingent. " +
+        "2 rater er én spiller en hel sæson."),
+      h("table", { class: "flow rettab" }, h("thead", null, h("tr", null, th("Hold"), th("Takst", 1), th("Fritagne", 1), th("Fra spillerne", 1))), h("tbody", { id: "kontliste" }))),
+    h("div", { class: "kkort", id: "toejkort" },
+      h("h2", null, "Tøj"),
+      h("p", { class: "stille" }, "Vælg, hvor mange år der går, før hvert hold får nyt tøj, og ret antallet af sæt, hvis holdet skal have flere eller færre end " +
+        "spillerne + 2. Holdet betaler så prisen delt med årene hver sæson, og klubben lægger pengene til side, til der købes. Uden et valg er nyt tøj ikke med. " +
+        "At lukke huller er et beløb pr. sæson – budgettets tøj til holdet, til du retter det."),
+      h("div", { class: "toejalle" },
+        h("label", { for: "toejalle" }, "Nyt tøj til alle hold"),
+        h("select", { id: "toejalle", class: "aarvalg", "data-toejalle": "1" }, h("option", { value: "" }, "vælg …"), h("option", { value: "0" }, "ikke med"),
+          (RAMME.toej.valg || []).map(v => h("option", { value: String(v) }, hvertAar(v)))),
+        (RAMME.toej.ingen || []).length ? h("small", null, "ikke " + og(RAMME.toej.ingen.map(id => (R.hold.find(x => x.id === id) || { h: { kort: id } }).h.kort))) : null),
+      h("table", { class: "flow toejtab rettab" }, h("thead", null, h("tr", null, th("Hold"), th("Nyt tøj", 1), th("Pr. sæson", 1))), h("tbody", { id: "toejliste" })),
+      h("p", { class: "stille", id: "toejnote", style: "margin:10px 0 0" })),
+    h("div", { class: "kkort", id: "aktkort" },
+      h("h2", null, "Aktivitetstilskud"),
+      h("p", { class: "stille" }, "Kommunen giver aktivitetstilskud efter medlemmernes alder: " +
+        og(grupper.map(g => g + " år " + flere(A.point[g], "point", "point"))) + " pr. medlem (2025: " + og(grupper.map(g => kr(A.kr2025[g]))) + " kr. om året). " +
+        "Budgettets aktivitetstilskud deles efter holdenes point. Ungdomsholdenes spillere regnes som 7-17 år – skriv, hvor mange 18-24-årige de andre hold har."),
+      h("table", { class: "flow rettab akttab" }, h("thead", null, h("tr", null, th("Hold"), grupper.map(g => th(g + " år", 1)), th("Tilskud", 1))), h("tbody", { id: "aktliste" })),
+      h("p", { class: "stille", id: "aktnote", style: "margin:10px 0 0" })));
+  tegnRetTalTal();
+}
+/* Byg rækkerne i en tabel én gang (eller når holdene skifter) */
+function bygEnGang(liste, noegler, byg) {
+  const k = noegler.join(",");
+  if (liste.dataset.ids === k) return;
+  fyld(liste, byg());
+  liste.dataset.ids = k;
+}
+function feltVis(f, vaerdi, fast, titel) {
+  if (!f) return;
+  if (f !== document.activeElement) f.value = vaerdi;
+  f.classList.toggle("fast", !!fast);
+  if (titel != null) f.title = titel;
+}
+function tegnRetTalTal() {
+  const R = S.R, kl = $("#kontliste"), tl = $("#toejliste"), al = $("#aktliste");
+  if (!R || !kl) return;
+  // kontingent
+  bygEnGang(kl, R.hold.map(x => x.id), () => [R.hold.map(x => h("tr", { "data-konthold": x.id },
+      h("td", null, h("button", { type: "button", class: "lnk holdlink", "data-tilhold": x.id }, x.h.kort), h("small", { "data-konttekst": "1" })),
+      h("td", { class: "v" }, h("input", { class: "felt-lille num", inputmode: "numeric", "data-takstfor": x.id, "aria-label": "Takst pr. rate for " + x.h.kort })),
+      h("td", { class: "v" }, h("input", { class: "felt-lille smal num", inputmode: "numeric", "data-fritagetfor": x.id, "aria-label": "Fritagne rater for " + x.h.kort })),
+      h("td", { class: "v num", "data-kontkr": "1" }))),
+    h("tr", { class: "t" }, h("td", null, "Kontingent i alt", h("small", { id: "kontialt-tekst" })), h("td"), h("td", { class: "v num", id: "kontfrit" }), h("td", { class: "v num", id: "kontialt" }))]);
+  R.hold.forEach(x => {
+    const tr = kl.querySelector('[data-konthold="' + x.id + '"]');
+    if (!tr) return;
+    feltVis(tr.querySelector("[data-takstfor]"), kr(x.takst), x.overstyret, "Den nuværende takst: " + kr(x.nu) + " kr.");
+    feltVis(tr.querySelector("[data-fritagetfor]"), String(x.fritaget), x.fritagetRettet, "KONTINGENTBUDGET: " + x.fritagetStd + " – højst " + x.rater);
+    tr.querySelector("[data-konttekst]").textContent = flere(x.h.antal, "spiller", "spillere") + " · " + x.rater + " rater – " + x.betalende + " betaler";
+    tr.querySelector("[data-kontkr]").textContent = kr(x.provenu);
+  });
+  $("#kontialt-tekst").textContent = "fra spillerne, efter gebyr – klubben betaler " + kr(R.fritagelser) + " kr. for de fritagne";
+  $("#kontfrit").textContent = kr(sum(R.hold, x => x.fritaget));
+  $("#kontialt").textContent = kr(R.provenu);
+  // tøj
+  const TJ = R.toej;
+  bygEnGang(tl, TJ.hold.map(t => t.id), () => [TJ.hold.map(t => h("tr", { "data-toejhold": t.id },
+      h("td", null, t.uden ? t.navn : h("button", { type: "button", class: "lnk holdlink", "data-tilhold": t.id }, t.navn),
+        h("small", null, saetFelt(t, "Antal sæt til " + t.navn), h("span", { "data-toejtekst": "1" })),
+        h("small", null, "Lukke huller ", hullerFelt(t, "Lukke huller i tøj for " + t.navn + ", kr. pr. sæson"), " kr. pr. sæson")),
+      h("td", { class: "v" }, aarValg(t.id, t.aar, "Hvor ofte " + t.navn + " får nyt tøj")),
+      h("td", { class: "v num", "data-toejpr": "1" }))),
+    h("tr", { class: "t" }, h("td", null, "Tøj pr. sæson", h("small", { id: "toejantal" })), h("td"), h("td", { class: "v num", id: "toejialt" }))]);
+  TJ.hold.forEach(t => {
+    const tr = tl.querySelector('[data-toejhold="' + t.id + '"]');
+    if (!tr) return;
+    visToejValg(tr, t);
+    tr.querySelector("[data-toejtekst]").textContent = " sæt × " + kr(t.prSaet) + " kr. = " + kr(t.pris) + " kr." +
+      (t.pakke.length > 1 ? " – " + og(t.pakke.map(z => lav(z.navn))) : "") + (t.uden ? " · intet kontingent – klubben betaler" : "");
+    tr.querySelector("[data-toejpr]").textContent = t.huller + t.prSaeson >= 0.5 ? kr(t.huller + t.prSaeson) : "–";
+  });
+  $("#toejantal").textContent = (TJ.valgt ? flere(TJ.valgt, "hold", "hold") + " får nyt tøj – " + kr(TJ.ialt) + " kr. til side" : "intet nyt tøj endnu") +
+    (TJ.huller >= 0.5 ? " · huller " + kr(TJ.huller) + " kr." : "");
+  $("#toejialt").textContent = kr(TJ.ialt + TJ.huller);
+  const udenKont = TJ.hold.filter(t => t.uden && t.huller + t.prSaeson >= 0.5), udenPris = TJ.hold.filter(t => t.aar > 0 && t.udenPris.length);
+  const hullerB = sum(TJ.hold, t => t.hullerStd);
+  $("#toejnote").textContent = (TJ.valgt ? "Til nyt tøj skal klubben lægge " + kr(TJ.ialt) + " kr. til side hver sæson – pengene bruges, når holdene får nyt. "
+      : "Intet hold har nyt tøj med i beregningen. ") +
+    "At lukke huller koster " + kr(TJ.huller) + " kr. pr. sæson" + (Math.abs(TJ.huller - hullerB) >= 0.5 ? " (budgettet: " + kr(hullerB) + " kr.)" : " – som budgettet") + "." +
+    (udenKont.length ? " " + og(udenKont.map(t => t.navn)) + "'s tøj (" + kr(TJ.klub) + " kr.) betaler klubben." : "") +
+    (udenPris.length ? " Uden pris og ikke med: " + og(udenPris.map(t => og(t.udenPris.map(lav)) + " til " + t.kode)) + "." : "");
+  // aktivitetstilskud
+  const AK = R.aktivitet, grupper = AK.grupper;
+  bygEnGang(al, AK.hold.map(t => t.id), () => [AK.hold.map(t => h("tr", { "data-akthold": t.id },
+      h("td", null, t.uden ? t.navn : h("button", { type: "button", class: "lnk holdlink", "data-tilhold": t.id }, t.navn),
+        h("small", null, t.uden ? "intet kontingent – andelen bliver på klubben" : flere(t.antal, "spiller", "spillere"))),
+      grupper.map(g => h("td", { class: "v" }, h("input", { class: "felt-lille smal num", inputmode: "numeric", "data-akt": t.id, "data-gruppe": g,
+        "aria-label": "Medlemmer " + g + " år på " + t.navn }))),
+      h("td", { class: "v num", "data-aktkr": "1" }))),
+    h("tr", { class: "t" }, h("td", null, "I alt", h("small", { id: "aktpoint" })), grupper.map(g => h("td", { class: "v num", "data-aktsum": g })),
+      h("td", { class: "v num", id: "aktialt" }))]);
+  AK.hold.forEach(t => {
+    const tr = al.querySelector('[data-akthold="' + t.id + '"]');
+    if (!tr) return;
+    grupper.forEach(g => feltVis(tr.querySelector('[data-gruppe="' + g + '"]'), String(t.n[g]), t.n[g] !== t.std[g], "Uden dit tal: " + t.std[g]));
+    tr.querySelector("[data-aktkr]").textContent = t.andel >= 0.5 ? kr(t.andel) : "–";
+  });
+  grupper.forEach(g => { const c = al.querySelector('[data-aktsum="' + g + '"]'); if (c) c.textContent = kr(sum(AK.hold, t => t.n[g])); });
+  $("#aktpoint").textContent = kr(AK.ialt) + " point · " + kr(AK.prPoint, 2) + " kr. pr. point";
+  $("#aktialt").textContent = kr(AK.beloeb);
+  const kr25 = RAMME.aktivitet.kr2025["0-6"] / RAMME.aktivitet.point["0-6"];
+  $("#aktnote").textContent = "Budgettet regner med " + kr(AK.beloeb) + " kr. i aktivitetstilskud – " + kr(AK.prPoint, 2) + " kr. pr. point. Med 2025's " + kr(kr25) +
+    " kr. pr. point ville holdenes point give " + kr(AK.ialt * kr25) + " kr." + (AK.klub >= 0.5 ? " " + og(AK.hold.filter(t => t.uden && t.andel >= 0.5).map(t => t.navn)) +
+    "'s andel (" + kr(AK.klub) + " kr.) bliver på klubben." : "");
+}
+/* Lukke huller i tøj – et felt i kr. pr. sæson; tomt felt giver budgettets */
+function hullerFelt(t, label) {
+  return h("input", { class: "felt-lille num huller" + (Math.abs(t.huller - t.hullerStd) >= 0.5 ? " fast" : ""), inputmode: "numeric", value: kr(t.huller),
+    "data-toejhuller": t.id, "aria-label": label, title: "Budgettet: " + kr(t.hullerStd) + " kr." });
 }
 
 /* ------------------------------------------------------------ kørsel */
@@ -2575,12 +2823,7 @@ function tegnFod() {
 }
 
 /* ============================================================ justeringer */
-function saet(felt, v) {
-  const x = valgtX();
-  const r = S.I.hold[x.id] || (S.I.hold[x.id] = {});
-  if (v == null) delete r[felt]; else r[felt] = v;
-  if (!Object.keys(r).length) delete S.I.hold[x.id];
-}
+function saet(felt, v) { saetHold(valgtX().id, felt, v); }
 function tegnHoldOgFokus(sel) {
   tegnHold();
   const el = sel && document.querySelector(sel);
@@ -2612,8 +2855,11 @@ function knytHold() {
       const x = valgtX(), v = clamp(Math.round(Math.max(0, tal(t.value))), 0, TAKST_MAKS);
       saet("takst", tekst(t.value) && Math.abs(v - x.nu) >= 0.5 ? v : null);
       opdaterTal(); tegnHold();
-    } else if (t.dataset.toejaar || t.dataset.toejsaet) {
+    } else if (t.dataset.toejaar || t.dataset.toejsaet || t.dataset.toejhuller) {
       aendrToej(t); opdaterTal();               // tøjrækken skrives om på stedet
+    } else if (t.dataset.fritagetfor) {
+      saetFritaget(t.dataset.fritagetfor, t.value); opdaterTal();
+      const x = valgtX(); t.value = String(x.fritaget);
     }
   });
   p.addEventListener("click", e => {
@@ -2634,6 +2880,7 @@ function knytHold() {
       if (t.dataset.nul === "toej") delete S.I.toej[valgtX().id]; else saet(t.dataset.nul, null);
       opdaterTal(); tegnHold();
     } else if (t.dataset.nultakst) { saet("takst", null); opdaterTal(); tegnHoldOgFokus("#hp-takst"); }
+    else if (t.dataset.nulfritaget) { saet("fritaget", null); opdaterTal(); tegnHoldOgFokus("#hp-fritaget"); }
     else if (t.dataset.brug) { saet("udligning", +t.dataset.brug); opdaterTal(); tegnHold(); }
     else if (t.dataset.halnul) { S.I.hal = {}; opdaterTal(); tegnHold(); }
     else if (t.dataset.tilfane) {
@@ -2643,7 +2890,7 @@ function knytHold() {
     else if (t.dataset.nulhold) {
       const x = valgtX();
       gem(localStorage, NOEGLE.fortryd, JSON.stringify(S.I));
-      delete S.I.hold[x.id]; delete S.I.toej[x.id];
+      delete S.I.hold[x.id]; delete S.I.toej[x.id]; delete S.I.aktivitet[x.id];
       opdaterTal(); tegnHold();
       S.beskeder = [{ tekst: x.h.kort + " er sat tilbage til budgettet og taksten nu.", knap: { tekst: "Fortryd", handling: fortryd } }];
       tegnBannere();
@@ -2662,8 +2909,8 @@ function markerRettet(id) {
 /* Holdets nye tøj: «aar» (hvor ofte) eller «saet» (antal) – kun forskelle fra rammen gemmes. v = null giver rammens */
 function saetToej(id, felt, v) {
   const t = S.R && S.R.toej ? S.R.toej.hold.find(z => z.id === id) : null;
-  const std = felt === "aar" ? toejAarStd(id) : t ? t.saetStd : null;
-  const n = v == null || !isFinite(v) ? null : clamp(Math.round(v), 0, felt === "aar" ? 20 : 200);
+  const std = felt === "aar" ? toejAarStd(id) : !t ? null : felt === "saet" ? t.saetStd : t.hullerStd;
+  const n = v == null || !isFinite(v) ? null : clamp(Math.round(v), 0, felt === "aar" ? 20 : felt === "saet" ? 200 : 1e6);
   const r = Object.assign({}, S.I.toej[id]);
   if (n == null || n === std) delete r[felt]; else r[felt] = n;
   if (Object.keys(r).length) S.I.toej[id] = r; else delete S.I.toej[id];
@@ -2671,11 +2918,32 @@ function saetToej(id, felt, v) {
 /* En vælger (hvor ofte) eller et felt (antal sæt) er ændret – feltet viser bagefter det tal, der regnes med */
 function aendrToej(el) {
   if (el.dataset.toejaar) { saetToej(el.dataset.toejaar, "aar", +el.value); return; }
-  const id = el.dataset.toejsaet;
-  saetToej(id, "saet", tekst(el.value) ? Math.max(0, tal(el.value)) : null);
+  const huller = !!el.dataset.toejhuller, id = el.dataset.toejsaet || el.dataset.toejhuller;
+  saetToej(id, huller ? "huller" : "saet", tekst(el.value) ? Math.max(0, tal(el.value)) : null);
   regn();
   const t = S.R.toej.hold.find(z => z.id === id);
-  if (t) { el.value = String(t.saet); el.classList.toggle("fast", t.saet !== t.saetStd); }
+  if (t && huller) { el.value = kr(t.huller); el.classList.toggle("fast", Math.abs(t.huller - t.hullerStd) >= 0.5); }
+  else if (t) { el.value = String(t.saet); el.classList.toggle("fast", t.saet !== t.saetStd); }
+}
+/* Takst, fritagne og medlemmer pr. aldersgruppe for et hold – kun forskelle fra budgettet gemmes */
+function saetHold(id, felt, v) {
+  const r = S.I.hold[id] || (S.I.hold[id] = {});
+  if (v == null) delete r[felt]; else r[felt] = v;
+  if (!Object.keys(r).length) delete S.I.hold[id];
+}
+function saetTakst(id, raa) {
+  const x = S.R.hold.find(y => y.id === id), v = clamp(Math.round(Math.max(0, tal(raa))), 0, TAKST_MAKS);
+  saetHold(id, "takst", x && tekst(raa) && Math.abs(v - x.nu) >= 0.5 ? v : null);
+}
+function saetFritaget(id, raa) {
+  const x = S.R.hold.find(y => y.id === id), v = x ? clamp(Math.round(Math.max(0, tal(raa))), 0, x.rater) : 0;
+  saetHold(id, "fritaget", x && tekst(raa) && v !== x.fritagetStd ? v : null);
+}
+function saetAkt(id, gruppe, raa) {
+  const t = S.R.aktivitet.hold.find(z => z.id === id), v = Math.max(0, Math.round(tal(raa)));
+  const r = Object.assign({}, S.I.aktivitet[id]);
+  if (!t || !tekst(raa) || v === t.std[gruppe]) delete r[gruppe]; else r[gruppe] = clamp(v, 0, 1000);
+  if (Object.keys(r).length) S.I.aktivitet[id] = r; else delete S.I.aktivitet[id];
 }
 /* Klubbens indtægter og overskuddet: kun forskelle fra budgettet og rammen gemmes */
 function rydKlub() {
@@ -2707,15 +2975,6 @@ function knytKlub() {
     } else if (t.dataset.maal) {
       if (tekst(t.value)) S.I.klub.maal = clamp(Math.round(tal(t.value)), -1e7, 1e7); else delete S.I.klub.maal;
       rydKlub(); opdaterTal(); tegnKlub();
-    } else if (t.dataset.toejaar || t.dataset.toejsaet) {
-      aendrToej(t); opdaterTal();               // listen skrives om på stedet
-    } else if (t.dataset.toejalle) {
-      if (t.value !== "") {
-        const v = +t.value;
-        S.R.toej.hold.filter(z => (RAMME.toej.ingen || []).indexOf(z.id) < 0).forEach(z => saetToej(z.id, "aar", v));
-        opdaterTal();
-      }
-      t.value = "";
     }
   });
   el.addEventListener("click", e => {
@@ -2736,6 +2995,46 @@ function knytKlub() {
       const k = [...el.querySelectorAll("[data-kat]")].find(z => z.dataset.kat === n); if (k) k.focus();
     } else if (b.dataset.rul) { const m = document.getElementById(b.dataset.rul); if (m) m.scrollIntoView({ behavior: "smooth", block: "start" }); }
     else if (b.dataset.tilhold) visHold(b.dataset.tilhold);
+  });
+  el.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("input:not([type=range])")) e.target.blur(); });
+}
+function knytOverblik() {
+  $("#overblikpanel").addEventListener("click", e => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    if (b.dataset.tilhold) visHold(b.dataset.tilhold);
+    else if (b.dataset.tilfane) skiftFane(b.dataset.tilfane, true);
+  });
+}
+function knytRetTal() {
+  const el = $("#rettalpanel");
+  el.addEventListener("change", e => {
+    const t = e.target;
+    if (t.dataset.takstfor) {
+      saetTakst(t.dataset.takstfor, t.value); opdaterTal();
+      const x = S.R.hold.find(y => y.id === t.dataset.takstfor); if (x) { t.value = kr(x.takst); t.classList.toggle("fast", x.overstyret); }
+    } else if (t.dataset.fritagetfor) {
+      saetFritaget(t.dataset.fritagetfor, t.value); opdaterTal();
+      const x = S.R.hold.find(y => y.id === t.dataset.fritagetfor); if (x) { t.value = String(x.fritaget); t.classList.toggle("fast", x.fritagetRettet); }
+    } else if (t.dataset.toejaar || t.dataset.toejsaet || t.dataset.toejhuller) {
+      aendrToej(t); opdaterTal();
+    } else if (t.dataset.toejalle) {
+      if (t.value !== "") {
+        const v = +t.value;
+        S.R.toej.hold.filter(z => (RAMME.toej.ingen || []).indexOf(z.id) < 0).forEach(z => saetToej(z.id, "aar", v));
+        opdaterTal();
+      }
+      t.value = "";
+    } else if (t.dataset.akt) {
+      saetAkt(t.dataset.akt, t.dataset.gruppe, t.value); opdaterTal();
+      const z = S.R.aktivitet.hold.find(y => y.id === t.dataset.akt); if (z) { t.value = String(z.n[t.dataset.gruppe]); t.classList.toggle("fast", z.n[t.dataset.gruppe] !== z.std[t.dataset.gruppe]); }
+    }
+  });
+  el.addEventListener("click", e => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    if (b.dataset.tilhold) visHold(b.dataset.tilhold);
+    else if (b.dataset.tilfane) skiftFane(b.dataset.tilfane, true);
   });
   el.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("input:not([type=range])")) e.target.blur(); });
 }
@@ -2804,7 +3103,7 @@ async function kopier(t) {
 function b64(s) { return btoa(unescape(encodeURIComponent(s))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
 function fraB64(s) { s = s.replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "="; return decodeURIComponent(escape(atob(s))); }
 async function delLink() {
-  const url = location.origin + location.pathname + "#s=" + b64(JSON.stringify({ hold: S.I.hold, hal: S.I.hal, klub: S.I.klub, koersel: S.I.koersel, toej: S.I.toej, valgt: S.hold }));
+  const url = location.origin + location.pathname + "#s=" + b64(JSON.stringify({ hold: S.I.hold, hal: S.I.hal, klub: S.I.klub, koersel: S.I.koersel, toej: S.I.toej, aktivitet: S.I.aktivitet, valgt: S.hold }));
   const ok = await kopier(url);
   S.beskeder = [{ tekst: ok ? "Linket er kopieret. Den, der åbner det, ser dine justeringer – og skal også have koden." : "Kunne ikke kopiere. Linket er: " + url }];
   tegnBannere();
@@ -2909,9 +3208,11 @@ async function start() {
   $("#del").addEventListener("click", delLink);
   window.addEventListener("resize", toppensHoejde);
   window.addEventListener("hashchange", () => { if (/^#s=/.test(location.hash)) { laesDeltLink(); if (S.D) tegn(); } });
+  knytOverblik();
   knytHold();
   knytKlub();
   knytKoersel();
+  knytRetTal();
 
   $("#laasform").addEventListener("submit", async e => {
     e.preventDefault();
