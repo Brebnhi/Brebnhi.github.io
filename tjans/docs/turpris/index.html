@@ -12,7 +12,8 @@
   STANDARD og SAESON). Robotten opretter et issue, når kampprogrammet for en ny sæson er ude,
   og priserne stadig er fra sidste sæson (tjans/scripts/vedligehold.py).
   Sæsonen: udeturene hentes fra ../koerselsudligning/status.json, som natkørslen opdaterer –
-  også når en ny sæson kommer. Grundspil, pokal og slutspil tæller med.
+  også når en ny sæson kommer. Kun grundspillet tæller med – pokal og slutspil er ekstra.
+  Lejebilturene betaler klubben helt: leje, diesel til at tanke bilerne op igen, færge og hotel.
   Gemmer kun i browseren (localStorage "aav.turpris.*"). Startsiden læser "aav.turpris.saeson".
   Et delt link bærer hele turen i adressen (#tur=…).
 -->
@@ -317,8 +318,9 @@
   <p class="eyebrow">Aalborg Volley · udebaneture</p>
   <h1>Hvad koster udeturene?</h1>
   <p class="lede">Sæsonens udeture hentes fra kampprogrammet og regnes ud af sig selv: D1 lejer biler til
-    Sjælland, og det betaler klubben. Alle andre ture køres i egne biler, som spillerne betaler. Under
-    <b>Regn en tur</b> kan du regne en enkelt tur igennem og rette tallene.</p>
+    Sjælland, og klubben betaler det hele – leje, diesel til at tanke bilerne op igen, færge og hotel. Alle andre
+    ture køres i egne biler, som spillerne betaler. Under <b>Regn en tur</b> kan du regne en enkelt tur igennem og
+    rette tallene.</p>
   <p class="call" id="fra-link" role="status" hidden>Turen er hentet fra et delt link.</p>
   <p class="call advar" id="pris-varsel" role="status" hidden></p>
 
@@ -393,7 +395,7 @@
       <summary><span>Forudsætninger</span> <small id="indst-kort"></small></summary>
       <div class="indst-indhold">
         <h3>Lejebiler til Sjælland – klubben betaler</h3>
-        <div class="grid fire">
+        <div class="grid fire" id="indst-leje">
           <label class="felt"><span>Hotel <small>kr. pr. dobbeltweekend</small></span>
             <input type="text" inputmode="decimal" data-si="hotel"></label>
           <label class="felt"><span>Færge <small>kr. pr. bil pr. vej</small></span>
@@ -402,10 +404,11 @@
             <input type="text" inputmode="numeric" data-si="sjKm"></label>
           <label class="felt"><span>Km mellem kampene <small>dobbeltweekend</small></span>
             <input type="text" inputmode="numeric" data-si="mellem"></label>
-          <label class="felt"><span>Diesel <small>kr. pr. liter</small></span>
-            <input type="text" inputmode="decimal" data-si="diesel"></label>
           <label class="felt"><span>Personer <small>til hotellet</small></span>
             <input type="text" inputmode="numeric" data-si="personer"></label>
+          <label class="felt"><span>Diesel <small>kr. pr. liter</small></span>
+            <input type="text" inputmode="decimal" data-si="diesel"></label>
+          <!-- lejebilernes forbrug (km pr. liter) sættes ind her af scriptet – ét felt pr. bil i STANDARD.biler -->
         </div>
         <p class="hint" id="indst-biler"></p>
         <h3>Egne biler – spillerne betaler selv</h3>
@@ -696,16 +699,20 @@
   }
 
   // Forudsætninger for sæsonen. Gemte ændringer gælder kun, så længe priserne er fra samme sæson
-  // – antal biler pr. hold huskes dog videre.
+  // – antal biler pr. hold huskes dog videre. lejeKml = lejebilernes forbrug, én pr. bil i STANDARD.biler.
   function siStandard() {
     return { personer: STANDARD.personer, hotel: STANDARD.hotel, mellem: STANDARD.mellem, sjKm: STANDARD.km,
-      faerge: STANDARD.faerge, diesel: STANDARD.pris_l, benzin: SAESON.benzin, kml: SAESON.kml, biler: {} };
+      faerge: STANDARD.faerge, diesel: STANDARD.pris_l, benzin: SAESON.benzin, kml: SAESON.kml,
+      lejeKml: STANDARD.biler.map(function (b) { return b.kml; }), biler: {} };
   }
   function rensSi(s) {
     var u = siStandard();
     if (!s || typeof s !== "object") return u;
     if (s.priser === PRISER_SAESON) {
       SI_TAL.forEach(function (k) { if (typeof s[k] === "number" && isFinite(s[k]) && s[k] >= 0) u[k] = s[k]; });
+      if (Array.isArray(s.lejeKml) && s.lejeKml.length === u.lejeKml.length) {
+        s.lejeKml.forEach(function (v, i) { if (typeof v === "number" && isFinite(v) && v >= 0) u.lejeKml[i] = v; });
+      }
     }
     if (s.biler && typeof s.biler === "object") {
       Object.keys(s.biler).forEach(function (k) {
@@ -855,6 +862,7 @@
     if (lejebilTur(t)) {
       s.personer = si.personer;
       s.pris_l = si.diesel;
+      s.biler.forEach(function (bil, i) { if (typeof si.lejeKml[i] === "number") bil.kml = si.lejeKml[i]; });
       s.hotel = b ? si.hotel : 0;
       s._hotel2 = si.hotel;
       if (over) { s.km = si.sjKm; s.faerge = si.faerge; }
@@ -879,15 +887,28 @@
     gemteTure().forEach(function (x) { if (noegle && x.kilde === noegle) g = x; });
     return g;
   }
+  // Turens pris – og hvad den består af (billeje, braendstof, faerge, hotel, andet).
+  // Brændstoffet på en lejebiltur er dieslen til at tanke bilerne op igen – det betaler klubben.
+  var DELE = ["billeje", "braendstof", "faerge", "hotel", "andet"];
+  var DEL_NAVN = { billeje: "billeje", braendstof: "diesel", faerge: "færge", hotel: "hotel", andet: "andet" };
+  function nulDele() { var d = {}; DELE.forEach(function (k) { d[k] = 0; }); return d; }
+  function fordeling(d) {                    // fx "billeje 15.719 · diesel 6.201 · færge 7.716 · hotel 8.018 kr."
+    var l = DELE.filter(function (k) { return d[k] >= 0.5; }).map(function (k) { return DEL_NAVN[k] + " " + hel(d[k]); });
+    return l.length > 1 ? l.join(" · ") + " kr." : "";        // hårde mellemrum: linjen knækker kun ved ·
+  }
   function prisFor(t, gemte) {
-    var g = gemte[t.noegle];
+    var g = gemte[t.noegle], p;
     if (g) {
-      return { total: g.total, rettet: true, kmBil: g.kmBil, biler: g.biler || 1,
+      p = { total: g.total, rettet: true, kmBil: g.kmBil, biler: g.biler || 1,
         spar: typeof g.toEnkelt === "number" ? g.toEnkelt - g.total : null };
+      DELE.forEach(function (k) { p[k] = typeof g[k] === "number" && isFinite(g[k]) ? g[k] : 0; });
+      return p;
     }
     var s = tilstandFor(t), r = beregn(s);
-    return { total: r.hoved.total, rettet: false, kmBil: r.hoved.km, biler: s.biler.length,
+    p = { total: r.hoved.total, rettet: false, kmBil: r.hoved.km, biler: s.biler.length,
       spar: r.toEnkelt ? r.toEnkelt.total - r.hoved.total : null };
+    DELE.forEach(function (k) { p[k] = r.hoved[k]; });
+    return p;
   }
 
   var valgtHold = laes("hold") || "D1";
@@ -958,8 +979,9 @@
     gemteTure().forEach(function (x) { if (x.kilde) gemte[x.kilde] = x; });
     var idag = midnat(new Date());
     var klub = 0, klubRest = 0, klubTure = 0, klubKampe = 0, spil = 0, spilRest = 0, klubHold = [], spilHold = [];
+    var klubDel = nulDele();                 // klubbens ture fordelt på billeje, diesel, færge, hotel og andet
     program.hold.forEach(function (h) {
-      h.sum = 0; h.rest = 0; h.kampe = 0; h.klub = 0; h.spil = 0; h.egneTure = 0;
+      h.sum = 0; h.rest = 0; h.kampe = 0; h.klub = 0; h.spil = 0; h.egneTure = 0; h.klubDel = nulDele();
       h.turListe.forEach(function (t) {
         t.pris = prisFor(t, gemte);
         t.klub = lejebilTur(t);
@@ -970,6 +992,7 @@
         if (!t.spillet) h.rest += t.pris.total;
         if (t.klub) {
           h.klub += t.pris.total; klub += t.pris.total; klubTure++; klubKampe += t.kampe.length;
+          DELE.forEach(function (k) { h.klubDel[k] += t.pris[k]; klubDel[k] += t.pris[k]; });
           if (!t.spillet) klubRest += t.pris.total;
         } else {
           h.spil += t.pris.total; spil += t.pris.total; h.egneTure++;
@@ -982,8 +1005,10 @@
 
     $("t-klub").textContent = kr0(klub);
     var klubTekst = klubHold.length ? klubHold.join(", ") + " til Sjælland i lejebiler" : "Ingen ture i lejebiler";
-    $("t-klub-s").textContent = klubTekst + " · " + flertal(klubTure, "tur", "ture") + ", " +
-      flertal(klubKampe, "udekamp", "udekampe") + (klubRest < klub - 0.5 ? " · " + kr0(klubRest) + " tilbage af sæsonen" : "");
+    var klubFordelt = fordeling(klubDel);
+    $("t-klub-s").innerHTML = esc(klubTekst + " · " + flertal(klubTure, "tur", "ture") + ", " +
+      flertal(klubKampe, "udekamp", "udekampe") + (klubRest < klub - 0.5 ? " · " + kr0(klubRest) + " tilbage af sæsonen" : "")) +
+      (klubFordelt ? "<br>" + esc(klubFordelt) : "");
     $("t-spil").textContent = kr0(spil);
     $("t-spil-s").textContent = (spilHold.join(", ") || "Ingen hold") + " i egne biler · brændstof og Storebælt" +
       (spilRest < spil - 0.5 ? " · " + kr0(spilRest) + " tilbage" : "");
@@ -1043,12 +1068,12 @@
       if (a.ekstra) tags.push('<span class="tag">Mangler i VD\'s program</span>');
       if (p.rettet) tags.push('<span class="tag ret">Dine tal</span>');
       if (t.spillet) tags.push('<span class="tag">Spillet</span>');
-      var prisUnder = "";
+      var prisUnder = leje && p.braendstof >= 0.5 ? "<small>heraf diesel " + kr0(p.braendstof) + "</small>" : "";
       if (p.spar != null && Math.abs(p.spar) >= 0.5) {
-        prisUnder = '<small class="' + (p.spar > 0 ? "godt" : "skidt") + '">' +
+        prisUnder += '<small class="' + (p.spar > 0 ? "godt" : "skidt") + '">' +
           (p.spar > 0 ? "sparer " + kr0(p.spar) : kr0(-p.spar) + " dyrere") + " end 2 ture</small>";
       } else if (!leje && p.biler > 1 && p.total > 0) {
-        prisUnder = "<small>" + kr0(p.total / p.biler) + " pr. bil</small>";
+        prisUnder += "<small>" + kr0(p.total / p.biler) + " pr. bil</small>";
       }
       var datoCelle = dato(a.dato)
         ? kort(a.dato) + (b ? "–" + kort(b.dato) : "") + "<small>" + ugedag(a.dato) + (b ? "–" + ugedag(b.dato) : "") + "</small>"
@@ -1063,16 +1088,19 @@
     $("hold-fod").innerHTML = '<tr><td class="l" colspan="2">I alt · ' + flertal(h.kampe, "udekamp", "udekampe") +
       (h.kampe !== h.turListe.length ? " på " + flertal(h.turListe.length, "tur", "ture") : "") +
       (h.klub > 0.5 && h.spil > 0.5 ? "<small>klubben " + kr0(h.klub) + " · spillerne " + kr0(h.spil) + "</small>" : "") +
+      (fordeling(h.klubDel) ? "<small>lejebilturene: " + esc(fordeling(h.klubDel)) + "</small>" : "") +
       (h.rest < h.sum - 0.5 ? "<small>heraf tilbage af sæsonen: " + kr0(h.rest) + "</small>" : "") +
       '</td><td class="km"></td><td class="n">' + kr0(h.sum) + "</td></tr>";
   }
 
   function visIndstKort() {
     $("indst-kort").textContent = "hotel " + kr0(si.hotel) + " · færge " + kr0(si.faerge) + " pr. bil pr. vej · diesel " +
-      FI.format(si.diesel) + " kr. · egne biler " + FI.format(si.kml) + " km/l à " + FI.format(si.benzin) + " kr.";
+      FI.format(si.diesel) + " kr. à " + si.lejeKml.map(function (x) { return FI.format(x); }).join(" og ") +
+      " km/l · egne biler " + FI.format(si.kml) + " km/l à " + FI.format(si.benzin) + " kr.";
     $("indst-biler").innerHTML = "Lejebilerne er de samme som under Regn en tur: " +
       STANDARD.biler.map(function (b) { return esc(b.navn) + " " + hel(b.leje) + " kr./dag"; }).join(" og ") +
-      ". Turene køres via Aarhus–Odden med færge begge veje.";
+      ". Turene køres via Aarhus–Odden med færge begge veje. Klubben betaler også dieslen til at tanke bilerne op " +
+      "igen før aflevering: km pr. bil ÷ forbrug × dieselprisen.";
     $("indst-egne").textContent = "Antal biler retter du ved holdet ovenfor. Storebælt: " + kr0(BROPRIS_TR) +
       " pr. bil tur/retur med weekendrabat (fra kørselsudligningen).";
   }
@@ -1081,6 +1109,17 @@
       i.value = feltvaerdi(si[i.getAttribute("data-si")]);
       i.removeAttribute("aria-invalid");
     });
+    document.querySelectorAll("[data-si-kml]").forEach(function (i) {
+      i.value = feltvaerdi(si.lejeKml[+i.getAttribute("data-si-kml")]);
+      i.removeAttribute("aria-invalid");
+    });
+  }
+  // Ét forbrugsfelt pr. lejebil (STANDARD.biler) under Forudsætninger.
+  function bygForbrugsfelter() {
+    $("indst-leje").insertAdjacentHTML("beforeend", STANDARD.biler.map(function (b, i) {
+      return '<label class="felt"><span>Forbrug, ' + esc(b.navn || "bil " + (i + 1)) + " <small>km pr. liter</small></span>" +
+        '<input type="text" inputmode="decimal" data-si-kml="' + i + '"></label>';
+    }).join(""));
   }
 
   function visSadan() {
@@ -1088,7 +1127,7 @@
     $("sadan").innerHTML = [
       "Kampe og km kommer fra kørselsudligningen, som robotten opdaterer hver nat. Når kampprogrammet for næste sæson er ude, skifter siden selv.",
       "Kun grundspillets udekampe tæller med – pokal og slutspil er ekstra. En udekamp i egen hal (fx H2 mod H3) tæller som udekamp uden kørsel. Mangler en udekamp i Volleyball Danmarks program, står den i <code>EKSTRA_UDEKAMPE</code> øverst i scriptet, indtil den dukker op i programmet.",
-      leje + " lejer biler til udekampe på Sjælland (over Storebælt), og det betaler klubben. Turen køres via Aarhus–Odden med færge begge veje.",
+      leje + " lejer biler til udekampe på Sjælland (over Storebælt), og det betaler klubben – billeje, diesel til at tanke bilerne op igen, færge og hotel. Turen køres via Aarhus–Odden med færge begge veje. Dieslen er km pr. bil ÷ bilens forbrug × dieselprisen – begge kan rettes under Forudsætninger.",
       dob + ": to udekampe lørdag og søndag på Sjælland i samme weekend er én tur med 2 lejedage, hotel og km mellem kampene. Ved dobbeltweekenderne står der, hvad det sparer i forhold til at køre to gange.",
       "Alle andre udeture – også " + leje + "s i Jylland og på Fyn – er hver sin tur i egne biler. Prisen er brændstof og Storebælt. Det betaler spillerne selv, så det tæller ikke med i klubbens total.",
       "Regner du en tur fra kampprogrammet igennem under Regn en tur, bruger sæsonen dine tal for den tur med det samme (mærket <b>Dine tal</b>). Rettelserne ligger i denne browser – åbner du et delt link til turen, kommer de med."
@@ -1608,17 +1647,20 @@
     gemSi(); visSaeson();
   });
   $("indst").addEventListener("input", function (e) {
-    var t = e.target, k = t.getAttribute("data-si");
-    if (!k) return;
+    var t = e.target, k = t.getAttribute("data-si"), bil = t.getAttribute("data-si-kml");   // bil = lejebilens forbrug
+    if (!k && bil == null) return;
     var x = tal(t.value);
     if (isNaN(x) || x < 0) { t.setAttribute("aria-invalid", "true"); return; }
     t.removeAttribute("aria-invalid");
-    si[k] = x;
+    if (k) si[k] = x; else si.lejeKml[+bil] = x;
     gemSi(); visSaeson();
   });
   $("indst").addEventListener("focusout", function (e) {
-    var t = e.target, k = t.getAttribute && t.getAttribute("data-si");
-    if (k && t.getAttribute("aria-invalid") !== "true") t.value = feltvaerdi(si[k]);
+    var t = e.target;
+    if (!t.getAttribute || t.getAttribute("aria-invalid") === "true") return;
+    var k = t.getAttribute("data-si"), bil = t.getAttribute("data-si-kml");
+    if (k) t.value = feltvaerdi(si[k]);
+    else if (bil != null) t.value = feltvaerdi(si.lejeKml[+bil]);
   });
   $("indst-nulstil").addEventListener("click", function () {
     si = siStandard();
@@ -1754,6 +1796,7 @@
 
   visFaergeHint();
   visSadan();
+  bygForbrugsfelter();
   visIndstFelter();
   visIndstKort();
   visFelter();
