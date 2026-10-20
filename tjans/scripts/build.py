@@ -519,6 +519,12 @@ def main():
                        .strftime("%Y-%m-%d %H:%M")}
         ev["noegle"] = n = tjans_noegle(forv)
         evs[n] = ev
+        # Tidspunkter, tjansen har haft før – så kan holdsport.py kende en tjans, holdet har
+        # omdøbt og fjernet kampnummeret fra, selv om kampen er flyttet siden
+        gl = (foer or {}).get(n) if isinstance((foer or {}).get(n), dict) else {}
+        nu_start = forv["start"][:16].replace("T", " ")
+        forv["tidligere"] = sorted({t for t in (gl.get("start"), gl.get("forrige"), forv["ark"])
+                                    if t and t != nu_start})
         buckets.setdefault((row["tjans"], antal), []).append(ev)
         forventede.append(forv)
         rapport.append({**snapshot(row), "status": "ok", "kilde": kilde,
@@ -643,6 +649,15 @@ def main():
             print(f"  GIVET OP: {x['hvilken']}", file=sys.stderr)
         for x in r.get("udskudt") or []:
             print(f"  UDSKUDT til næste kørsel: {x['hvad']} {x['hvilken']}")
+        for x in r.get("type_sat") or []:
+            print(f"  TYPE: {x['hvilken']} fik aktivitetstypen {x['type']} (aktivitet {x['aktivitet']})")
+        if r.get("type_venter"):
+            print(f"  {r['type_venter']} tjanser får aktivitetstypen ved næste kørsel")
+        for x in r.get("optaget") or []:
+            print(f"  IKKE OPRETTET: {x['hvilken']} – \"{x['aktivitet_navn']}\" ligger på tidspunktet")
+        if r.get("typer"):
+            print("Aktivitetstype til tjanser: " + ", ".join(
+                f"{k} {v or 'INGEN'}" for k, v in sorted(r["typer"].items())))
         print("Dine hold i Holdsport: " + ", ".join(
             f"{h['navn']} (id {h['id']})" for h in hs["alle_hold"]) or "ingen")
     else:
@@ -971,8 +986,10 @@ def bindinger(hs, forventede, foer, nu):
             andre, gl = set(), foer_akt.get(a)
             if f.get("kilde") == "kalender" and f.get("hs_start") and f["hs_start"] != f["start"]:
                 andre |= {m for m in starter.get((f["tjans"], f["hs_start"]), []) if m != n}
-            if gl not in (None, n) and gl in noegler:
-                andre.add(gl)                      # var en anden tjans ved sidste kørsel
+            if gl not in (None, n) and gl in noegler and f.get("hs_start") == f["start"]:
+                # var en anden tjans ved sidste kørsel og står nu helt som denne (tekst og tid) –
+                # Holdsport har taget den. (Har et hold bare rettet teksten, står tiden stille.)
+                andre.add(gl)
             if andre or a in bundet:
                 p = bundet.setdefault(a, {"tjanser": [], "set": nu_iso})
                 p["tjanser"] = sorted(set(p["tjanser"]) | andre | {n})
@@ -1076,7 +1093,12 @@ def alarm(status, foer, nu):
     if hs.get("aktiveret") and hs.get("fejl"):
         p["holdsport-fejl"] = (f"Robotten kunne ikke tjekke Holdsport: {hs['fejl']}", None)
     for e in rettet.get("fejl") or []:
-        if e.get("tjans"):
+        if e.get("tjans") and e["fejl"].startswith("aktivitetstypen:"):
+            # kun typen – ikke akut, og prøves igen i morgen
+            p[f"typefejl-{e['tjans']}"] = (
+                f"Robotten kunne ikke sætte aktivitetstypen på {e['tjans']}'s tjanser: "
+                f"{e['fejl'].split(': ', 1)[-1]}", None)
+        elif e.get("tjans"):
             p[f"skrivefejl-{e['kampnr']}-{e['tjans']}"] = (
                 f"Robotten kunne ikke rette {e['hvilken']}: {e['fejl']}",
                 tid(e["start"], "%Y-%m-%d %H:%M"))
@@ -1094,8 +1116,16 @@ def alarm(status, foer, nu):
         p[f"givetop-{g['kampnr']}-{g['tjans']}"] = (tekst, tid(g["start"], "%Y-%m-%d %H:%M"))
     for m in hs.get("mangler") or []:
         p[f"mangler-{m['kampnr']}-{m['tjans']}"] = (
-            f"{m['tjans']}'s tjans {kort(m['start'])} ({m['kamp']}) mangler i Holdsport",
+            f"{m['tjans']}'s tjans {kort(m['start'])} ({m['kamp']}) mangler i Holdsport"
+            + (f" – men \"{m['optaget']}\" ligger på tidspunktet. Er det tjansen, så skriv "
+               f"\"Kampnr. {m['kampnr']}\" i dens kommentar" if m.get("optaget") and m["kampnr"]
+               else ""),
             tid(m["start"], "%Y-%m-%d %H:%M"))
+    for kode, navn in sorted((rettet.get("typer") or {}).items()):
+        if navn == "":
+            p[f"type-mangler-{kode}"] = (
+                f"{kode} har ingen aktivitetstype til tjanser i Holdsport – opret typen \"Tjans\""
+                " på holdet, så sætter robotten den på tjanserne", None)
     for r in hs.get("forkert_tid") or []:
         if r.get("dublet"):
             tekst = f"{r['tjans']}: ekstra kopi af tjansen {kort(r['start'])} i Holdsport – slet den"
@@ -1116,6 +1146,12 @@ def alarm(status, foer, nu):
              f"{kort(r['fra'])}" for r in rettet.get("flyttet") or []]
     gjort += [f"Oprettet: {r['tjans']}'s tjans {kort(r['start'])} ({r['kamp']})"
               for r in rettet.get("oprettet") or []]
+    pr_type = {}
+    for r in rettet.get("type_sat") or []:
+        pr_type.setdefault(r["type"], []).append(r["tjans"])
+    for navn, hold in sorted(pr_type.items()):
+        gjort.append(f"Aktivitetstypen \"{navn}\" sat på {len(hold)} "
+                     f"tjans{'er' if len(hold) > 1 else ''} ({', '.join(sorted(set(hold)))})")
 
     nu_dk = nu.astimezone(DK)
     akutte = [k for k, (_, t) in p.items() if t and nu_dk - timedelta(hours=3) <= t <= nu_dk + AKUT]

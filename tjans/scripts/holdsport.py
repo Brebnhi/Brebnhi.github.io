@@ -168,7 +168,9 @@ def _par(forventede_hold, aktiviteter, faste=None):
 
     Kampnummeret er den stærke nøgle — det overlever, at en kamp flyttes.
     Findes det ikke (fx hvis kommentarfeltet ikke fulgte med i importen),
-    matches på navn plus dato, og til sidst på et entydigt navn alene.
+    matches på navn plus dato, så på et entydigt navn alene, og til sidst på en aktivitet
+    med "tjans" i navnet på tjansens tidspunkt (eller et tidligere) – så findes en tjans,
+    holdet selv har omdøbt og fjernet kampnummeret fra, stadig.
     En aktivitet kan kun bruges én gang, så to ens navne ikke dækker hinanden.
 
     faste: {aktivitet: tjans} – aktiviteter, Holdsport har koblet til flere tjanser (se
@@ -230,6 +232,22 @@ def _par(forventede_hold, aktiviteter, faste=None):
             continue
         traef = [i for i in ledige if (aktiviteter[i].get("name") or "").strip() == navn]
         if len(traef) == 1:
+            tag(traef[0], k)
+
+    # 4. "tjans" i navnet og tjansens tidspunkt – nu eller før (en flyttet kamp, tjanselistens
+    #    tid). Kun når det er entydigt: én aktivitet, og ingen anden af holdets tjanser på tiden.
+    def tider(f):
+        return {f["start"][:16].replace("T", " ")} | set(f.get("tidligere") or [])
+    for k, f in enumerate(forventede_hold):
+        if k in fundet:
+            continue
+        traef = [i for i in ledige if "tjans" in _norm(aktiviteter[i].get("name"))
+                 and _lokal(aktiviteter[i]) in tider(f)]
+        if len(traef) != 1:
+            continue
+        tid = _lokal(aktiviteter[traef[0]])
+        if not any(j != k and j not in fundet and tid in tider(g)
+                   for j, g in enumerate(forventede_hold)):
             tag(traef[0], k)
 
     return fundet
@@ -300,10 +318,15 @@ def tjek(forventede, konfig, bruger, kode, faste=None):
                     "holdsport": h["navn"], "navn": f["navn"], "kamp": f.get("kamp", "")})
             else:
                 post["mangler"] += 1
+                start = f["start"][:16].replace("T", " ")
+                # Ligger der en anden aktivitet på tidspunktet, kan det være tjansen i en
+                # skikkelse, robotten ikke kender – så opretter robotten ikke en til
+                optaget = next((a.get("name") or "(uden navn)" for i, a in enumerate(akt)
+                                if i not in parret.values() and _lokal(a) == start), "")
                 resultat["mangler"].append({
                     "tjans": kode_hold, "holdsport": h["navn"], "kampnr": f["kampnr"],
                     "navn": f["navn"], "kamp": f.get("kamp", ""), "hold_id": h["id"],
-                    "start": f["start"][:16].replace("T", " ")})
+                    "start": start, "optaget": optaget})
         # En ekstra aktivitet med samme kampnummer som en tjans, der er fundet: Holdsport har
         # lavet en ny i stedet for at flytte den gamle, og den gamle står tilbage.
         brugt = set(parret.values())

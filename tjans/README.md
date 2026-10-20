@@ -19,12 +19,27 @@ Ved hver kørsel (tre gange i døgnet, og når noget uploades) sammenholder robo
 tjanselisten og kampprogrammet med Holdsport og **retter selv** det, der står forkert:
 
 - **En tjans på et forkert tidspunkt flyttes** til mødetiden — også når Volleyball Danmark
-  har flyttet kampen, så der ikke skal ventes på Holdsports kalenderhentning.
+  har flyttet kampen, så der ikke skal ventes på Holdsports kalenderhentning. Kun tidspunktet
+  og linjen *Kampstart kl. …* i kommentaren ændres; navnet og resten af teksten bliver.
 - **En tjans, der mangler, oprettes** — også en ny i tjanselisten og en, der er slettet i
-  Holdsport. Den får aktivitetstypen *Tjans* (findes den på holdet), antal pladser efter
-  tjanselisten, holdets tilmeldingstype og påmindelser, og kommentaren slutter med
-  *Oprettet af tjans-robotten*. Skal en tjans ikke være, så fjern den fra tjanselisten.
-- **Robotten sletter aldrig noget.** En ekstra kopi meldes, og du sletter den.
+  Holdsport. Den får holdets tjans-type (se herunder), antal pladser efter tjanselisten,
+  holdets tilmeldingstype og påmindelser, og kommentaren slutter med *Oprettet af
+  tjans-robotten*. Skal en tjans ikke være, så fjern den fra tjanselisten. Ligger der en anden
+  aktivitet på tidspunktet, opretter robotten ingen ny — den kan være tjansen i en skikkelse,
+  robotten ikke kender — men giver besked.
+- **Alle kommende tjanser får holdets aktivitetstype til tjanser**, så de ikke ligner kampe i
+  kalenderen. Robotten bruger den type på holdet, der hedder *Tjans* — ellers en med "tjans"
+  i navnet (fx *Tjans/opgave*), ellers en med "opgave". Har et hold ingen, står det på siden
+  under *Holdopslag* og i issuet: opret typen på holdet i Holdsport, så sætter robotten den
+  på. Højst 25 tjanser pr. kørsel; hver tjans tjekkes igen en gang i døgnet.
+- **Robotten sletter aldrig noget og ændrer aldrig navnet på en tjans.** En ekstra kopi
+  meldes, og du sletter den.
+
+**Holdene må gerne rette deres tjanser** — navn, tekst og alt andet — bare linjen
+`Kampnr. <nummer>` bliver stående i kommentaren: det er den, robotten kender tjansen på.
+Mangler den, finder robotten tjansen på tidspunktet, når der står "tjans" i navnet. Bliver
+tjansen ændret i tjanselisten eller kampprogrammet, skriver Holdsports kalenderhentning dog
+standardnavnet og -teksten ind igen i de tjanser, Holdsport selv har lavet fra kalenderen.
 
 Holdsports officielle API kan kun læse, så robotten skriver gennem det API, Holdsports egen
 app bruger, med samme login (`HOLDSPORT_USER` og `HOLDSPORT_PASSWORD`). Det login kræver dit
@@ -34,10 +49,10 @@ den dit *aktuelle hold* i Holdsport, så appen kan åbne på et andet hold end s
 
 Sikkerhed: robotten skriver først, når Holdsport har bekræftet holdskiftet; den læser en
 aktivitet, før den ændrer den, og sender alle dens indstillinger med tilbage; gentagne
-aktiviteter og betalingsaktiviteter røres ikke; højst 12 flytninger og 8 nye pr. kørsel; en
-tjans, den har oprettet, og som bliver slettet, oprettes ikke igen før efter en uge (du får
-besked); og en aktivitet, der bliver flyttet tilbage igen og igen, giver den op på efter 3
-gange på 3 døgn og slår alarm. Bagefter læser den Holdsport igen og viser resultatet.
+aktiviteter og betalingsaktiviteter røres ikke; højst 12 flytninger, 8 nye og 25 typeskift
+pr. kørsel; en tjans, den har oprettet, og som bliver slettet, oprettes ikke igen før efter en
+uge (du får besked); og en aktivitet, der bliver flyttet tilbage igen og igen, giver den op
+på efter 3 gange på 3 døgn og slår alarm. Bagefter læser den Holdsport igen og viser resultatet.
 Slå det fra med `HOLDSPORT_RETTER = False` i `scripts/indstillinger.py` — så læser robotten
 kun og slår alarm.
 

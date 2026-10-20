@@ -71,6 +71,7 @@ def main():
     hsfejl = hs.get("fejl") if hs.get("aktiveret") else None
     rettet = hs.get("rettet") or {}               # det, robotten selv har rettet i Holdsport
     skrivefejl = (rettet.get("fejl") or []) + (rettet.get("givet_op") or [])
+    uden_type = sorted(k for k, v in (rettet.get("typer") or {}).items() if v == "")
     ejer = os.environ.get("GITHUB_REPOSITORY_OWNER") or "Brebnhi"
 
     push(st, side)
@@ -83,7 +84,7 @@ def main():
     aabne = json.loads(fundet.stdout or "[]")
 
     if not (huller or forsvundne or slettet or arkfejl or konflikter or genbrugt or forkert_tid
-            or dobbelt or hsfejl or skrivefejl):
+            or dobbelt or hsfejl or skrivefejl or uden_type):
         if aabne:
             nr = str(aabne[0]["number"])
             gh("issue", "comment", nr, "--body",
@@ -100,6 +101,11 @@ def main():
         linjer += ["## Robotten kunne ikke tjekke Holdsport", "",
                    f"{hsfejl}. Indtil det virker igen, ser robotten ikke, om tjanserne står "
                    "rigtigt i Holdsport.", ""]
+    if uden_type:
+        linjer += ["## Hold uden aktivitetstype til tjanser", "",
+                   f"{', '.join(uden_type)} har ingen aktivitetstype, der hedder \"Tjans\", i "
+                   "Holdsport, så tjanserne ligner stadig kampe dér. Opret typen på holdet, så "
+                   "sætter robotten den på tjanserne ved næste kørsel.", ""]
     if skrivefejl:
         linjer += [f"## Robotten kunne ikke rette {len(skrivefejl)} ting i Holdsport", "",
                    "Robotten prøver igen ved næste kørsel.", "",
@@ -177,6 +183,9 @@ def main():
                    "|---|---|---|---|---|"]
         linjer += [f"| {m['kampnr']} | {m['start']} | {m['navn']}"
                    + (" (var i Holdsport før)" if m.get("foer_fundet") else "")
+                   + (f" – robotten opretter den ikke, for \"{m['optaget']}\" ligger på "
+                      f"tidspunktet. Er det tjansen, så skriv \"Kampnr. {m['kampnr']}\" i dens "
+                      "kommentar" if m.get("optaget") and m.get("kampnr") else "")
                    + f" | {m['tjans']} | {m['holdsport']} |" for m in slettet]
         linjer.append("")
     if genbrugt:

@@ -75,6 +75,8 @@ def render(status, base_url=""):
     dobbelt = status.get("dobbelt_tjans") or []    # samme hold, to tjanser på samme tid
     rettet = hs.get("rettet") or {}                # det, robotten selv har rettet i Holdsport
     gjort = (rettet.get("flyttet") or []) + (rettet.get("oprettet") or [])
+    gjort_tjanser = {(r["kampnr"], r["tjans"], r["start"])
+                     for r in gjort + (rettet.get("type_sat") or [])}
     skrivefejl = (rettet.get("fejl") or []) + (rettet.get("givet_op") or [])
     andre = (len(huller) + len(forsv) + len(slettet) + len(genbrugt) + len(forkert_tid)
              + len(dobbelt) + len(skrivefejl))
@@ -126,9 +128,9 @@ def render(status, base_url=""):
                   'handling</strong>' + " og ".join(bits) + ".</div>")
     if banner_data:
         banner += f'<template id="banner-ok">{ok_tekst}</template>'
-    if gjort:
-        banner += (f'<div class="banner ok"><strong>Robotten har rettet {len(gjort)} '
-                   f'{"tjans" if len(gjort) == 1 else "tjanser"} i Holdsport ved denne kørsel'
+    if gjort_tjanser:
+        banner += (f'<div class="banner ok"><strong>Robotten har rettet {len(gjort_tjanser)} '
+                   f'{"tjans" if len(gjort_tjanser) == 1 else "tjanser"} i Holdsport ved denne kørsel'
                    '</strong>Se <a href="#holdsport">Kontrol mod Holdsport</a>.</div>')
 
     def tabel(rows, cols, empty):
@@ -205,6 +207,10 @@ def render(status, base_url=""):
         sl_rows = [f"<tr><td><code>{E(m['kampnr'])}</code></td><td>{E(m['start'])}</td>"
                    f"<td>{E(m['navn'])}"
                    + ("<br><span class='muted'>var i Holdsport før</span>" if m.get("foer_fundet") else "")
+                   + (f"<br><span class='muted'>Robotten opretter den ikke: “{E(m['optaget'])}” "
+                      "ligger på tidspunktet. Er det tjansen, så skriv "
+                      f"“Kampnr. {E(m['kampnr'])}” i dens kommentar.</span>"
+                      if m.get("optaget") and m.get("kampnr") else "")
                    + "</td>"
                    f"<td><span class='tag'>{E(m['tjans'])}</span></td>"
                    f"<td class='muted'>{E(m['holdsport'])}</td></tr>" for m in slettet]
@@ -212,6 +218,7 @@ def render(status, base_url=""):
                    f"<td>{E(m['navn'])}</td>"
                    f"<td><span class='tag'>{E(m['tjans'])}</span></td></tr>" for m in venter]
         hold_rows = []
+        typer = rettet.get("typer") or {}
         for h in hs.get("hold", []):
             status_tekst = (f"{h['fundet']} af {h['forventet']}"
                             + (f" · {h['venter']} venter" if h.get("venter") else "")
@@ -223,7 +230,10 @@ def render(status, base_url=""):
                 f"<td>{E(h.get('holdsport') or '—')}</td>"
                 f"<td class='muted'>{E(h.get('id') or '')}</td>"
                 f"<td>{status_tekst}</td>"
-                f"<td class='muted'>{E(h.get('match',''))}</td></tr>")
+                + ("<td class='muted'>—</td>" if h.get("kode") not in typer else
+                   f"<td>{E(typer[h['kode']])}</td>" if typer[h["kode"]] else
+                   "<td class='st-taet'>ingen – opret typen “Tjans” på holdet</td>")
+                + f"<td class='muted'>{E(h.get('match',''))}</td></tr>")
         alle = ", ".join(f"{E(h['navn'])} (id {E(h['id'])})" for h in hs.get("alle_hold", []))
         gb_rows = [f"<tr><td><span class='tag'>{E(g['tjans'])}</span></td>"
                    f"<td>{E(g['foer_start'])} <span class='muted'>kamp {E(g['foer'].split('-')[0])}</span></td>"
@@ -278,6 +288,19 @@ def render(status, base_url=""):
                          "Holdsport. Tjek gerne, om de tilmeldte stadig kan.</div>"
                          + tabel(rt_rows, ["Tjans", "Hvad", "Aktivitet", "Nr. i Holdsport"], "")
                          if rt_rows else "")
+        pr_type = {}
+        for r in rettet.get("type_sat") or []:
+            pr_type.setdefault((r["tjans"], r["type"]), []).append(r)
+        if pr_type:
+            rettet_afsnit += (
+                "<p class='sub'>Aktivitetstypen sat ved denne kørsel, så tjanserne ikke ligner "
+                "kampe: " + " · ".join(
+                    f"<span style='white-space:nowrap'><span class='tag'>{E(h)}</span> "
+                    f"{len(rs)} {'tjans' if len(rs) == 1 else 'tjanser'} → {E(t)}</span>"
+                    for (h, t), rs in sorted(pr_type.items())) + ".</p>")
+        if rettet.get("type_venter"):
+            rettet_afsnit += (f"<p class='sub'>{rettet['type_venter']} tjanser mere får typen ved "
+                              "næste kørsel.</p>")
         sf_rows = ([f"<tr><td>{E(e.get('hvilken') or 'Holdsport')}</td><td>{E(e['fejl'])}</td></tr>"
                     for e in rettet.get("fejl") or []]
                    + [f"<tr><td>{E(g['hvilken'])}</td><td>"
@@ -324,7 +347,10 @@ def render(status, base_url=""):
             f"<p class='sub'>{hs['fundet']} af {hs['kontrolleret']} tjanser fundet i "
             "Holdsport ved sidste kørsel. Robotten retter selv en tjans, der står på et forkert "
             "tidspunkt eller mangler, ved hver kørsel – også en, der er slettet i Holdsport – og "
-            "slår alarm, hvis den ikke kan. Den sletter aldrig noget.</p>"
+            "slår alarm, hvis den ikke kan. Den giver også tjanserne holdets aktivitetstype til "
+            "tjanser (se <em>Holdopslag</em>). Den sletter aldrig noget og ændrer ikke navnene – "
+            "holdene må gerne skrive deres egne, bare <em>Kampnr.</em> bliver stående i "
+            "kommentaren.</p>"
             + spejl_afsnit
             + tabel(sl_rows, ["Kampnr.", "Mødetid", "Aktivitet", "Tjans", "Hold i Holdsport"],
                     "Ingen tjanser er blevet slettet — alle ligger som de skal.")
@@ -340,7 +366,8 @@ def render(status, base_url=""):
             + "<p class='sub'>Sådan er holdene fra tjanselisten koblet til dine hold i "
               "Holdsport. Passer et opslag ikke, så ret navnet eller nummeret i "
               "<code>data/holdsport_hold.json</code>.</p>"
-            + tabel(hold_rows, ["Hold", "Hold i Holdsport", "Id", "Fundet", "Fundet ved"], "")
+            + tabel(hold_rows, ["Hold", "Hold i Holdsport", "Id", "Fundet", "Aktivitetstype",
+                                "Fundet ved"], "")
             + (f"<p class='tnote'>Alle hold på din Holdsport-bruger: {alle}</p>" if alle else ""))
 
     # Sæsonen står ikke i koden: build.py finder den ud fra datoerne i tjanselisten.
