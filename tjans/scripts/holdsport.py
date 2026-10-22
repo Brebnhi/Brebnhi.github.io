@@ -41,7 +41,10 @@ def hent_hold(bruger, kode):
     hold = data.get("teams", data) if isinstance(data, dict) else data
     ud = []
     for h in hold or []:
-        ud.append({"id": h.get("id"), "navn": h.get("name", ""), "rolle": h.get("role")})
+        rolle = h.get("role")              # 1 spiller, 2 træner, 3 assistenttræner … 6 holdleder
+        if isinstance(rolle, str) and rolle.strip().isdigit():
+            rolle = int(rolle)
+        ud.append({"id": h.get("id"), "navn": h.get("name", ""), "rolle": rolle})
     return ud
 
 
@@ -145,6 +148,25 @@ def _kampnr(akt):
 
 ROBOT_MAERKE = "Oprettet af tjans-robotten"      # sidste linje i kommentaren på robottens egne
 
+# Volleyball Danmarks beskrivelse af en kamp: "<række>\nRunde 4\nKampnr 148197\n…" – uden punktum
+VD_RUNDE_RE = re.compile(r"^\s*Runde\s+\d+\s*$", re.M)
+RESULTAT_RE = re.compile(r"\s+\d{1,2}\s*-\s*\d{1,2}(\s*\(.*\))?\s*$")
+
+
+def er_kampen(akt, kamp=""):
+    """Er aktiviteten selve kampen og ikke en tjans? Holdene importerer deres kampprogram fra
+    Volleyball Danmark i Holdsport, så holdets egne kampe står i kalenderen – med kampnummeret i
+    kommentaren ("Kampnr 148197"). Sådan en hedder som kampen ("Aalborg Volleyball - Odense
+    Volleyball", evt. med resultatet bagefter) eller har Volleyball Danmarks beskrivelse, og den
+    har hverken "tjans" i navnet eller "Kampnr." (med punktum, som tjanserne har) i kommentaren.
+    kamp: "hjemmehold - udehold" """
+    navn = akt.get("name") or ""
+    kommentar = akt.get("comment") or ""
+    if "tjans" in _norm(navn) or "kampnr." in kommentar.lower():
+        return False
+    return bool((kamp and _norm(RESULTAT_RE.sub("", navn)) == _norm(kamp))
+                or (VD_RUNDE_RE.search(kommentar) and KAMPNR_RE.search(kommentar)))
+
 
 def kilde(akt):
     """Hvem har lavet aktiviteten?
@@ -189,7 +211,8 @@ def _par(forventede_hold, aktiviteter, faste=None):
     for k, f in enumerate(forventede_hold):
         n = f"{f['kampnr'] or f['start'][:10]}-{f['tjans']}"
         for i in list(ledige):
-            if k in fundet or str((faste or {}).get(str(aktiviteter[i].get("id")))) != n:
+            if k in fundet or str((faste or {}).get(str(aktiviteter[i].get("id")))) != n \
+                    or er_kampen(aktiviteter[i], f.get("kamp")):
                 continue
             if not any(j != i and f["kampnr"] and _kampnr(aktiviteter[j]) == f["kampnr"]
                        for j in ledige):
@@ -202,7 +225,8 @@ def _par(forventede_hold, aktiviteter, faste=None):
     for k, f in enumerate(forventede_hold):
         if k in fundet or not f["kampnr"]:
             continue
-        kandidater = [i for i in ledige if _kampnr(aktiviteter[i]) == f["kampnr"]]
+        kandidater = [i for i in ledige if _kampnr(aktiviteter[i]) == f["kampnr"]
+                      and not er_kampen(aktiviteter[i], f.get("kamp"))]
         if kandidater:
             rigtig = f["start"][:16].replace("T", " ")
             tag(min(kandidater, key=lambda i: (_lokal(aktiviteter[i]) != rigtig,
@@ -217,7 +241,8 @@ def _par(forventede_hold, aktiviteter, faste=None):
         for i in list(ledige):
             a = aktiviteter[i]
             st = _start(a)
-            if (a.get("name") or "").strip() == navn and st and st.date().isoformat() == dag:
+            if (a.get("name") or "").strip() == navn and st and st.date().isoformat() == dag \
+                    and not er_kampen(a, f.get("kamp")):
                 tag(i, k)
                 break
 
@@ -230,7 +255,8 @@ def _par(forventede_hold, aktiviteter, faste=None):
             continue
         if sum(1 for g in forventede_hold if (g["navn"] or "").strip() == navn) != 1:
             continue
-        traef = [i for i in ledige if (aktiviteter[i].get("name") or "").strip() == navn]
+        traef = [i for i in ledige if (aktiviteter[i].get("name") or "").strip() == navn
+                 and not er_kampen(aktiviteter[i], f.get("kamp"))]
         if len(traef) == 1:
             tag(traef[0], k)
 
@@ -268,7 +294,8 @@ def tjek(forventede, konfig, bruger, kode, faste=None):
         resultat["fejl"] = f"Kunne ikke nå Holdsport: {e}"
         return resultat
 
-    resultat["alle_hold"] = [{"id": h["id"], "navn": h["navn"]} for h in hold]
+    resultat["alle_hold"] = [{"id": h["id"], "navn": h["navn"], "rolle": h.get("rolle")}
+                             for h in hold]
     if not hold:
         resultat["fejl"] = "Din Holdsport-bruger er ikke tilknyttet nogen hold"
         return resultat
@@ -285,6 +312,7 @@ def tjek(forventede, konfig, bruger, kode, faste=None):
         h, hvordan = find_hold(kode_hold, konfig, hold)
         post = {"kode": kode_hold, "holdsport": h["navn"] if h else None,
                 "id": h["id"] if h else None, "match": hvordan,
+                "rolle": h.get("rolle") if h else None,       # din rolle på holdet i Holdsport
                 "forventet": len(pr_hold[kode_hold]), "fundet": 0, "mangler": 0}
         if not h:
             post["fejl"] = hvordan
@@ -333,7 +361,7 @@ def tjek(forventede, konfig, bruger, kode, faste=None):
         paa_nr = {f["kampnr"]: f for k, f in enumerate(liste) if k in parret and f["kampnr"]}
         for i, a in enumerate(akt):
             nr = _kampnr(a)
-            if i in brugt or nr not in paa_nr:
+            if i in brugt or nr not in paa_nr or er_kampen(a, paa_nr[nr].get("kamp")):
                 continue
             f = paa_nr[nr]
             resultat["dubletter"].append({
@@ -348,18 +376,154 @@ def tjek(forventede, konfig, bruger, kode, faste=None):
     return resultat
 
 
+def _konfig(rod):
+    sti = os.path.join(rod, "data", "holdsport_hold.json")
+    if not os.path.exists(sti):
+        return {}
+    try:
+        return {k: v for k, v in json.load(open(sti, encoding="utf-8")).items()
+                if not k.startswith("_")}
+    except Exception as e:
+        print(f"ADVARSEL: kunne ikke læse holdsport_hold.json ({e})", file=sys.stderr)
+        return {}
+
+
 def koer(forventede, rod, faste=None):
     bruger = os.environ.get("HOLDSPORT_USER", "").strip()
     kode = os.environ.get("HOLDSPORT_PASSWORD", "").strip()
     if not bruger or not kode:
         return {"aktiveret": False, "fejl": None, "hold": [], "mangler": [],
                 "kontrolleret": 0, "fundet": 0, "alle_hold": []}
-    sti = os.path.join(rod, "data", "holdsport_hold.json")
-    konfig = {}
-    if os.path.exists(sti):
+    return tjek(forventede, _konfig(rod), bruger, kode, faste)
+
+
+PERS_RE = re.compile(r"(\d+)\s*pers", re.I)
+FOER_KAMP = timedelta(minutes=120)       # så længe før kampen kan en tjans begynde
+
+
+def find_egne(kampe, hold_koder, kendte, rod, foer_egne=None, soeg=None, kendte_akt=None,
+              staevne_dage=None):
+    """Tjanser, du selv har oprettet i Holdsport til hjemmekampe, der ikke står i tjanselisten –
+    fx en ny pokalkamp. Robotten leder i tjanseholdenes kalendere efter
+      1. en aktivitet med "Kampnr. <kampens nummer>" i kommentaren eller navnet (eller den
+         aktivitet, den fandt sidst), ellers
+      2. en aktivitet med "tjans" i navnet og intet kampnummer, der begynder op til to timer før
+         kampen (og ikke er en af holdets kendte tjanser).
+    Hos de hold, der selv spiller kampen, ledes der ikke: står kampen i deres kalender (fra
+    Volleyball Danmarks kampprogram, med kampnummeret), er det kampen og ikke en tjans.
+    kampe:      [{kampnr, start (dansk tid), klubhold, udekode, hjemme, ude}] – hjemmekampe, hvor
+                tjansen skal findes
+    hold_koder: de hold, der har tjanser (D1 … H3)
+    kendte:     {hold: {"ÅÅÅÅ-MM-DD TT:MM", ...}} – starttider for holdenes kendte tjanser
+    foer_egne:  {kampnr: {tjans, aktivitet, lead, lead_kamp, antal}} fra sidste kørsel – så
+                findes en tjans igen, efter at kampen er flyttet
+    soeg:       {aktivitet: {tjans, start}} – andre aktiviteter, robotten vil vide, om findes endnu
+    kendte_akt: aktiviteter, der er tjanser fra tjanselisten (fra sidste kørsel)
+    staevne_dage: {(hold, "ÅÅÅÅ-MM-DD")} – dage, hvor holdet har en stævnetjans i listen. Dén
+                kan også have "tjans" i navnet, så dér skal der stå Kampnr. i tjansen
+    Returnerer {"ok": alt kunne læses,
+                "fundne": {kampnr: {tjans, aktivitet, hs_start, hs_navn, lead, lead_kamp, antal,
+                                    sikker}},
+                "tvetydige": {kampnr: [hold, ...]} – kampe med flere mulige tjanser,
+                "findes": {aktivitet: {hs_start, hs_navn}} – de af soeg, der findes}."""
+    ud = {"ok": False, "fundne": {}, "tvetydige": {}, "findes": {}}
+    bruger = os.environ.get("HOLDSPORT_USER", "").strip()
+    kode = os.environ.get("HOLDSPORT_PASSWORD", "").strip()
+    soeg = {str(a): s for a, s in (soeg or {}).items()}
+    if not (kampe or soeg) or not bruger or not kode:
+        return ud
+    try:
+        hold = hent_hold(bruger, kode)
+    except Exception:                                   # noqa: BLE001 – tjekket melder fejlen
+        return ud
+    konfig, foer_egne = _konfig(rod), foer_egne or {}
+    kendte_akt = {str(a) for a in kendte_akt or ()}
+    staevne_dage = set(staevne_dage or ())
+    tider = [k["start"] for k in kampe]
+    for s in soeg.values():
         try:
-            konfig = {k: v for k, v in json.load(open(sti, encoding="utf-8")).items()
-                      if not k.startswith("_")}
-        except Exception as e:
-            print(f"ADVARSEL: kunne ikke læse holdsport_hold.json ({e})", file=sys.stderr)
-    return tjek(forventede, konfig, bruger, kode, faste)
+            tider.append(datetime.strptime(s["start"][:16], "%Y-%m-%d %H:%M").replace(tzinfo=DK))
+        except (KeyError, TypeError, ValueError):
+            pass
+    if not tider:
+        return ud
+    fra = (min(tider) - timedelta(days=1)).date().isoformat()
+    til = (max(tider) + timedelta(days=1)).date().isoformat()
+    akt_pr_hold, ok = {}, True
+    for kode_hold in sorted(set(hold_koder) | {s.get("tjans") for s in soeg.values()} - {None}):
+        h, _ = find_hold(kode_hold, konfig, hold)
+        if not h:
+            ok = False
+            continue
+        try:
+            akt, hele = hent_aktiviteter(bruger, kode, h["id"], fra, til)
+        except Exception:                               # noqa: BLE001
+            ok = False
+            continue
+        akt_pr_hold[kode_hold] = akt
+        ok = ok and hele
+    ud["ok"] = ok
+
+    def aware(a):
+        st = _start(a)
+        if st and st.tzinfo is None:
+            st = st.replace(tzinfo=DK)
+        return st
+
+    for akt_id, s in soeg.items():
+        a = next((a for a in akt_pr_hold.get(s.get("tjans"), []) if str(a.get("id")) == akt_id),
+                 None)
+        if a is not None:
+            ud["findes"][akt_id] = {"hs_start": _lokal(a), "hs_navn": a.get("name") or ""}
+
+    fundne, tvetydige, brugt = ud["fundne"], ud["tvetydige"], {}
+    for k in kampe:
+        nr, start = k["kampnr"], k["start"]
+        start_tekst = start.astimezone(DK).strftime("%Y-%m-%d %H:%M")
+        gl = foer_egne.get(nr) or {}
+        spiller = {k.get("klubhold"), k.get("udekode")} - {"", None}
+        kamp_tekst = f"{k.get('hjemme') or ''} - {k.get('ude') or ''}"
+        sikre, mulige = [], []
+        for kode_hold, akt in akt_pr_hold.items():
+            if kode_hold not in hold_koder or kode_hold in spiller:
+                continue                # holdet spiller selv: aktiviteten med kampnummeret er kampen
+            for a in akt:
+                st = aware(a)
+                navn = _norm(a.get("name"))
+                if not st or er_kampen(a, kamp_tekst):
+                    continue            # selve kampen, importeret fra kampprogrammet
+                if (str(a.get("id")) == str(gl.get("aktivitet")) and gl.get("tjans") == kode_hold) \
+                        or _kampnr(a) == nr:
+                    sikre.append((kode_hold, a))
+                elif ("tjans" in navn and not _kampnr(a) and start - FOER_KAMP <= st <= start
+                      and _lokal(a) not in kendte.get(kode_hold, ())
+                      and str(a.get("id")) not in kendte_akt
+                      and (kode_hold, _lokal(a)[:10]) not in staevne_dage):
+                    mulige.append((kode_hold, a))
+        valg = sikre or mulige
+        if len({(h, str(a.get("id"))) for h, a in valg}) != 1:
+            if valg:
+                tvetydige[nr] = sorted({h for h, _ in valg})
+            continue
+        kode_hold, a = valg[0]
+        egen = int((start - aware(a)).total_seconds() // 60)    # din mødetid i minutter
+        samme = str(gl.get("aktivitet")) == str(a.get("id")) and gl.get("lead") is not None
+        if samme and gl.get("lead_kamp") and gl["lead_kamp"] != start_tekst and egen != gl["lead"]:
+            # kampen er flyttet, og tjansen er ikke fulgt med endnu: behold din mødetid
+            lead, lead_kamp = gl["lead"], gl["lead_kamp"]
+        elif 0 <= egen <= 180:
+            lead, lead_kamp = egen, start_tekst
+        else:
+            lead, lead_kamp = (gl["lead"] if samme else None), start_tekst
+        m = PERS_RE.search(a.get("name") or "") or PERS_RE.search(a.get("comment") or "")
+        antal = int(m.group(1)) if m and 1 <= int(m.group(1)) <= 12 else gl.get("antal")
+        fundne[nr] = {"tjans": kode_hold, "aktivitet": a.get("id"), "hs_start": _lokal(a),
+                      "hs_navn": a.get("name") or "", "lead": lead, "lead_kamp": lead_kamp,
+                      "antal": antal, "sikker": bool(sikre)}
+        brugt.setdefault(str(a.get("id")), []).append(nr)
+    # samme aktivitet til to kampe: ingen af dem kan afgøres
+    for akt_id, nre in brugt.items():
+        if len(nre) > 1:
+            for nr in nre:
+                tvetydige[nr] = [fundne.pop(nr)["tjans"]]
+    return ud

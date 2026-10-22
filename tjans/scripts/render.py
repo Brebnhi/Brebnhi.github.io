@@ -78,8 +78,9 @@ def render(status, base_url=""):
     gjort_tjanser = {(r["kampnr"], r["tjans"], r["start"])
                      for r in gjort + (rettet.get("type_sat") or [])}
     skrivefejl = (rettet.get("fejl") or []) + (rettet.get("givet_op") or [])
+    efterladte = status.get("efterladte") or []     # dine tjanser i Holdsport, der ikke bruges
     andre = (len(huller) + len(forsv) + len(slettet) + len(genbrugt) + len(forkert_tid)
-             + len(dobbelt) + len(skrivefejl))
+             + len(dobbelt) + len(skrivefejl) + len(efterladte))
     problemer = andre + len(konflikter)
 
     venter = hs.get("venter") or []
@@ -102,6 +103,9 @@ def render(status, base_url=""):
         bits.append(f"{len(huller)} hjemmekamp{'e' if len(huller)>1 else ''} uden hold på tjans")
     if forsv:
         bits.append(f"{len(forsv)} tjans{'er' if len(forsv)>1 else ''} hvor kampen ikke længere findes")
+    if efterladte:
+        bits.append(f"{len(efterladte)} tjans{'er' if len(efterladte)>1 else ''}, du har oprettet i "
+                    "Holdsport, som skal slettes")
     if slettet:
         bits.append(f"{len(slettet)} tjans{'er' if len(slettet)>1 else ''} slettet i Holdsport")
     if genbrugt:
@@ -140,11 +144,28 @@ def render(status, base_url=""):
         return f'<div class="tw"><table><thead><tr>{head}</tr></thead><tbody>{"".join(rows)}</tbody></table></div>'
 
     hul_rows = [f"<tr><td><code>{E(h['kampnr'])}</code></td><td>{E(h['start'])}</td>"
-                f"<td>{E(h['kamp'])}</td><td>{E(h['raekke'])}</td><td>{E(h['sted'])}</td></tr>"
+                f"<td>{E(h['kamp'])}"
+                + (f"<br><span class='muted'>Flere mulige tjanser i Holdsport "
+                   f"({E(', '.join(h['tvetydig']))}) – skriv “Kampnr. {E(h['kampnr'])}” i "
+                   "kommentaren på den rigtige</span>" if h.get("tvetydig") else "")
+                + f"</td><td>{E(h['raekke'])}</td><td>{E(h['sted'])}</td></tr>"
                 for h in huller]
     fo_rows = [f"<tr><td><code>{E(f['kampnr'])}</code></td><td>{E(f['dato'])}</td>"
                f"<td>{E(f['kamp'])}</td><td><span class='tag'>{E(f['tjans'])}</span></td></tr>"
                for f in forsv]
+    ef_rows = [f"<tr><td><code>{E(e['kampnr'])}</code></td>"
+               f"<td>{E((e.get('hs_start') or e.get('kampstart') or '')[:16])}</td>"
+               f"<td><span class='tag'>{E(e['tjans'])}</span> “{E(e.get('hs_navn', ''))}”</td>"
+               f"<td>{E(e.get('kamp', ''))}</td><td>"
+               + (f"Kampen står nu hos <span class='tag'>{E(e['ny'])}</span> i tjanselisten"
+                  if e.get("ny") else "Kampen er ikke længere en hjemmekamp i kampprogrammet")
+               + "</td></tr>" for e in efterladte]
+    efterladt_afsnit = (
+        "<h2>Tjanser du har oprettet i Holdsport, som ikke bruges længere</h2>"
+        "<div class='banner bad'><strong>Slet dem i Holdsport</strong>Ellers møder holdet op til en "
+        "tjans, det ikke har. Robotten sletter aldrig selv noget.</div>"
+        + tabel(ef_rows, ["Kampnr.", "I Holdsport", "Aktivitet", "Kamp", "Hvorfor"], "")
+    ) if efterladte else ""
     db_rows = [f"<tr><td>{E(d['dato'])}</td><td><span class='tag'>{E(d['hold'])}</span></td>"
                f"<td>{E(d['tjans1'])}<br>{E(d['tjans2'])}</td></tr>" for d in dobbelt]
     dobbelt_afsnit = (
@@ -178,6 +199,8 @@ def render(status, base_url=""):
         note = ""
         if staevne:
             note = "<span class='pill'>stævne – oprettes manuelt</span>"
+        elif t.get("fra_holdsport"):
+            note = "<span class='pill'>oprettet i Holdsport</span>"
         elif t.get("flyttet"):
             note = "<span class='pill flyt'>flyttet siden tjanselisten</span>"
         elif t["kilde"] == "mangler i feed":
@@ -219,6 +242,9 @@ def render(status, base_url=""):
                    f"<td><span class='tag'>{E(m['tjans'])}</span></td></tr>" for m in venter]
         hold_rows = []
         typer = rettet.get("typer") or {}
+        typefejl = {e["tjans"]: e for e in rettet.get("type_fejl") or []}
+        roller = {1: "spiller", 2: "træner", 3: "assistenttræner", 4: "skadet", 5: "inaktiv",
+                  6: "holdleder"}
         for h in hs.get("hold", []):
             status_tekst = (f"{h['fundet']} af {h['forventet']}"
                             + (f" · {h['venter']} venter" if h.get("venter") else "")
@@ -227,10 +253,14 @@ def render(status, base_url=""):
                             if not h.get("fejl") else E(h["fejl"]))
             hold_rows.append(
                 f"<tr><td><span class='tag'>{E(h['kode'])}</span></td>"
-                f"<td>{E(h.get('holdsport') or '—')}</td>"
+                f"<td>{E(h.get('holdsport') or '—')}"
+                + (f"<br><span class='muted'>du er {E(roller.get(h.get('rolle'), 'ikke med på holdet'))}"
+                   "</span>" if h.get("holdsport") else "") + "</td>"
                 f"<td class='muted'>{E(h.get('id') or '')}</td>"
                 f"<td>{status_tekst}</td>"
-                + ("<td class='muted'>—</td>" if h.get("kode") not in typer else
+                + (f"<td class='st-taet'>robotten må ikke rette her – "
+                   f"{E(typefejl[h['kode']].get('raad', ''))}</td>" if h.get("kode") in typefejl else
+                   "<td class='muted'>—</td>" if h.get("kode") not in typer else
                    f"<td>{E(typer[h['kode']])}</td>" if typer[h["kode"]] else
                    "<td class='st-taet'>ingen – opret typen “Tjans” på holdet</td>")
                 + f"<td class='muted'>{E(h.get('match',''))}</td></tr>")
@@ -329,6 +359,15 @@ def render(status, base_url=""):
                         "opretter højst 8 tjanser ad gangen.</p>")
         else:
             ret_note = ""
+        egne_afsnit = "".join(
+            (f"<p class='sub'>Kamp <code>{E(e['kampnr'])}</code> ({E(e.get('kamp', ''))}) står i "
+             f"tjanselisten hos <span class='tag'>{E(e['tjans'])}</span>, og robotten bruger den "
+             f"tjans, du oprettede i Holdsport (“{E(e.get('hs_navn', ''))}”), så der ikke kommer "
+             "en til fra kalenderen.</p>" if e.get("i_listen") else
+             f"<p class='sub'>Kamp <code>{E(e['kampnr'])}</code> ({E(e.get('kamp', ''))}) står ikke "
+             f"i tjanselisten, men du har oprettet tjansen i Holdsport hos "
+             f"<span class='tag'>{E(e['tjans'])}</span> (“{E(e.get('hs_navn', ''))}”). Den tæller "
+             "med, og robotten passer den.</p>") for e in status.get("egne") or [])
         spejl = hs.get("spejl") or {}
         bundet = hs.get("bundet") or {}
 
@@ -351,7 +390,7 @@ def render(status, base_url=""):
             "tjanser (se <em>Holdopslag</em>). Den sletter aldrig noget og ændrer ikke navnene – "
             "holdene må gerne skrive deres egne, bare <em>Kampnr.</em> bliver stående i "
             "kommentaren.</p>"
-            + spejl_afsnit
+            + egne_afsnit + spejl_afsnit
             + tabel(sl_rows, ["Kampnr.", "Mødetid", "Aktivitet", "Tjans", "Hold i Holdsport"],
                     "Ingen tjanser er blevet slettet — alle ligger som de skal.")
             + ("<p class='sub' style='margin-top:14px'>Nye i kalenderen — venter på, at "
@@ -569,6 +608,8 @@ tjanseliste: {"Google-arket" if tjanskilde == "Google Sheet" else "data/tjanser.
 <h2>Tjanser hvor kampen ikke længere findes i kampprogrammet</h2>
 {tabel(fo_rows, ["Kampnr.", "Dato i ark", "Kamp", "Tjans"],
        "Ingen — alle tjanser peger på en kamp der stadig findes.")}
+
+{efterladt_afsnit}
 
 {dobbelt_afsnit}
 

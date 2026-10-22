@@ -47,6 +47,11 @@ app bruger, med samme login (`HOLDSPORT_USER` og `HOLDSPORT_PASSWORD`). Det logi
 `HOLDSPORT_USER` til brugernavnet (det virker også til tjekket). Når robotten skriver, skifter
 den dit *aktuelle hold* i Holdsport, så appen kan åbne på et andet hold end sidst.
 
+Robotten kan kun rette på de hold, hvor din Holdsport-bruger selv er med som **træner eller
+holdleder** — på de andre hold kan den læse, men ikke skrive. Under *Holdopslag* på
+tjansesiden står din rolle på hvert hold, og kan robotten ikke rette på et hold, står det dér
+og i issuet. Tilføj så din bruger på holdet i Holdsport; robotten prøver igen næste dag.
+
 Sikkerhed: robotten skriver først, når Holdsport har bekræftet holdskiftet; den læser en
 aktivitet, før den ændrer den, og sender alle dens indstillinger med tilbage; gentagne
 aktiviteter og betalingsaktiviteter røres ikke; højst 12 flytninger, 8 nye og 25 typeskift
@@ -55,6 +60,30 @@ uge (du får besked); og en aktivitet, der bliver flyttet tilbage igen og igen, 
 på efter 3 gange på 3 døgn og slår alarm. Bagefter læser den Holdsport igen og viser resultatet.
 Slå det fra med `HOLDSPORT_RETTER = False` i `scripts/indstillinger.py` — så læser robotten
 kun og slår alarm.
+
+## Tjanser, du selv opretter i Holdsport
+
+Kommer der en ny hjemmekamp (fx i pokalen), som ikke står i tjanselisten, kan du nøjes med at
+oprette tjansen i Holdsport hos det hold, der skal tage den. Robotten finder den selv ved næste
+kørsel, når
+
+- kommentaren eller navnet har `Kampnr. <kampens nummer>` (det sikreste), eller
+- navnet indeholder "tjans", og den begynder op til to timer før kampen (har holdet også en
+  stævnetjans den dag, skal der stå `Kampnr.` i den).
+
+Så tæller tjansen med — intet hul, ingen alarm — og robotten passer den som de andre: den får
+holdets tjans-type, og flytter Volleyball Danmark kampen, flytter robotten tjansen med, med din
+mødetid og længde. Navnet og teksten røres ikke, og tjansen kommer ikke i kalenderne, så
+Holdsport laver ingen kopi. Flytter du selv tjansen, er det din tid, der gælder.
+
+Hos de hold, der selv spiller kampen, leder robotten ikke: deres kamp i kalenderen (fra Volleyball
+Danmarks kampprogram, med kampnummeret) er kampen og ikke en tjans. Finder robotten flere mulige
+tjanser til samme kamp, gætter den ikke — kampen står som hul, med besked om at skrive
+`Kampnr.` på den rigtige.
+
+Skriver du kampen i tjanselisten senere, er det listen, der gælder. Med samme hold bruger
+robotten stadig din aktivitet. Med et andet hold — eller forsvinder kampen fra kampprogrammet —
+ligger din tjans tilbage i Holdsport, og så får du besked om at slette den.
 
 ## Sådan bruger Holdsport kalenderne
 
@@ -189,7 +218,8 @@ næste kørsel, når begge tjanser ligger i Holdsport på det rigtige tidspunkt 
 efter tre døgn.
 
 Pokal-, slutspils- og kvalifikationskampe tæller med for tjanseholdene (D1–D3, H1–H3),
-så en ny hjemmekamp i pokalen eller slutspillet dukker op, indtil den står i tjanselisten.
+så en ny hjemmekamp i pokalen eller slutspillet dukker op, indtil den står i tjanselisten —
+eller du har oprettet tjansen i Holdsport (se *Tjanser, du selv opretter i Holdsport*).
 Spillede kampe tæller ikke med — dem er der ikke noget at gøre ved.
 
 ## Tjans og egen kamp samme dag

@@ -456,6 +456,10 @@ def main():
     stamp = nu.strftime("%Y%m%dT%H%M%SZ")
     # Sidste kørsels udgave af hver tjans: giver SEQUENCE, og hvornår tidspunktet blev udgivet
     foer = _sidste_historik(os.environ.get("BASE_URL", ""), (nu - VENTETID).isoformat())
+    # Hjemmekampe, der ikke står i tjanselisten (fx en ny pokalkamp), men hvor du selv har
+    # oprettet tjansen i Holdsport: de tæller som tjanser, og robotten passer dem
+    egne_raekker, hs_egne, tvetydige, efterladte = egne_tjanser(rows, kampe, foer, nu, feed_fejl)
+    rows = rows + egne_raekker
     buckets, rapport, forventede, evs = {}, [], [], {}
 
     for row in rows:
@@ -484,7 +488,7 @@ def main():
             kilde = "mangler i feed" if row["kampnr"] else "regneark"
 
         antal = row["antal"]
-        lead = LEAD_MINUTES.get(antal, 30)
+        lead = row["lead"] if row.get("lead") is not None else LEAD_MINUTES.get(antal, 30)
         start = match_start - timedelta(minutes=lead)
         end = (match_slut if match_slut and match_slut > match_start
                else match_start + DEFAULT_LEN.get(antal, DEFAULT_LEN[4]))
@@ -519,23 +523,29 @@ def main():
                        .strftime("%Y-%m-%d %H:%M")}
         ev["noegle"] = n = tjans_noegle(forv)
         evs[n] = ev
+        if row.get("egen_aktivitet"):
+            forv["egen_aktivitet"] = row["egen_aktivitet"]   # den tjans, du har oprettet i Holdsport
         # Tidspunkter, tjansen har haft før – så kan holdsport.py kende en tjans, holdet har
         # omdøbt og fjernet kampnummeret fra, selv om kampen er flyttet siden
         gl = (foer or {}).get(n) if isinstance((foer or {}).get(n), dict) else {}
         nu_start = forv["start"][:16].replace("T", " ")
         forv["tidligere"] = sorted({t for t in (gl.get("start"), gl.get("forrige"), forv["ark"])
                                     if t and t != nu_start})
-        buckets.setdefault((row["tjans"], antal), []).append(ev)
+        if not row.get("fra_holdsport"):
+            # en tjans, du selv har oprettet i Holdsport, skal ikke også komme fra kalenderen
+            buckets.setdefault((row["tjans"], antal), []).append(ev)
         forventede.append(forv)
         rapport.append({**snapshot(row), "status": "ok", "kilde": kilde,
                         "start": start.astimezone(DK).isoformat(),
                         "kampstart": match_start.astimezone(DK).isoformat(),
                         "flyttet": flyttet, "sted": sted, "modstander": ude,
-                        "hjemmehold": hjemme})
+                        "hjemmehold": hjemme, "fra_holdsport": bool(row.get("fra_holdsport"))})
 
     # Holdsport: læs, ret det, der står forkert, og læs igen. Det sker, før kalenderne skrives:
     # har Holdsport koblet en aktivitet til to tjanser, skal kalenderen vide det.
     hs, bundet, skrevet = holdsport_ret(forventede, evs, foer, nu)
+    for e in (hs.get("rettet") or {}).get("type_fejl") or []:
+        e["raad"] = rettigheds_raad(e.get("rolle"))
     spejl = kalender_spejl(hs, forventede, bundet, foer)
     for f in forventede:
         n = tjans_noegle(f)
@@ -544,14 +554,19 @@ def main():
             # Kalenderen viser derfor den tjans her, så Holdsport ikke flytter aktiviteten væk fra
             # den – og robotten passer tjansens egen aktivitet i Holdsport.
             ev = evs[n] = {**evs[spejl[n]], "uid": evs[n]["uid"], "noegle": n, "spejl": spejl[n]}
-            buckets[(f["tjans"], f["antal"])] = [ev if e["noegle"] == n else e
-                                                  for e in buckets[(f["tjans"], f["antal"])]]
+            if (f["tjans"], f["antal"]) in buckets:
+                buckets[(f["tjans"], f["antal"])] = [ev if e["noegle"] == n else e
+                                                      for e in buckets[(f["tjans"], f["antal"])]]
             f["spejl"] = spejl[n]
         f["aftryk"] = aftryk(evs[n])
         f["seq"] = evs[n]["seq"] = sekvens((foer or {}).get(n), f["aftryk"], nu)
     hs["spejl"], hs["bundet"] = spejl, bundet
     hs, hist = holdsport_historik(hs, forventede, foer, nu)
     hist["_bundet"], hist["_skrevet"] = bundet, skrevet
+    hist["_egne"] = {nr: {k: e.get(k) for k in ("tjans", "aktivitet", "lead", "lead_kamp", "antal",
+                                                 "kampstart", "hs_start", "hs_navn", "kamp")}
+                     for nr, e in hs_egne.items()}
+    hist["_efterladte"] = efterladte
 
     feeds_dir = os.path.join(ROOT, "docs", "feeds")
     os.makedirs(feeds_dir, exist_ok=True)
@@ -574,6 +589,9 @@ def main():
     gammel_adresse(feeds_dir)
 
     huller, forsvundne = find_huller(rows, kampe)
+    for h in huller:
+        if h["kampnr"] in tvetydige:              # flere mulige tjanser i Holdsport
+            h["tvetydig"] = tvetydige[h["kampnr"]]
     dobbelt = dobbelt_tjans(forventede)
     mm = mellemmand()
     ignoreres, ign_fejl = ignorerede(mm)
@@ -596,6 +614,11 @@ def main():
         "feeds": feeds,
         "tjanser": rapport,
         "huller": huller,
+        "egne": sorted(({"kampnr": nr, **e} for nr, e in hs_egne.items()),
+                       key=lambda e: e.get("hs_start") or ""),   # tjanser oprettet i Holdsport
+        # tjanser, du har oprettet i Holdsport, som ikke bruges længere – skal slettes
+        "efterladte": sorted(({"kampnr": nr, **e} for nr, e in efterladte.items()
+                              if not e.get("usikker")), key=lambda e: e.get("hs_start") or ""),
         "forsvundne": forsvundne,
         "dobbelt_tjans": dobbelt,                # samme hold, to tjanser på samme tid
         "flyttede": [r for r in rapport if r.get("flyttet")],
@@ -655,6 +678,9 @@ def main():
             print(f"  {r['type_venter']} tjanser får aktivitetstypen ved næste kørsel")
         for x in r.get("optaget") or []:
             print(f"  IKKE OPRETTET: {x['hvilken']} – \"{x['aktivitet_navn']}\" ligger på tidspunktet")
+        for x in r.get("type_fejl") or []:
+            print(f"  KAN IKKE RETTE PÅ {x['tjans']} (rolle {ROLLER.get(x.get('rolle'), x.get('rolle'))}):"
+                  f" {x['fejl']}", file=sys.stderr)
         if r.get("typer"):
             print("Aktivitetstype til tjanser: " + ", ".join(
                 f"{k} {v or 'INGEN'}" for k, v in sorted(r["typer"].items())))
@@ -887,10 +913,13 @@ def holdsport_ret(forventede, evs, foer, nu):
     import holdsport, holdsport_skriv
     # En aktivitet, Holdsport har koblet til flere tjanser, hører til den tjans, robotten har givet
     # den – også selv om Holdsport har skrevet en anden tjans ind i den i nat.
-    faste = {a: p["ejer"] for a, p in bindinger({}, forventede, foer, nu).items() if p.get("ejer")}
+    # Tjanser, du selv har oprettet i Holdsport, hører til deres aktivitet – uanset navn og tid
+    egne = {str(f["egen_aktivitet"]): tjans_noegle(f) for f in forventede if f.get("egen_aktivitet")}
+    faste = {**egne, **{a: p["ejer"] for a, p in bindinger({}, forventede, foer, nu).items()
+                        if p.get("ejer")}}
     hs = holdsport.koer(forventede, ROOT, faste)
     bundet = bindinger(hs, forventede, foer, nu)
-    nye_faste = {a: p["ejer"] for a, p in bundet.items() if p.get("ejer")}
+    nye_faste = {**egne, **{a: p["ejer"] for a, p in bundet.items() if p.get("ejer")}}
     if nye_faste != faste:                    # robotten har lige opdaget en ny: læs igen med den
         igen = holdsport.koer(forventede, ROOT, nye_faste)
         if igen.get("aktiveret") and not igen.get("fejl"):
@@ -903,13 +932,15 @@ def holdsport_ret(forventede, evs, foer, nu):
             "tjans": f["tjans"], "kampnr": f["kampnr"], "kamp": f.get("kamp", ""),
             "start": f["start"][:16].replace("T", " "), "slut": f["slut"][:16].replace("T", " "),
             "navn": ev["summary"], "beskrivelse": ev["description"], "sted": ev["location"],
-            "antal": f["antal"]}
+            "antal": f["antal"],
+            # en tjans, du har oprettet: flyttes den, beholder den sin længde
+            "egen_varighed": bool(f.get("egen_aktivitet"))}
     klient = holdsport_skriv.Klient(os.environ.get("HOLDSPORT_USER", "").strip(),
                                     os.environ.get("HOLDSPORT_PASSWORD", "").strip())
     rettet, skrevet = holdsport_skriv.ret(hs, tjanser, (foer or {}).get("_skrevet"), nu, klient,
                                           tilladt=bool(indstilling("HOLDSPORT_RETTER", True)))
     if rettet["flyttet"] or rettet["oprettet"]:
-        faste = {a: p["ejer"] for a, p in bundet.items() if p.get("ejer")}
+        faste = {**egne, **{a: p["ejer"] for a, p in bundet.items() if p.get("ejer")}}
         igen = holdsport.koer(forventede, ROOT, faste)              # står det rigtigt nu?
         hs = igen if igen.get("aktiveret") and not igen.get("fejl") else _rettet_i(hs, rettet)
         ejere(bundet, hs)
@@ -1050,6 +1081,19 @@ def indstilling(navn, standard):
 
 
 UGEDAGE = ("man", "tir", "ons", "tor", "fre", "lør", "søn")
+ROLLER = {1: "spiller", 2: "træner", 3: "assistenttræner", 4: "skadet", 5: "inaktiv",
+          6: "holdleder"}
+
+
+def rettigheds_raad(rolle):
+    """Hvad du skal gøre, når robotten ikke må rette på et hold – ud fra din rolle dér."""
+    if rolle in (2, 3, 6):
+        return (f"din Holdsport-bruger er {ROLLER[rolle]} på holdet, men Holdsport afviser den. "
+                "Se fejlen på tjansesiden")
+    hvad = (f"din Holdsport-bruger er kun {ROLLER[rolle]} på holdet" if rolle in ROLLER
+            else "din Holdsport-bruger er ikke med på holdet")
+    return (f"{hvad}. Tilføj den som træner eller holdleder på holdet, så klarer robotten "
+            "resten")
 
 
 def kort(s):
@@ -1075,8 +1119,16 @@ def alarm(status, foer, nu):
 
     p = {}                                     # nøgle -> (tekst, hvornår det gælder)
     for h in status["huller"]:
-        p[f"hul-{h['kampnr']}"] = (f"{h['start'][:5]}: {h['kamp']} har intet hold på tjans",
-                                   tid(h["start"], "%d-%m-%Y %H:%M"))
+        if h.get("tvetydig"):
+            raad = (f"flere mulige tjanser i Holdsport ({', '.join(h['tvetydig'])}) – skriv "
+                    f"\"Kampnr. {h['kampnr']}\" i kommentaren på den rigtige")
+        else:
+            raad = (f"opret tjansen i Holdsport med \"Kampnr. {h['kampnr']}\" i kommentaren, "
+                    "eller skriv holdet i tjanselisten")
+        # flere mulige tjanser er nyt i forhold til ingen: så får du besked igen
+        p[f"hul-{h['kampnr']}" + ("-tvetydig" if h.get("tvetydig") else "")] = (
+            f"{h['start'][:5]}: {h['kamp']} har intet hold på tjans – {raad}",
+            tid(h["start"], "%d-%m-%Y %H:%M"))
     for f in status["forsvundne"]:
         p[f"forsvundet-{f['kampnr']}-{f['tjans']}"] = (
             f"{f['tjans']}: kamp {f['kampnr']} ({f['kamp']}) findes ikke længere",
@@ -1084,6 +1136,17 @@ def alarm(status, foer, nu):
     for d in status.get("dobbelt_tjans") or []:
         p[f"dobbelt-{d['hold']}-{d['dato']}-{d['tjans1']}"] = (
             f"{d['hold']} har to tjanser samtidig {d['dato'][:5]}", tid(d["dato"], "%d-%m-%Y"))
+    for e in status.get("efterladte") or []:
+        hvad = f"{e['tjans']}'s tjans {kort(e['hs_start'] or e['kampstart'])}" + (
+            f" (“{e['hs_navn']}”)" if e.get("hs_navn") else "")
+        if e.get("ny"):
+            tekst = (f"{hvad}: kampen {e['kamp']} står nu hos {e['ny']} i tjanselisten – slet "
+                     f"den tjans, du oprettede hos {e['tjans']} i Holdsport")
+        else:
+            tekst = (f"{hvad}: kampen {e['kamp']} er ikke længere en hjemmekamp i kampprogrammet"
+                     " – slet tjansen i Holdsport")
+        p[f"efterladt-{e['kampnr']}-{e['tjans']}"] = (
+            tekst, tid(e["hs_start"] or e["kampstart"], "%Y-%m-%d %H:%M"))
     for k in status.get("konflikter") or []:
         p[f"konflikt-{k['noegle']}"] = (
             f"{k['hold']} {k['dato'][:5]}: tjansen ligger oven i holdets egen kamp",
@@ -1121,6 +1184,10 @@ def alarm(status, foer, nu):
                f"\"Kampnr. {m['kampnr']}\" i dens kommentar" if m.get("optaget") and m["kampnr"]
                else ""),
             tid(m["start"], "%Y-%m-%d %H:%M"))
+    for e in rettet.get("type_fejl") or []:
+        p[f"typelaes-{e['tjans']}"] = (
+            f"Robotten kan ikke rette i {e['tjans']}'s kalender i Holdsport – "
+            + rettigheds_raad(e.get("rolle")), None)
     for kode, navn in sorted((rettet.get("typer") or {}).items()):
         if navn == "":
             p[f"type-mangler-{kode}"] = (
@@ -1146,6 +1213,12 @@ def alarm(status, foer, nu):
              f"{kort(r['fra'])}" for r in rettet.get("flyttet") or []]
     gjort += [f"Oprettet: {r['tjans']}'s tjans {kort(r['start'])} ({r['kamp']})"
               for r in rettet.get("oprettet") or []]
+    kendte_egne = set((foer or {}).get("_egne") or {}) | {
+        nr for nr, e in ((foer or {}).get("_efterladte") or {}).items()
+        if isinstance(e, dict) and e.get("usikker")}
+    gjort += [f"Fundet i Holdsport: {e['tjans']}'s tjans til kampen {kort(e.get('kampstart', ''))} "
+              f"({e.get('kamp', '')}) – tæller nu med" for e in status.get("egne") or []
+              if e["kampnr"] not in kendte_egne]
     pr_type = {}
     for r in rettet.get("type_sat") or []:
         pr_type.setdefault(r["type"], []).append(r["tjans"])
@@ -1318,6 +1391,116 @@ def find_huller(rows, kampe):
                   for r in rows if r["kampnr"] and r["kampnr"] not in kampe
                   and r["ark_start"] >= i_dag]
     return huller, forsvundne
+
+
+def egne_tjanser(rows, kampe, foer, nu, feed_fejl=None):
+    """Kommende hjemmekampe uden hold i tjanselisten, hvor du selv har oprettet tjansen i
+    Holdsport (holdsport.find_egne) – fx en ny pokalkamp. Tjansen tæller så, som om den stod i
+    listen: med holdet, hvis kalender den ligger i, og din mødetid – og robotten passer den.
+    Skriver du kampen i tjanselisten senere, er det listen, der gælder. Med samme hold bruges din
+    aktivitet stadig (rækken får fra_holdsport, lead og egen_aktivitet), så Holdsport ikke laver
+    en til fra kalenderen. Med et andet hold – eller forsvinder kampen fra kampprogrammet – ligger
+    din aktivitet tilbage i Holdsport, og så får du besked om at slette den. (Kunne et
+    kampprogram ikke hentes, er en kamp, der mangler, ikke nødvendigvis væk – så venter robotten.)
+    Returnerer (nye rækker som fra tjanselisten, {kampnr: fund}, {kampnr: [hold]} for kampe med
+    flere mulige tjanser i Holdsport, {kampnr: tjans du har oprettet, som ikke bruges længere})."""
+    i_dag = nu.astimezone(DK).replace(hour=0, minute=0, second=0, microsecond=0)
+    i_dag_tekst = i_dag.strftime("%Y-%m-%d %H:%M")
+    foer = foer if isinstance(foer, dict) else {}
+    tidligere = {}                   # tjanser, du har oprettet, som robotten kendte ved sidste kørsel
+    for felt in ("_efterladte", "_egne"):
+        for nr, e in (foer.get(felt) or {}).items():
+            if isinstance(e, dict) and e.get("tjans") and e.get("aktivitet"):
+                tidligere[nr] = e
+    ark = {r["kampnr"]: r for r in rows if r["kampnr"]}
+    kandidater, fortsat = [], {}
+    for nr, k in sorted(kampe.items()):
+        if not k["hjemmekamp"] or (KODER and not k["klubhold"]) or k["start"] < i_dag:
+            continue
+        r = ark.get(nr)
+        if r is None:
+            kandidater.append(k)
+        elif (tidligere.get(nr) or {}).get("tjans") == r["tjans"]:
+            kandidater.append(k)          # nu i listen med samme hold: din aktivitet bruges stadig
+            fortsat[nr] = r
+    kandidat_nr = {k["kampnr"] for k in kandidater}
+    efterladte = {}                  # tjanser, du har oprettet, som robotten ikke regner med mere
+    for nr, e in tidligere.items():
+        if nr in kandidat_nr:
+            continue
+        k = kampe.get(nr)
+        kampstart = (k["start"].astimezone(DK).strftime("%Y-%m-%d %H:%M") if k
+                     else e.get("kampstart") or "")
+        if not kampstart or kampstart < i_dag_tekst:
+            continue                                   # spillet: intet at gøre
+        r = ark.get(nr)
+        efterladte[nr] = {**e, "kampstart": kampstart,
+                          "ny": r["tjans"] if r is not None and r["tjans"] != e["tjans"] else "",
+                          # kampprogrammet kunne ikke hentes helt: måske er kampen der endnu
+                          "usikker": k is None and bool(feed_fejl)}
+    if not kandidater and not efterladte:
+        return [], {}, {}, {}
+    hold_koder = sorted({r["tjans"] for r in rows if r["kampnr"] and r["tjans"]})
+    kendte = {}                    # holdenes kendte tjanser, så de ikke forveksles med nye
+    for r in rows:
+        if r["kampnr"] and r["tjans"] and r["kampnr"] not in fortsat:
+            k = kampe.get(r["kampnr"])
+            st = ((k["start"] if k else r["ark_start"])
+                  - timedelta(minutes=LEAD_MINUTES.get(r["antal"], 30)))
+            kendte.setdefault(r["tjans"], set()).add(st.astimezone(DK).strftime("%Y-%m-%d %H:%M"))
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import holdsport
+    soeg = {str(e["aktivitet"]): {"tjans": e["tjans"], "start": e.get("hs_start") or e["kampstart"]}
+            for e in efterladte.values()}
+    # aktiviteter, der ved sidste kørsel var tjanser fra listen – de er ikke nye
+    kendte_akt = {str(p["aktivitet"]) for n, p in foer.items()
+                  if not n.startswith("_") and isinstance(p, dict) and p.get("aktivitet")
+                  and n.split("-")[0] not in tidligere}
+    # dage med en stævnetjans: den kan også hedde noget med "tjans", så dér kræves Kampnr.
+    staevne_dage = {(r["tjans"], r["ark_start"].astimezone(DK).strftime("%Y-%m-%d"))
+                    for r in rows if not r["kampnr"] and r["tjans"] and r.get("ark_start")}
+    res = holdsport.find_egne(kandidater, hold_koder, kendte, ROOT, tidligere, soeg, kendte_akt,
+                              staevne_dage)
+    fundne, tvetydige = res["fundne"], res["tvetydige"]
+    raekker = []
+    for k in kandidater:
+        nr, r = k["kampnr"], fortsat.get(k["kampnr"])
+        f = fundne.get(nr)
+        if f and r is not None and f["tjans"] != r["tjans"]:
+            del fundne[nr]                     # fundet hos et andet hold end listens: listen gælder
+            f = None
+        if not f:
+            continue
+        start = k["start"].astimezone(DK)
+        if r is not None:
+            antal = r["antal"]
+            r.update(fra_holdsport=True, lead=f["lead"], egen_aktivitet=f["aktivitet"])
+        else:
+            antal = f.get("antal") or (6 if "volleyligaen" in norm(k["raekke"]) else 4)
+            raekker.append({"kampnr": nr, "runde": "", "dag": "",
+                            "dato": start.strftime("%d-%m-%y"),
+                            "tid": f"{start.hour}:{start.minute:02d}",
+                            "raekke": k["raekke"], "pulje": "", "hjemmehold": k["hjemme"],
+                            "udehold": k["ude"], "spillested": k["sted"], "antal": antal,
+                            "tjans": f["tjans"], "klubhold": k["klubhold"], "ark_start": start,
+                            "fra_holdsport": True, "lead": f["lead"],
+                            "egen_aktivitet": f["aktivitet"]})
+        f.update(antal=antal, kamp=f"{k['hjemme']} - {k['ude']}",
+                 kampstart=start.strftime("%Y-%m-%d %H:%M"), i_listen=r is not None)
+    tilbage = {}
+    for nr, e in efterladte.items():
+        fund = res["findes"].get(str(e["aktivitet"]))
+        if fund is None and res["ok"]:
+            continue                                   # slettet i Holdsport: i orden
+        hs_start = (fund or {}).get("hs_start") or e.get("hs_start") or ""
+        if hs_start and hs_start < i_dag_tekst:
+            continue
+        tilbage[nr] = {"tjans": e["tjans"], "aktivitet": e["aktivitet"], "hs_start": hs_start,
+                       "hs_navn": (fund or {}).get("hs_navn") or e.get("hs_navn") or "",
+                       "kamp": e.get("kamp") or "", "kampstart": e["kampstart"], "ny": e["ny"],
+                       "lead": e.get("lead"), "lead_kamp": e.get("lead_kamp"),
+                       "antal": e.get("antal"), "usikker": e["usikker"]}
+    return raekker, fundne, tvetydige, tilbage
 
 
 def dobbelt_tjans(forventede):

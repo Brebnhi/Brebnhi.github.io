@@ -72,6 +72,8 @@ def main():
     rettet = hs.get("rettet") or {}               # det, robotten selv har rettet i Holdsport
     skrivefejl = (rettet.get("fejl") or []) + (rettet.get("givet_op") or [])
     uden_type = sorted(k for k, v in (rettet.get("typer") or {}).items() if v == "")
+    maa_ikke = rettet.get("type_fejl") or []      # hold, robotten ikke må rette på
+    efterladte = st.get("efterladte") or []        # dine tjanser i Holdsport, der ikke bruges
     ejer = os.environ.get("GITHUB_REPOSITORY_OWNER") or "Brebnhi"
 
     push(st, side)
@@ -84,7 +86,7 @@ def main():
     aabne = json.loads(fundet.stdout or "[]")
 
     if not (huller or forsvundne or slettet or arkfejl or konflikter or genbrugt or forkert_tid
-            or dobbelt or hsfejl or skrivefejl or uden_type):
+            or dobbelt or hsfejl or skrivefejl or uden_type or maa_ikke or efterladte):
         if aabne:
             nr = str(aabne[0]["number"])
             gh("issue", "comment", nr, "--body",
@@ -101,6 +103,13 @@ def main():
         linjer += ["## Robotten kunne ikke tjekke Holdsport", "",
                    f"{hsfejl}. Indtil det virker igen, ser robotten ikke, om tjanserne står "
                    "rigtigt i Holdsport.", ""]
+    if maa_ikke:
+        linjer += [f"## Robotten må ikke rette på {len(maa_ikke)} hold i Holdsport", "",
+                   "Robotten kan hverken sætte aktivitetstypen eller flytte og oprette tjanser "
+                   "dér, før det er rettet.", "", "| Hold | Hvad du skal gøre | Holdsport svarede |",
+                   "|---|---|---|"]
+        linjer += [f"| {e['tjans']} | {e.get('raad', '')} | {e['fejl']} |" for e in maa_ikke]
+        linjer.append("")
     if uden_type:
         linjer += ["## Hold uden aktivitetstype til tjanser", "",
                    f"{', '.join(uden_type)} har ingen aktivitetstype, der hedder \"Tjans\", i "
@@ -126,15 +135,31 @@ def main():
                    "har Kampnr. og Tjans.", ""]
     if huller:
         linjer += [f"## {len(huller)} hjemmekamp(e) uden hold på tjans", "",
+                   "Skriv holdet i tjanselisten – eller opret tjansen i Holdsport med "
+                   "\"Kampnr. <nummer>\" i kommentaren, så finder robotten den selv.", "",
                    "| Kampnr. | Dato | Kamp | Række | Sted |", "|---|---|---|---|---|"]
-        linjer += [f"| {h['kampnr']} | {h['start']} | {h['kamp']} | {h['raekke']} | {h['sted']} |"
-                   for h in huller]
+        linjer += [f"| {h['kampnr']} | {h['start']} | {h['kamp']}"
+                   + (f" – flere mulige tjanser i Holdsport ({', '.join(h['tvetydig'])})"
+                      if h.get("tvetydig") else "")
+                   + f" | {h['raekke']} | {h['sted']} |" for h in huller]
         linjer.append("")
     if forsvundne:
         linjer += [f"## {len(forsvundne)} tjans(er) hvor kampen ikke længere findes", "",
                    "| Kampnr. | Dato i ark | Kamp | Tjans |", "|---|---|---|---|"]
         linjer += [f"| {f['kampnr']} | {f['dato']} | {f['kamp']} | {f['tjans']} |"
                    for f in forsvundne]
+        linjer.append("")
+    if efterladte:
+        linjer += [f"## {len(efterladte)} tjans(er), du har oprettet i Holdsport, som ikke bruges "
+                   "længere", "", "Slet dem i Holdsport – ellers møder holdet op til en tjans, det "
+                   "ikke har. Robotten sletter aldrig selv noget.", "",
+                   "| Kampnr. | I Holdsport | Hold | Aktivitet | Hvorfor |", "|---|---|---|---|---|"]
+        linjer += [f"| {e['kampnr']} | {e.get('hs_start') or e.get('kampstart', '')} | {e['tjans']} | "
+                   f"{e.get('hs_navn', '')} | "
+                   + (f"Kampen ({e.get('kamp', '')}) står nu hos {e['ny']} i tjanselisten"
+                      if e.get("ny") else
+                      f"Kampen ({e.get('kamp', '')}) er ikke længere en hjemmekamp i kampprogrammet")
+                   + " |" for e in efterladte]
         linjer.append("")
     if dobbelt:
         linjer += [f"## {len(dobbelt)} gang(e) har et hold to tjanser på samme tid", "",

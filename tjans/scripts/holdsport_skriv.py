@@ -185,7 +185,11 @@ class Klient:
         if self.hold == str(hold_id):
             return
         self.hold = None
-        data = self.gql(SKIFT_HOLD, {"team": int(hold_id)})
+        try:
+            data = self.gql(SKIFT_HOLD, {"team": int(hold_id)})
+        except SkriveFejl as e:
+            raise SkriveFejl(f"Holdsport skiftede ikke til hold {hold_id} ({e}) – intet er "
+                             "skrevet") from None
         hold = ((data.get("ChangeCurrentTeam") or {}).get("team") or {})
         if str(hold.get("id")) != str(hold_id):
             raise SkriveFejl(f"Holdsport skiftede ikke til hold {hold_id} "
@@ -203,7 +207,8 @@ class Klient:
         return a
 
     def flyt(self, akt_id, hold_id, start, slut, nyt=None, kampstart=""):
-        """Flytter aktiviteten til start–slut ('ÅÅÅÅ-MM-DD TT:MM', dansk tid). nyt: andre felter,
+        """Flytter aktiviteten til start–slut ('ÅÅÅÅ-MM-DD TT:MM', dansk tid; slut None: aktiviteten
+        beholder sin længde). nyt: andre felter,
         der skal ændres (fx event_type_id). kampstart: den nye linje "Kampstart kl. …", som
         erstatter den gamle i kommentaren – resten af kommentaren og navnet røres ikke.
         Returnerer (gammel start, ny start)."""
@@ -237,7 +242,15 @@ class Klient:
                         ind[dato], ind[kl] = ny.strftime("%Y-%m-%d"), ny.strftime("%H:%M")
                     except ValueError:
                         pass
-        ind["start_time"], ind["end_time"] = start, slut
+        gl_slut = ind.get("end_time") or ""
+        ind["start_time"] = start
+        if slut:
+            ind["end_time"] = slut
+        elif gl_slut:
+            try:
+                ind["end_time"] = (_dt(gl_slut) + delta).strftime("%Y-%m-%d %H:%M")
+            except ValueError:
+                pass
         if kampstart and ind.get("comment"):
             ind["comment"] = "\n".join(kampstart if l.strip().startswith("Kampstart kl.") else l
                                        for l in ind["comment"].split("\n"))
@@ -402,7 +415,7 @@ def ret(hs, tjanser, skrevet, nu, klient, tilladt=True):
     Returnerer (rapport, skrevet) – rapporten kommer i status.json under holdsport → rettet."""
     rapport = {"slaaet_til": bool(tilladt), "flyttet": [], "oprettet": [], "fejl": [],
                "udskudt": [], "givet_op": [], "type_sat": [], "type_venter": 0, "typer": {},
-               "optaget": []}
+               "optaget": [], "type_fejl": []}
     gemt = skrevet or {}
     skrevet = {art: {str(k): [t for t in v if _gange([t], nu, vindue)]
                      for k, v in (gemt.get(art) or {}).items() if isinstance(v, list)}
@@ -413,6 +426,11 @@ def ret(hs, tjanser, skrevet, nu, klient, tilladt=True):
                           if isinstance(v, str) and _gange([v], nu, TYPE_TJEKKET)}
     skrevet["typer"] = {k: v for k, v in (gemt.get("typer") or {}).items() if isinstance(v, str)}
     rapport["typer"] = dict(skrevet["typer"])
+    # hold, hvis aktivitetstyper robotten ikke kunne læse – prøves igen efter et døgn
+    skrevet["type_fejl"] = {k: v for k, v in (gemt.get("type_fejl") or {}).items()
+                            if isinstance(v, dict) and _gange([v.get("tid")], nu, TYPE_TJEKKET)}
+    rapport["type_fejl"] = [{"tjans": k, "fejl": v.get("fejl", ""), "rolle": v.get("rolle")}
+                            for k, v in sorted(skrevet["type_fejl"].items())]
     if not hs.get("aktiveret") or hs.get("fejl"):
         return rapport, skrevet
     nu_dk = nu.astimezone(DK).strftime("%Y-%m-%d %H:%M")
@@ -463,21 +481,41 @@ def ret(hs, tjanser, skrevet, nu, klient, tilladt=True):
     typer = {}                       # hold-id -> (id, navn), None (ingen) eller False (ukendt)
 
     def holdets_type(p):
-        hid = str(p["id"])
-        if hid not in typer:
+        hid, kode = str(p["id"]), p.get("kode")
+        if hid in typer:
+            return typer[hid] or None
+        if kode in skrevet["type_fejl"]:          # kunne ikke læses for nylig: vent til i morgen
+            typer[hid] = False
+            return None
+        try:
+            typer[hid] = tjans_type(klient.typer(p["id"]))
+        except SkriveFejl as e:
+            # Måske skal holdet være det aktuelle hold først
             try:
+                klient.skift_hold(p["id"])
                 typer[hid] = tjans_type(klient.typer(p["id"]))
-            except SkriveFejl:
+            except SkriveFejl as e2:
                 typer[hid] = False
-            if typer[hid] is not False:
-                navn = typer[hid][1] if typer[hid] else ""
-                skrevet["typer"][p.get("kode")] = rapport["typer"][p.get("kode")] = navn
+                tekst = str(e) if str(e) == str(e2) else f"{e}; efter holdskift: {e2}"
+                skrevet["type_fejl"][kode] = {"tid": nu.isoformat(), "fejl": tekst,
+                                              "rolle": p.get("rolle")}
+                rapport["type_fejl"].append({"tjans": kode, "fejl": tekst, "rolle": p.get("rolle")})
+                rapport["typer"].pop(kode, None)
+        if typer[hid] is not False:
+            navn = typer[hid][1] if typer[hid] else ""
+            skrevet["typer"][kode] = rapport["typer"][kode] = navn
+            skrevet["type_fejl"].pop(kode, None)
+            rapport["type_fejl"] = [x for x in rapport["type_fejl"] if x["tjans"] != kode]
         return typer[hid] or None
 
-    stop = False                     # holdskiftet slog fejl: skriv intet mere i denne kørsel
+    stop = False                     # noget gik helt galt: skriv intet mere i denne kørsel
+    # Hold, Holdsport ikke ville skifte til (fx fordi din bruger ikke er med på holdet): intet
+    # mere dér i denne kørsel. De andre hold rettes stadig – hver skrivning skifter først hold og
+    # tjekker, at det lykkedes.
+    spaerret = set()
     for t, f, p in flyt:
         akt = str(f["aktivitet"])
-        if stop or len(rapport["flyttet"]) >= MAKS_FLYT:
+        if stop or str(p["id"]) in spaerret or len(rapport["flyttet"]) >= MAKS_FLYT:
             rapport["udskudt"].append({**_kort(t), "hvad": "flyt", "hs_start": f["hs_start"]})
             continue
         if _gange(skrevet["flyttet"].get(akt), nu, SAMME_VINDUE) >= MAKS_SAMME:
@@ -487,11 +525,13 @@ def ret(hs, tjanser, skrevet, nu, klient, tilladt=True):
         kampstart = next((l for l in t["beskrivelse"].split("\n")
                           if l.startswith("Kampstart kl.")), "")
         try:
-            fra, til = klient.flyt(akt, p["id"], t["start"], t["slut"],
+            fra, til = klient.flyt(akt, p["id"], t["start"],
+                                   None if t.get("egen_varighed") else t["slut"],
                                    {"event_type_id": tt[0]} if tt else None, kampstart)
         except SkriveFejl as e:
             rapport["fejl"].append({**_kort(t), "fejl": str(e), "aktivitet": akt})
-            stop = "skiftede ikke" in str(e)
+            if "skiftede ikke" in str(e):
+                spaerret.add(str(p["id"]))
             continue
         skrevet["flyttet"].setdefault(akt, []).append(nu.isoformat())
         if tt:
@@ -502,7 +542,7 @@ def ret(hs, tjanser, skrevet, nu, klient, tilladt=True):
 
     skabeloner = {}
     for n, t, p in opret:
-        if stop or len(rapport["oprettet"]) >= MAKS_OPRET:
+        if stop or str(p["id"]) in spaerret or len(rapport["oprettet"]) >= MAKS_OPRET:
             rapport["udskudt"].append({**_kort(t), "hvad": "opret"})
             continue
         if _gange(skrevet["oprettet"].get(n), nu, GENOPRET):
@@ -530,7 +570,8 @@ def ret(hs, tjanser, skrevet, nu, klient, tilladt=True):
             akt, advarsel = klient.opret(p["id"], felter, skabeloner[hid])
         except SkriveFejl as e:
             rapport["fejl"].append({**_kort(t), "fejl": str(e)})
-            stop = "skiftede ikke" in str(e)
+            if "skiftede ikke" in str(e):
+                spaerret.add(str(p["id"]))
             continue
         skrevet["oprettet"].setdefault(n, []).append(nu.isoformat())
         rapport["oprettet"].append({**_kort(t), "aktivitet": str(akt),
@@ -543,7 +584,7 @@ def ret(hs, tjanser, skrevet, nu, klient, tilladt=True):
     # Aktivitetstypen: kommende tjanser, der ikke har holdets tjans-type, får den
     laest = 0
     for t, f, p in typ:
-        tt = holdets_type(p) if not stop else None
+        tt = holdets_type(p) if not stop and str(p["id"]) not in spaerret else None
         if not tt:
             continue
         if len(rapport["type_sat"]) >= MAKS_TYPE or laest >= MAKS_TYPE_LAES:
