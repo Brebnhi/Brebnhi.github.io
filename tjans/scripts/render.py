@@ -76,7 +76,8 @@ def render(status, base_url=""):
     rettet = hs.get("rettet") or {}                # det, robotten selv har rettet i Holdsport
     gjort = (rettet.get("flyttet") or []) + (rettet.get("oprettet") or [])
     gjort_tjanser = {(r["kampnr"], r["tjans"], r["start"])
-                     for r in gjort + (rettet.get("type_sat") or [])}
+                     for r in gjort + (rettet.get("type_sat") or []) + (rettet.get("antal_sat") or [])
+                     + (rettet.get("tekst_sat") or [])}
     skrivefejl = (rettet.get("fejl") or []) + (rettet.get("givet_op") or [])
     efterladte = status.get("efterladte") or []     # dine tjanser i Holdsport, der ikke bruges
     andre = (len(huller) + len(forsv) + len(slettet) + len(genbrugt) + len(forkert_tid)
@@ -182,7 +183,7 @@ def render(status, base_url=""):
     feed_rows = []
     for f in status["feeds"]:
         url = f"{base_url}feeds/{f['fil']}" if base_url else f"../feeds/{f['fil']}"
-        n = "n6" if f["antal"] == 6 else ""
+        n = "n6" if f["antal"] >= 6 else ""
         feed_rows.append(
             f"<tr><td><span class='tag'>{E(f['hold'])}</span></td>"
             f"<td><span class='tag {n}'>{f['antal']} pers.</span></td>"
@@ -192,7 +193,7 @@ def render(status, base_url=""):
     sae_rows = []
     for t in sorted(status["tjanser"], key=lambda r: (r["dato"][6:8], r["dato"][3:5], r["dato"][:2], r["tid"])):
         staevne = t["status"] == "stævne"
-        n = "n6" if t["antal"] == 6 else ""
+        n = "n6" if t["antal"] >= 6 else ""
         kamp = (f"{E(t['hjemmehold'] or t['raekke'])}"
                 + (f" - {E(t.get('modstander') or t['udehold'])}" if t["udehold"] else ""))
         moede = "" if staevne else E(t["start"][11:16])
@@ -210,6 +211,11 @@ def render(status, base_url=""):
             f"<td>{kamp}</td><td class='muted'>{E(t['raekke'])}</td>"
             f"<td><span class='tag {n}'>{t['antal']}</span></td>"
             f"<td><span class='tag'>{E(t['tjans'])}</span></td><td>{note}</td></tr>")
+
+    roller_afsnit = "".join(
+        f"<p class='sub'><span class='tag {'n6' if int(n) >= 6 else ''}'>{E(n)} pers.</span> "
+        f"{E(tekst)}</p>" for n, tekst in sorted((status.get("roller") or {}).items(),
+                                                 key=lambda x: int(x[0])))
 
     hold_stats = "".join(
         f'<div class="stat"><b>{v}</b><span>tjanser til {E(k)}</span></div>'
@@ -328,9 +334,25 @@ def render(status, base_url=""):
                     f"<span style='white-space:nowrap'><span class='tag'>{E(h)}</span> "
                     f"{len(rs)} {'tjans' if len(rs) == 1 else 'tjanser'} → {E(t)}</span>"
                     for (h, t), rs in sorted(pr_type.items())) + ".</p>")
+        pr_antal = {}
+        for r in rettet.get("antal_sat") or []:
+            pr_antal.setdefault((r["tjans"], r["til"]), []).append(r)
+        if pr_antal:
+            rettet_afsnit += (
+                "<p class='sub'>Flere pladser ved denne kørsel: " + " · ".join(
+                    f"<span style='white-space:nowrap'><span class='tag'>{E(h)}</span> "
+                    f"{len(rs)} {'tjans' if len(rs) == 1 else 'tjanser'} → {til} pladser</span>"
+                    for (h, til), rs in sorted(pr_antal.items())) + ".</p>")
+        tekst_sat = rettet.get("tekst_sat") or []
+        if tekst_sat:
+            rettet_afsnit += (
+                f"<p class='sub'>Antallet i teksten rettet på {len(tekst_sat)} "
+                f"{'tjans' if len(tekst_sat) == 1 else 'tjanser'} ("
+                + ", ".join(sorted({E(r['tjans']) for r in tekst_sat})) + ") – fx “Der skal stilles "
+                f"{E(tekst_sat[0].get('antal'))} personer til rådighed …”.</p>")
         if rettet.get("type_venter"):
-            rettet_afsnit += (f"<p class='sub'>{rettet['type_venter']} tjanser mere får typen ved "
-                              "næste kørsel.</p>")
+            rettet_afsnit += (f"<p class='sub'>{rettet['type_venter']} tjanser mere bliver tjekket "
+                              "for type og pladser ved næste kørsel.</p>")
         sf_rows = ([f"<tr><td>{E(e.get('hvilken') or 'Holdsport')}</td><td>{E(e['fejl'])}</td></tr>"
                     for e in rettet.get("fejl") or []]
                    + [f"<tr><td>{E(g['hvilken'])}</td><td>"
@@ -387,9 +409,9 @@ def render(status, base_url=""):
             "Holdsport ved sidste kørsel. Robotten retter selv en tjans, der står på et forkert "
             "tidspunkt eller mangler, ved hver kørsel – også en, der er slettet i Holdsport – og "
             "slår alarm, hvis den ikke kan. Den giver også tjanserne holdets aktivitetstype til "
-            "tjanser (se <em>Holdopslag</em>). Den sletter aldrig noget og ændrer ikke navnene – "
-            "holdene må gerne skrive deres egne, bare <em>Kampnr.</em> bliver stående i "
-            "kommentaren.</p>"
+            "tjanser (se <em>Holdopslag</em>) og flere pladser, hvis den har for få. Den sletter "
+            "aldrig noget og ændrer ikke navnene (kun et forkert antal i “(6 pers.)”) – holdene må "
+            "gerne skrive deres egne, bare <em>Kampnr.</em> bliver stående i kommentaren.</p>"
             + egne_afsnit + spejl_afsnit
             + tabel(sl_rows, ["Kampnr.", "Mødetid", "Aktivitet", "Tjans", "Hold i Holdsport"],
                     "Ingen tjanser er blevet slettet — alle ligger som de skal.")
@@ -637,6 +659,7 @@ Nye importer kan bruge adresserne i tabellen.</p>
 <div class="stats">{hold_stats}</div>
 
 <h2>Hele sæsonen</h2>
+{roller_afsnit}
 {tabel(sae_rows, ["Dato", "Kampstart", "Mødetid", "Kamp", "Række", "Antal", "Tjans", ""], "")}
 
 <footer>Bygget automatisk ud fra tjanselisten og de officielle kampprogrammer fra

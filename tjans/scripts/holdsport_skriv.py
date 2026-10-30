@@ -9,8 +9,10 @@ robotten det, der står forkert:
   - en tjans, der mangler, oprettes
   - en tjans, der ikke har holdets aktivitetstype til tjanser ("Tjans"), får den – så den ikke
     ligner en kamp i kalenderen
-Robotten sletter aldrig noget, og den ændrer ikke navnet på en tjans: holdene må gerne skrive
-deres egne. Flytter den en tjans, ændres kun tidspunktet (og linjen "Kampstart kl. …").
+  - en tjans med for få pladser (fx en ligakamp, der nu skal have 7) får flere, og står
+    robottens tekst "Der skal stilles 6 personer …" og "(6 pers.)" i navnet stadig, rettes tallet
+Robotten sletter aldrig noget, og ellers ændrer den ikke navnet på en tjans: holdene må gerne
+skrive deres egne. Flytter den en tjans, ændres kun tidspunktet (og linjen "Kampstart kl. …").
 
 Holdsports officielle API (api.holdsport.dk/v1) kan kun læse aktiviteter. Robotten skriver
 derfor gennem det API, Holdsports egen app bruger (www.holdsport.dk/graphql), med samme login
@@ -33,7 +35,7 @@ Sikkerhed:
   - Holdsports svar tjekkes efter hver ændring, og bagefter læser build.py Holdsport igen
 """
 
-import json, urllib.error, urllib.request
+import json, re, urllib.error, urllib.request
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -49,9 +51,9 @@ MAKS_OPRET = 8
 GENOPRET = timedelta(days=7)
 MAKS_SAMME = 3
 SAMME_VINDUE = timedelta(hours=72)
-MAKS_TYPE = 25                   # typeskift pr. kørsel
-MAKS_TYPE_LAES = 80              # aktiviteter, robotten læser for at tjekke typen pr. kørsel
-TYPE_TJEKKET = timedelta(hours=20)   # så længe stoler robotten på en type, den har tjekket
+MAKS_TYPE = 25                   # aktiviteter, robotten retter type eller pladser på pr. kørsel
+MAKS_TYPE_LAES = 80              # aktiviteter, robotten læser for at tjekke dem pr. kørsel
+TYPE_TJEKKET = timedelta(hours=20)   # så længe stoler robotten på en aktivitet, den har tjekket
 
 LOG_IND = """mutation SignIn($username: String, $password: String) {
   SignIn(input: {username: $username, password: $password}) { access_token }
@@ -74,7 +76,8 @@ LAES = """query ShowActivityForEdit($id: Int!) {
     absolute_registration_deadline { iso8601 } registration_start_at { iso8601 }
   }
 }"""
-SVAR = "id name starttime { iso8601 } endtime { iso8601 } event_type { id name } teams { id name }"
+SVAR = ("id name starttime { iso8601 } endtime { iso8601 } event_type { id name } max_attender "
+        "teams { id name }")
 RET = ("mutation UpdateActivity($input: UpdateActivityInput!) {\n"
        "  UpdateActivity(input: $input) { activity { " + SVAR + " } }\n}")
 OPRET = ("mutation CreateActivity($input: CreateActivityInput!) {\n"
@@ -99,7 +102,48 @@ UGEDAGE = ("man", "tir", "ons", "tor", "fre", "lør", "søn")
 
 
 class SkriveFejl(Exception):
-    """Holdsport ville ikke – teksten kommer på siden og i alarmen."""
+    """Holdsport ville ikke – teksten kommer på siden og i alarmen. kun_aktiviteten: det er noget
+    ved netop den aktivitet (fx en gentagen aktivitet), ikke ved holdet eller Holdsport."""
+
+    def __init__(self, tekst, kun_aktiviteten=False):
+        super().__init__(tekst)
+        self.kun_aktiviteten = kun_aktiviteten
+
+
+# "(6 pers.)" i robottens navn på en tjans: "Tjans (6 pers.): D1 mod Holte IF"
+PERS_RE = re.compile(r"\((\d+) pers\.\)")
+
+
+def _tilpas(a, ind, type_id=None, antal=None, rolle="", roller=()):
+    """Retter ind (input til UpdateActivity for aktiviteten a), så den har holdets tjans-type
+    (type_id), mindst antal pladser og det rigtige antal i robottens tekst: linjen "Der skal stilles
+    … personer til rådighed …" skiftes til rolle, hvis den står præcis, som robotten skrev den (en
+    af roller), og så rettes også "(N pers.)" i navnet. Pladser sættes kun op – ubegrænset eller
+    flere end antal er i orden. Returnerer {hvad: (før, efter)} for det, der er rettet."""
+    aendret = {}
+    gl_type = (a.get("event_type") or {}).get("id")
+    if type_id is not None and str(gl_type) != str(type_id):
+        aendret["type"] = (gl_type, type_id)
+        ind["event_type_id"] = _tal(type_id)
+    try:
+        pladser = int(a.get("max_attender") or 0)
+    except (TypeError, ValueError):
+        pladser = 0
+    if antal and 0 < pladser < int(antal):
+        aendret["antal"] = (pladser, int(antal))
+        ind["max_number_of_attendees"] = int(antal)
+    if rolle and ind.get("comment"):
+        linjer = ind["comment"].split("\n")
+        nye = [rolle if l.strip() in roller and l.strip() != rolle else l for l in linjer]
+        if nye != linjer:
+            aendret["tekst"] = (next(l.strip() for l, n in zip(linjer, nye) if l != n), rolle)
+            ind["comment"] = "\n".join(nye)
+            m = PERS_RE.search(ind.get("name") or "")
+            if antal and m and int(m.group(1)) != int(antal):
+                ny = PERS_RE.sub(f"({int(antal)} pers.)", ind["name"], count=1)
+                aendret["navn"] = (ind["name"], ny)
+                ind["name"] = ny
+    return aendret
 
 
 def vaegur(iso):
@@ -267,30 +311,45 @@ class Klient:
                              "aktivitetstypen")
         return gl_start, faar
 
+    def ret_felter(self, akt_id, hold_id, type_id=None, antal=None, rolle="", roller=()):
+        """Retter aktivitetens type, antal pladser og antallet i robottens tekst (se _tilpas) og
+        intet andet. Returnerer {hvad: (før, efter)} – tom, når alt passede (så skrives intet)."""
+        a = self.laes(akt_id)
+        ind = _input(a)
+        aendret = _tilpas(a, ind, type_id, antal, rolle, roller)
+        if not aendret:
+            return {}
+        hold = {str(h.get("id")) for h in a.get("teams") or [] if isinstance(h, dict)}
+        if str(hold_id) not in hold:
+            raise SkriveFejl(f"aktivitet {akt_id} hører ikke til holdet – robotten rører den ikke",
+                             kun_aktiviteten=True)
+        if (a.get("is_repeated_activity") or a.get("is_root_of_repeated_activities")
+                or a.get("has_future_repeated_activities")):
+            raise SkriveFejl(f"aktivitet {akt_id} gentages – robotten rører den ikke",
+                             kun_aktiviteten=True)
+        if a.get("is_payment_activity"):
+            raise SkriveFejl(f"aktivitet {akt_id} er en betalingsaktivitet – robotten rører den ikke",
+                             kun_aktiviteten=True)
+        self.skift_hold(hold_id)
+        ny = (self.gql(RET, {"input": ind}).get("UpdateActivity") or {}).get("activity") or {}
+        if "type" in aendret and str((ny.get("event_type") or {}).get("id")) != str(type_id):
+            raise SkriveFejl(f"Holdsport gemte ikke aktivitetstypen for aktivitet {akt_id}")
+        if "antal" in aendret and ny.get("max_attender") is not None \
+                and str(ny.get("max_attender")) != str(aendret["antal"][1]):
+            raise SkriveFejl(f"Holdsport gemte ikke antal pladser for aktivitet {akt_id} "
+                             f"(svarede {ny.get('max_attender')})")
+        if vaegur((ny.get("starttime") or {}).get("iso8601")) != ind.get("start_time", ""):
+            raise SkriveFejl(f"Holdsport ændrede tidspunktet for aktivitet {akt_id}, da den blev "
+                             "rettet – tjek den")
+        return aendret
+
     def saet_type(self, akt_id, hold_id, type_id):
         """Giver aktiviteten aktivitetstypen type_id og ændrer intet andet. Returnerer den gamle
         types id – eller None, hvis den allerede havde typen (så skrives der intet)."""
-        a = self.laes(akt_id)
-        gl = (a.get("event_type") or {}).get("id")
-        if str(gl) == str(type_id):
+        aendret = self.ret_felter(akt_id, hold_id, type_id)
+        if "type" not in aendret:
             return None
-        hold = {str(h.get("id")) for h in a.get("teams") or [] if isinstance(h, dict)}
-        if str(hold_id) not in hold:
-            raise SkriveFejl(f"aktivitet {akt_id} hører ikke til holdet – robotten rører den ikke")
-        if (a.get("is_repeated_activity") or a.get("is_root_of_repeated_activities")
-                or a.get("has_future_repeated_activities")):
-            raise SkriveFejl(f"aktivitet {akt_id} gentages – robotten rører den ikke")
-        if a.get("is_payment_activity"):
-            raise SkriveFejl(f"aktivitet {akt_id} er en betalingsaktivitet – robotten rører den ikke")
-        ind = _input(a)
-        ind["event_type_id"] = _tal(type_id)
-        self.skift_hold(hold_id)
-        ny = (self.gql(RET, {"input": ind}).get("UpdateActivity") or {}).get("activity") or {}
-        if str((ny.get("event_type") or {}).get("id")) != str(type_id):
-            raise SkriveFejl(f"Holdsport gemte ikke aktivitetstypen for aktivitet {akt_id}")
-        if vaegur((ny.get("starttime") or {}).get("iso8601")) != ind.get("start_time", ""):
-            raise SkriveFejl(f"Holdsport ændrede tidspunktet for aktivitet {akt_id}, da typen "
-                             "blev sat – tjek den")
+        gl = aendret["type"][0]
         return gl if gl is not None else ""
 
     def opret(self, hold_id, felter, skabelon=None):
@@ -404,18 +463,20 @@ def tjans_type(typer):
     return bedst
 
 
-def ret(hs, tjanser, skrevet, nu, klient, tilladt=True):
+def ret(hs, tjanser, skrevet, nu, klient, tilladt=True, roller=()):
     """Retter Holdsport efter tjanselisten.
 
     hs:       holdsport.py's resultat (fundne, mangler, hold) fra denne kørsel
-    tjanser:  {nøgle: {tjans, kampnr, kamp, start, slut, navn, beskrivelse, sted, antal}} –
-              start/slut som 'ÅÅÅÅ-MM-DD TT:MM' i dansk tid
+    tjanser:  {nøgle: {tjans, kampnr, kamp, start, slut, navn, beskrivelse, sted, antal, rolle}}
+              – start/slut som 'ÅÅÅÅ-MM-DD TT:MM' i dansk tid; rolle er første linje i teksten
+              ("Der skal stilles 7 personer til rådighed: …")
+    roller:   alle robottens udgaver af den linje – kun en af dem bliver skiftet ud (se _tilpas)
     skrevet:  det, robotten har skrevet før (fra historikken): {"oprettet": {nøgle: [tid]},
               "flyttet": {aktivitet: [tid]}, "type_ok": {aktivitet: tid}, "typer": {hold: navn}}
     Returnerer (rapport, skrevet) – rapporten kommer i status.json under holdsport → rettet."""
     rapport = {"slaaet_til": bool(tilladt), "flyttet": [], "oprettet": [], "fejl": [],
                "udskudt": [], "givet_op": [], "type_sat": [], "type_venter": 0, "typer": {},
-               "optaget": [], "type_fejl": []}
+               "optaget": [], "type_fejl": [], "antal_sat": [], "tekst_sat": []}
     gemt = skrevet or {}
     skrevet = {art: {str(k): [t for t in v if _gange([t], nu, vindue)]
                      for k, v in (gemt.get(art) or {}).items() if isinstance(v, list)}
@@ -513,6 +574,7 @@ def ret(hs, tjanser, skrevet, nu, klient, tilladt=True):
     # mere dér i denne kørsel. De andre hold rettes stadig – hver skrivning skifter først hold og
     # tjekker, at det lykkedes.
     spaerret = set()
+    efter_flyt = []                  # flyttede tjanser: tjekkes bagefter for type og pladser
     for t, f, p in flyt:
         akt = str(f["aktivitet"])
         if stop or str(p["id"]) in spaerret or len(rapport["flyttet"]) >= MAKS_FLYT:
@@ -534,8 +596,7 @@ def ret(hs, tjanser, skrevet, nu, klient, tilladt=True):
                 spaerret.add(str(p["id"]))
             continue
         skrevet["flyttet"].setdefault(akt, []).append(nu.isoformat())
-        if tt:
-            skrevet["type_ok"][akt] = nu.isoformat()
+        efter_flyt.append((t, f, p))
         rapport["flyttet"].append({**_kort(t), "fra": fra or f["hs_start"], "til": til,
                                    "aktivitet": akt, "holdsport": p.get("holdsport", ""),
                                    "kilde": f.get("kilde", "")})
@@ -581,25 +642,43 @@ def ret(hs, tjanser, skrevet, nu, klient, tilladt=True):
                                     "aktivitet": str(akt)})
             stop = stop or "andet hold" in advarsel
 
-    # Aktivitetstypen: kommende tjanser, der ikke har holdets tjans-type, får den
-    laest = 0
-    for t, f, p in typ:
-        tt = holdets_type(p) if not stop and str(p["id"]) not in spaerret else None
-        if not tt:
+    # Typen, pladserne og antallet i teksten: hver kommende tjans tjekkes én gang i døgnet. Har
+    # den ikke holdets tjans-type eller for få pladser (fx 6 på en ligakamp, der skal have 7),
+    # rettes det. Slår det fejl på et hold, prøves holdets andre tjanser ved næste kørsel.
+    laest = skrevne = 0
+    blokeret = set()
+    for t, f, p in sorted(typ + efter_flyt, key=lambda x: x[0]["start"]):
+        hid = str(p["id"])
+        if stop or hid in spaerret or hid in blokeret:
             continue
-        if len(rapport["type_sat"]) >= MAKS_TYPE or laest >= MAKS_TYPE_LAES:
+        if skrevne >= MAKS_TYPE or laest >= MAKS_TYPE_LAES:
             rapport["type_venter"] += 1
             continue
+        tt = holdets_type(p)
         akt = str(f["aktivitet"])
         laest += 1
         try:
-            gl = klient.saet_type(akt, p["id"], tt[0])
+            aendret = klient.ret_felter(akt, p["id"], tt[0] if tt else None, t.get("antal"),
+                                        t.get("rolle") or "", roller)
         except SkriveFejl as e:
-            rapport["fejl"].append({**_kort(t), "fejl": f"aktivitetstypen: {e}", "aktivitet": akt})
-            stop = True            # fejler det, er det nok det samme for dem alle – prøv i morgen
+            rapport["fejl"].append({**_kort(t), "fejl": f"type og pladser: {e}", "aktivitet": akt,
+                                    "hvad": "indstillinger"})
+            if e.kun_aktiviteten:
+                skrevet["type_ok"][akt] = nu.isoformat()      # robotten rører den ikke: i morgen
+            else:
+                blokeret.add(hid)
             continue
         skrevet["type_ok"][akt] = nu.isoformat()
-        if gl is not None:
-            rapport["type_sat"].append({**_kort(t), "aktivitet": akt, "type": tt[1],
-                                        "holdsport": p.get("holdsport", "")})
+        if not aendret:
+            continue
+        skrevne += 1
+        om = {**_kort(t), "aktivitet": akt, "holdsport": p.get("holdsport", "")}
+        if "type" in aendret:
+            rapport["type_sat"].append({**om, "type": tt[1]})
+        if "antal" in aendret:
+            rapport["antal_sat"].append({**om, "fra": aendret["antal"][0],
+                                         "til": aendret["antal"][1]})
+        if "tekst" in aendret:
+            rapport["tekst_sat"].append({**om, "antal": t.get("antal"),
+                                         "navn_rettet": "navn" in aendret})
     return rapport, skrevet

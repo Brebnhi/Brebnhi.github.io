@@ -32,8 +32,14 @@ tjanselisten og kampprogrammet med Holdsport og **retter selv** det, der står f
   i navnet (fx *Tjans/opgave*), ellers en med "opgave". Har et hold ingen, står det på siden
   under *Holdopslag* og i issuet: opret typen på holdet i Holdsport, så sætter robotten den
   på. Højst 25 tjanser pr. kørsel; hver tjans tjekkes igen en gang i døgnet.
-- **Robotten sletter aldrig noget og ændrer aldrig navnet på en tjans.** En ekstra kopi
-  meldes, og du sletter den.
+- **En tjans med for få pladser får flere** — fx en ligatjans med 6, når den skal have 7.
+  Flere pladser, end tjansen skal have, eller ubegrænset, er i orden; robotten sætter aldrig
+  pladser ned. Står robottens linje *Der skal stilles 6 personer til rådighed …* uændret i
+  kommentaren, skiftes den ud, og *(6 pers.)* i navnet rettes med; har holdet skrevet sin egen
+  tekst, røres den ikke. Holdsports kalenderhentning skriver også den nye tekst ind i de
+  tjanser, den selv har lavet.
+- **Robotten sletter aldrig noget, og ud over antallet i *(6 pers.)* ændrer den aldrig navnet
+  på en tjans.** En ekstra kopi meldes, og du sletter den.
 
 **Holdene må gerne rette deres tjanser** — navn, tekst og alt andet — bare linjen
 `Kampnr. <nummer>` bliver stående i kommentaren: det er den, robotten kender tjansen på.
@@ -47,15 +53,16 @@ app bruger, med samme login (`HOLDSPORT_USER` og `HOLDSPORT_PASSWORD`). Det logi
 `HOLDSPORT_USER` til brugernavnet (det virker også til tjekket). Når robotten skriver, skifter
 den dit *aktuelle hold* i Holdsport, så appen kan åbne på et andet hold end sidst.
 
-Robotten kan kun rette på de hold, hvor din Holdsport-bruger selv er med som **træner eller
-holdleder** — på de andre hold kan den læse, men ikke skrive. Under *Holdopslag* på
-tjansesiden står din rolle på hvert hold, og kan robotten ikke rette på et hold, står det dér
-og i issuet. Tilføj så din bruger på holdet i Holdsport; robotten prøver igen næste dag.
+Afviser Holdsport robotten på et hold, står det under *Holdopslag* på tjansesiden (med din
+rolle på holdet) og i issuet, og du får besked på telefonen. Holdets andre tjanser prøves ved
+næste kørsel, og de andre hold rettes som normalt. Hjælper det ikke af sig selv, så tilføj din
+bruger som **træner eller holdleder** på holdet i Holdsport.
 
 Sikkerhed: robotten skriver først, når Holdsport har bekræftet holdskiftet; den læser en
 aktivitet, før den ændrer den, og sender alle dens indstillinger med tilbage; gentagne
-aktiviteter og betalingsaktiviteter røres ikke; højst 12 flytninger, 8 nye og 25 typeskift
-pr. kørsel; en tjans, den har oprettet, og som bliver slettet, oprettes ikke igen før efter en
+aktiviteter og betalingsaktiviteter røres ikke; højst 12 flytninger, 8 nye og 25 rettelser af
+type og pladser pr. kørsel; en tjans, den har oprettet, og som bliver slettet, oprettes ikke igen
+før efter en
 uge (du får besked); og en aktivitet, der bliver flyttet tilbage igen og igen, giver den op
 på efter 3 gange på 3 døgn og slår alarm. Bagefter læser den Holdsport igen og viser resultatet.
 Slå det fra med `HOLDSPORT_RETTER = False` i `scripts/indstillinger.py` — så læser robotten
@@ -127,11 +134,15 @@ faste filer, som robotten ikke bygger.
 
 Ét feed pr. **hold og antal**, fordi Holdsport sætter maks. antal deltagere
 én gang pr. import. Et hold med både liga- og divisionstjanser får derfor to feeds.
+Ligatjanserne med 7 ligger stadig i de gamle `…-6pers.ics`, så Holdsports importer henter videre
+uden at skulle laves om; tjansesiden viser 7 som maks. deltagere for dem.
 
 ## Reglerne
 
-- **Volleyligaen-hjemmekampe (D1):** 6 personer, mødetid 45 minutter før kampstart.
-  Kommentar: 2 boldlangere, 2 sekretærer, 1 til entré, 1 til speaker.
+- **Volleyligaen-hjemmekampe (D1):** 7 personer, mødetid 45 minutter før kampstart.
+  Kommentar: 2 boldlangere, 2 sekretærer, 1 til entré, 1 til speaker og 1 gulvmopper, der er
+  klar til at tørre sved op fra banen. Står der 6 i tjanselisten, regner robotten med 7
+  (`LIGA_PERSONER` i `scripts/build.py`) – på de kampe, der ikke er spillet.
 - **Alle øvrige kampe:** 4 personer, mødetid 30 minutter før kampstart.
   Kommentar: 2 boldlangere og 2 sekretærer — ingen entré eller speaker.
 - **Stævner** (U17, Kids/Teen, U15, NM i Mix) kommer ikke med, da de ikke findes
@@ -296,5 +307,5 @@ spillested, antal, tjans`). Datoen må skrives 03-10-26, 03-10-2026 eller 3.10.2
 klokkeslættet 9:00 eller 9.00.
 
 `tjans` er holdet der **har** tjansen. `antal` styrer både maks. deltagere og
-mødetiden (6 → 45 min før, ellers 30 min før). Rækker uden `kampnr` regnes som
-stævner.
+mødetiden (6 og 7 → 45 min før, ellers 30 min før) – på ligakampe er det mindst 7. Rækker uden
+`kampnr` regnes som stævner.

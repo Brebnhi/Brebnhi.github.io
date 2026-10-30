@@ -24,15 +24,25 @@ from zoneinfo import ZoneInfo
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DK, UTC = ZoneInfo("Europe/Copenhagen"), timezone.utc
 
-LEAD_MINUTES = {6: 45, 5: 30, 4: 30}
+LEAD_MINUTES = {7: 45, 6: 45, 5: 30, 4: 30}
 ROLES = {
+    7: ("Der skal stilles 7 personer til rådighed: 2 boldlangere, 2 sekretærer, "
+        "1 til entré, 1 til speaker og 1 gulvmopper, der er klar til at tørre sved op fra banen."),
     6: ("Der skal stilles 6 personer til rådighed: 2 boldlangere, 2 sekretærer, "
         "1 til entré og 1 til speaker."),
     5: "Der skal stilles 5 personer til rådighed.",
     4: ("Der skal stilles 4 personer til rådighed: 2 boldlangere og 2 sekretærer. "
         "Ingen entré eller speaker."),
 }
-DEFAULT_LEN = {6: timedelta(hours=3), 5: timedelta(hours=4), 4: timedelta(hours=2, minutes=30)}
+DEFAULT_LEN = {7: timedelta(hours=3), 6: timedelta(hours=3), 5: timedelta(hours=4),
+               4: timedelta(hours=2, minutes=30)}
+# Ligakampe (Volleyligaen) skal også have én gulvmopper på tjans. Står der færre i tjanselisten
+# (den har 6), regner robotten med LIGA_PERSONER – men kun for kampe, der ikke er spillet, så de
+# spillede står, som de var.
+LIGA_PERSONER = 7
+# Kalenderfilerne hedder efter antallet ("D2-6pers.ics"), og Holdsport har én import pr. fil. En
+# ny fil ville ingen import hente, så 7-personers tjanser ligger i de gamle 6-personers filer.
+FEED_FIL = {7: 6}
 INCLUDE_STAEVNER = os.environ.get("INCLUDE_STAEVNER", "0") == "1"
 
 # Repoet hed "Tjanser-i-Holdsport", og Holdsport er sat op med kalenderadresser
@@ -94,6 +104,16 @@ def norm(s):
     for a, b in (("æ", "ae"), ("ø", "oe"), ("å", "aa")):
         s = s.replace(a, b)
     return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9.]+", " ", s)).strip()
+
+
+def personer(antal, raekke):
+    """Antal på tjans: en ligakamp (Volleyligaen) har mindst LIGA_PERSONER."""
+    return max(antal, LIGA_PERSONER) if "volleyligaen" in norm(raekke) else antal
+
+
+def feed_noegle(hold, antal):
+    """(hold, antal i filnavnet) – den kalenderfil, tjansen ligger i (se FEED_FIL)."""
+    return hold, FEED_FIL.get(antal, antal)
 
 
 def unfold(text):
@@ -453,6 +473,7 @@ def main():
         # ikke, før tjanselisten er lavet — og en gammel feeds.json heller ikke bagefter.
         kampe = {nr: k for nr, k in kampe.items() if saeson_for(k["start"]) == saeson_start}
     nu = datetime.now(UTC)
+    i_dag = nu.astimezone(DK).replace(hour=0, minute=0, second=0, microsecond=0)
     stamp = nu.strftime("%Y%m%dT%H%M%SZ")
     # Sidste kørsels udgave af hver tjans: giver SEQUENCE, og hvornår tidspunktet blev udgivet
     foer = _sidste_historik(os.environ.get("BASE_URL", ""), (nu - VENTETID).isoformat())
@@ -487,6 +508,9 @@ def main():
             klub = row["klubhold"] or row["raekke"]
             kilde = "mangler i feed" if row["kampnr"] else "regneark"
 
+        if match_start >= i_dag:
+            # en ligakamp skal have mindst LIGA_PERSONER (gulvmopperen) – spillede står, som de var
+            row["antal"] = personer(row["antal"], row["raekke"])
         antal = row["antal"]
         lead = row["lead"] if row.get("lead") is not None else LEAD_MINUTES.get(antal, 30)
         start = match_start - timedelta(minutes=lead)
@@ -513,7 +537,7 @@ def main():
             f"{row['dato']}{row['tid']}{row['raekke']}".encode()).hexdigest()[:8]
         ev = {"uid": f"tjans-{seed}-{row['tjans']}@aalborgvolley.dk",
               "start": start, "end": end, "summary": summary,
-              "description": desc, "location": sted}
+              "description": desc, "location": sted, "antal": antal}
         forv = {"tjans": row["tjans"], "kampnr": row["kampnr"],
                 "navn": summary, "start": start.astimezone(DK).isoformat(),
                 "antal": antal, "kamp": f"{hjemme or klub} - {ude}",
@@ -533,7 +557,7 @@ def main():
                                     if t and t != nu_start})
         if not row.get("fra_holdsport"):
             # en tjans, du selv har oprettet i Holdsport, skal ikke også komme fra kalenderen
-            buckets.setdefault((row["tjans"], antal), []).append(ev)
+            buckets.setdefault(feed_noegle(row["tjans"], antal), []).append(ev)
         forventede.append(forv)
         rapport.append({**snapshot(row), "status": "ok", "kilde": kilde,
                         "start": start.astimezone(DK).isoformat(),
@@ -554,9 +578,9 @@ def main():
             # Kalenderen viser derfor den tjans her, så Holdsport ikke flytter aktiviteten væk fra
             # den – og robotten passer tjansens egen aktivitet i Holdsport.
             ev = evs[n] = {**evs[spejl[n]], "uid": evs[n]["uid"], "noegle": n, "spejl": spejl[n]}
-            if (f["tjans"], f["antal"]) in buckets:
-                buckets[(f["tjans"], f["antal"])] = [ev if e["noegle"] == n else e
-                                                      for e in buckets[(f["tjans"], f["antal"])]]
+            fn = feed_noegle(f["tjans"], f["antal"])
+            if fn in buckets:
+                buckets[fn] = [ev if e["noegle"] == n else e for e in buckets[fn]]
             f["spejl"] = spejl[n]
         f["aftryk"] = aftryk(evs[n])
         f["seq"] = evs[n]["seq"] = sekvens((foer or {}).get(n), f["aftryk"], nu)
@@ -575,9 +599,12 @@ def main():
             os.remove(os.path.join(feeds_dir, f))
 
     feeds = []
-    for (hold, antal), entries in sorted(buckets.items()):
+    for (hold, fil_antal), entries in sorted(buckets.items()):
         entries.sort(key=lambda e: e["start"])
-        fil = f"{hold}-{antal}pers.ics"
+        fil = f"{hold}-{fil_antal}pers.ics"
+        # i en gammel 6-personers fil kan der også ligge 7-personers tjanser (se FEED_FIL)
+        antal = max([e.get("antal") or fil_antal for e in entries if e["start"] >= i_dag]
+                    or [fil_antal])
         titel = f"Tjanser {hold} ({antal} personer)"
         open(os.path.join(feeds_dir, fil), "w", encoding="utf-8").write(
             build_ics(titel, entries, stamp))
@@ -614,6 +641,9 @@ def main():
         "feeds": feeds,
         "tjanser": rapport,
         "huller": huller,
+        # hvad tjansen består af for hvert antal, der bruges ("Der skal stilles 7 personer …")
+        "roller": {str(n): ROLES.get(n, ROLES[4])
+                   for n in sorted({r["antal"] for r in rapport if r["status"] == "ok"})},
         "egne": sorted(({"kampnr": nr, **e} for nr, e in hs_egne.items()),
                        key=lambda e: e.get("hs_start") or ""),   # tjanser oprettet i Holdsport
         # tjanser, du har oprettet i Holdsport, som ikke bruges længere – skal slettes
@@ -674,8 +704,14 @@ def main():
             print(f"  UDSKUDT til næste kørsel: {x['hvad']} {x['hvilken']}")
         for x in r.get("type_sat") or []:
             print(f"  TYPE: {x['hvilken']} fik aktivitetstypen {x['type']} (aktivitet {x['aktivitet']})")
+        for x in r.get("antal_sat") or []:
+            print(f"  PLADSER: {x['hvilken']} {x['fra']} → {x['til']} (aktivitet {x['aktivitet']})")
+        for x in r.get("tekst_sat") or []:
+            print(f"  TEKST: {x['hvilken']} – antallet rettet til {x['antal']}"
+                  + (" (også i navnet)" if x.get("navn_rettet") else "")
+                  + f" (aktivitet {x['aktivitet']})")
         if r.get("type_venter"):
-            print(f"  {r['type_venter']} tjanser får aktivitetstypen ved næste kørsel")
+            print(f"  {r['type_venter']} tjanser tjekkes for type og pladser ved næste kørsel")
         for x in r.get("optaget") or []:
             print(f"  IKKE OPRETTET: {x['hvilken']} – \"{x['aktivitet_navn']}\" ligger på tidspunktet")
         for x in r.get("type_fejl") or []:
@@ -933,12 +969,15 @@ def holdsport_ret(forventede, evs, foer, nu):
             "start": f["start"][:16].replace("T", " "), "slut": f["slut"][:16].replace("T", " "),
             "navn": ev["summary"], "beskrivelse": ev["description"], "sted": ev["location"],
             "antal": f["antal"],
+            # første linje i teksten: "Der skal stilles 7 personer til rådighed: …"
+            "rolle": ev["description"].split("\n", 1)[0],
             # en tjans, du har oprettet: flyttes den, beholder den sin længde
             "egen_varighed": bool(f.get("egen_aktivitet"))}
     klient = holdsport_skriv.Klient(os.environ.get("HOLDSPORT_USER", "").strip(),
                                     os.environ.get("HOLDSPORT_PASSWORD", "").strip())
     rettet, skrevet = holdsport_skriv.ret(hs, tjanser, (foer or {}).get("_skrevet"), nu, klient,
-                                          tilladt=bool(indstilling("HOLDSPORT_RETTER", True)))
+                                          tilladt=bool(indstilling("HOLDSPORT_RETTER", True)),
+                                          roller=set(ROLES.values()))
     if rettet["flyttet"] or rettet["oprettet"]:
         faste = {**egne, **{a: p["ejer"] for a, p in bundet.items() if p.get("ejer")}}
         igen = holdsport.koer(forventede, ROOT, faste)              # står det rigtigt nu?
@@ -1156,10 +1195,11 @@ def alarm(status, foer, nu):
     if hs.get("aktiveret") and hs.get("fejl"):
         p["holdsport-fejl"] = (f"Robotten kunne ikke tjekke Holdsport: {hs['fejl']}", None)
     for e in rettet.get("fejl") or []:
-        if e.get("tjans") and e["fejl"].startswith("aktivitetstypen:"):
-            # kun typen – ikke akut, og prøves igen i morgen
+        if e.get("tjans") and (e.get("hvad") == "indstillinger"
+                               or e["fejl"].startswith("aktivitetstypen:")):
+            # type og pladser – ikke akut, og prøves igen ved næste kørsel
             p[f"typefejl-{e['tjans']}"] = (
-                f"Robotten kunne ikke sætte aktivitetstypen på {e['tjans']}'s tjanser: "
+                f"Robotten kunne ikke rette type og pladser på {e['tjans']}'s tjanser: "
                 f"{e['fejl'].split(': ', 1)[-1]}", None)
         elif e.get("tjans"):
             p[f"skrivefejl-{e['kampnr']}-{e['tjans']}"] = (
@@ -1219,6 +1259,17 @@ def alarm(status, foer, nu):
     gjort += [f"Fundet i Holdsport: {e['tjans']}'s tjans til kampen {kort(e.get('kampstart', ''))} "
               f"({e.get('kamp', '')}) – tæller nu med" for e in status.get("egne") or []
               if e["kampnr"] not in kendte_egne]
+    pr_til = {}
+    for r in rettet.get("antal_sat") or []:
+        pr_til.setdefault(r["til"], []).append(r["tjans"])
+    for til, hold in sorted(pr_til.items()):
+        gjort.append(f"Pladser sat op til {til} på {len(hold)} tjans{'er' if len(hold) > 1 else ''}"
+                     f" ({', '.join(sorted(set(hold)))})")
+    tekst_sat = rettet.get("tekst_sat") or []
+    if tekst_sat:
+        gjort.append(f"Antallet i teksten rettet på {len(tekst_sat)} "
+                     f"tjans{'er' if len(tekst_sat) > 1 else ''} "
+                     f"({', '.join(sorted({r['tjans'] for r in tekst_sat}))})")
     pr_type = {}
     for r in rettet.get("type_sat") or []:
         pr_type.setdefault(r["type"], []).append(r["tjans"])
@@ -1473,10 +1524,10 @@ def egne_tjanser(rows, kampe, foer, nu, feed_fejl=None):
             continue
         start = k["start"].astimezone(DK)
         if r is not None:
-            antal = r["antal"]
+            antal = personer(r["antal"], k["raekke"])
             r.update(fra_holdsport=True, lead=f["lead"], egen_aktivitet=f["aktivitet"])
         else:
-            antal = f.get("antal") or (6 if "volleyligaen" in norm(k["raekke"]) else 4)
+            antal = personer(f.get("antal") or 4, k["raekke"])
             raekker.append({"kampnr": nr, "runde": "", "dag": "",
                             "dato": start.strftime("%d-%m-%y"),
                             "tid": f"{start.hour}:{start.minute:02d}",
